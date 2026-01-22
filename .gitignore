@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# IDE
+.idea/
+
+# Tests & OS
+.pytest_cache/
+.DS_Store

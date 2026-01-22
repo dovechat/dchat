@@ -1,0 +1,146 @@
+[tool.poetry]
+name = "mono"
+version = "0.1.0"
+description = "Multi-tenant CRM system with FastAPI"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+sqlalchemy = "^2.0.25"
+alembic = "^1.13.1"
+asyncpg = "^0.29.0"
+pydantic = {version = "^2.5.3", extras = ["email"]} 
+pydantic-settings = "^2.1.0"
+pyjwt = "^2.10.1"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-multipart = "^0.0.6"
+Faker = "^30.0.0"
+psycopg2-binary = "^2.9.11"
+tqdm = "^4.67.1"
+redis = "^7.1.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-asyncio = "^0.23.3"
+pytest-cov = "^4.1.0"
+httpx = "^0.26.0"
+mypy = "^1.8.0"
+ruff = "^0.1.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# ============================================================================
+# RUFF Configuration (современный линтер + форматтер)
+# ============================================================================
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+# Директории для проверки
+include = ["account/**/*.py", "models/**/*.py", "schemas/**/*.py", "repo/**/*.py", "core/**/*.py"]
+exclude = [".git", ".venv", "__pycache__", "alembic"]
+
+[tool.ruff.lint]
+# Включаем правила:
+# E/W - pycodestyle (стиль кода)
+# F - pyflakes (ошибки)
+# I - isort (сортировка импортов)
+# N - pep8-naming (именование)
+# UP - pyupgrade (современный Python)
+# B - flake8-bugbear (потенциальные баги)
+# C4 - flake8-comprehensions (list/dict comprehensions)
+# SIM - flake8-simplify (упрощение кода)
+select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "SIM"]
+
+# Игнорируем некоторые правила:
+ignore = [
+    "E501",  # line too long (это контролируется line-length)
+    "B008",  # function calls in argument defaults (для FastAPI Depends)
+]
+
+[tool.ruff.lint.isort]
+# Настройки сортировки импортов
+known-first-party = ["account", "models", "schemas", "repo", "core", "config"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder"
+]
+
+[tool.ruff.format]
+# Форматирование кода
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# ============================================================================
+# MYPY Configuration (проверка типов)
+# ============================================================================
+[tool.mypy]
+explicit_package_bases = true
+mypy_path = "."
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # false для постепенного внедрения
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Игнорируем библиотеки без типов
+[[tool.mypy.overrides]]
+module = [
+    "passlib.*",
+    "jose.*",
+    "faker.*",
+]
+ignore_missing_imports = true
+
+# Постепенно включаем строгую проверку для новых модулей
+[[tool.mypy.overrides]]
+module = "app.services.cache"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+# ============================================================================
+# PYTEST Configuration
+# ============================================================================
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["account/tests"]
+asyncio_mode = "auto"
+
+# ============================================================================
+# COVERAGE Configuration
+# ============================================================================
+[tool.coverage.run]
+source = ["account/app", "models", "schemas", "repo"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

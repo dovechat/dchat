@@ -1,0 +1,31 @@
+services:
+  account:
+    build: .
+    image: account:1
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8070 --workers=1
+    ports:
+      - "8070:8070"
+    volumes:
+      - ..:/mono
+      - .:/mono/account
+      - ../repo:/mono/repo
+      - ../schemas:/mono/schemas
+      - ../models:/mono/models
+      - ../core:/mono/core
+      - ../services:/mono/services
+      - ../config.py:/mono/core/config.py
+      - ../.env:/mono/.env
+      # - ./config_dt.py:/mono/mono/config_dt.py
+    env_file:
+      - ../.env
+    networks:
+      - dchat_net
+
+  rdb:
+    image: "redis:alpine"
+    networks: [dchat_net]
+
+networks:
+  dchat_net:
+    external: true
+    name: postgre_dchat-net
