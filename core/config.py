@@ -27,6 +27,18 @@ class Settings(BaseSettings):
     # CORS
     backend_cors_origins: str = ""
 
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str | None = None  # ← Optional
+    smtp_password: str | None = None  # ← Optional  
+    smtp_from: str | None = None
+    otp_subject: str = "Authorization code"
+
+    device_id: str = "69728ef652ef775390b32f83"
+    phone: str = "+995511221503"
+    apikey: str = "0f0f0dad-ce62-4ffa-b1e3-76634a59eb67"
+
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""
@@ -35,4 +47,5 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.backend_cors_origins.split(",")]
 
 
-settings = Settings()
+settings: Settings = Settings()
+

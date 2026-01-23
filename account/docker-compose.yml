@@ -7,13 +7,14 @@ services:
       - "8070:8070"
     volumes:
       - ..:/mono
+      - ../infra:/mono/infra
       - .:/mono/account
       - ../repo:/mono/repo
       - ../schemas:/mono/schemas
       - ../models:/mono/models
       - ../core:/mono/core
       - ../services:/mono/services
-      - ../config.py:/mono/core/config.py
+      # - ../config.py:/mono/core/config.py
       - ../.env:/mono/.env
       # - ./config_dt.py:/mono/mono/config_dt.py
     env_file:

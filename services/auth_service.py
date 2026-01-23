@@ -5,6 +5,8 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis import rdb
+from infra.email.sender import OTPSender
+from infra.sms.sender import SMSSender
 from models.tenants import UserStatus
 from repo.user import UserRepository
 from schemas.auth_schemas import LoginRequest, RegisterRequest, TokenPair, UserContext as User
@@ -30,9 +32,15 @@ async def is_throttled(key: str, seconds: int) -> bool:
     return True
 
 
+def send_otp(data, code) -> bool:
+    if data.ifsms:
+        return SMSSender().send(data.email, code)
+    else:
+        return OTPSender().send(data.phone, code)
+
+
 class AuthService:
     """Service for authentication operations"""
-
     def __init__(self, jwt_service: JWTService) -> None:
         self.jwt_service = jwt_service
 
@@ -82,6 +90,8 @@ class AuthService:
         log.info(f"VERIFICATION CODE FOR {data.email}: {code}")
 
         await rdb.setex(f"auth:{str(user.id)}", 600, code)
+
+        send_otp(data, code)
 
         return self.jwt_service.create_token_pair(
             user_id=user.id,

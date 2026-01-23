@@ -19,6 +19,7 @@ async def test_verify_throttle_and_trial_status(client):
         "password": "pass", "ifsms": True
     }
     reg_resp = await client.post("/api/v1/auth/auth/register", json=payload)
+    print("************ reg_resp", reg_resp)
     token = reg_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
