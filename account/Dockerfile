@@ -15,7 +15,7 @@ COPY .env ./
 
 # change to project/service name
 WORKDIR /mono/account
-
+RUN apt update && apt-get install -y postgresql-client
 RUN pip install --no-cache-dir poetry==1.7.1
 
 COPY pyproject.toml poetry.lock ./

@@ -30,9 +30,9 @@ services:
   account:
     build: .
     image: account:1
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8070 --workers=1
+    command: uvicorn app.api.main:app --host  ${APP_HOST} --port ${APP_PORT} --workers=1
     ports:
-      - "8070:8070"
+      - "${APP_PORT}:${APP_PORT}"
     volumes:
       - ..:/mono
       - ../infra:/mono/infra
