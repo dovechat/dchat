@@ -27,10 +27,10 @@ class TokenType(str, Enum):
 class TokenPayload(BaseModel):
     """JWT token payload"""
 
-    sub: str
+    sub: str | int | uuid.UUID
     exp: int
     type: str
-    organization_id: int | None = None
+    tenant_id: int | None = None
     role: str | None = None
 
 

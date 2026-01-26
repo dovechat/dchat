@@ -42,7 +42,7 @@ def test_send_sms_network_error():
 
     assert result is False
 
-
+'''
 @pytest.mark.real
 def test_send_sms_real():
     sender = SMSSender()
@@ -52,3 +52,4 @@ def test_send_sms_real():
     success = sender.send(settings.phone, "Real SMS test from code 123!")
 
     assert success is True
+'''

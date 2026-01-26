@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -25,7 +27,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(
     subject: int,
-    organization_id: int | None = None,
+    tenant_id: int | str | uuid.UUID | None = None,
     role: str | None = None,
     expires_delta: timedelta | None = None,
 ) -> str:
@@ -38,8 +40,8 @@ def create_access_token(
         "exp": expire,
         "type": "access",
     }
-    if organization_id is not None:
-        to_encode["organization_id"] = organization_id
+    if tenant_id is not None:
+        to_encode["tenant_id"] = tenant_id
     if role is not None:
         to_encode["role"] = role
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHMS)
@@ -47,7 +49,7 @@ def create_access_token(
 
 def create_refresh_token(
     subject: int,
-    organization_id: int | None = None,
+    tenant_id: int | None = None,
     role: str | None = None,
 ) -> str:
     """Create JWT refresh token."""
@@ -57,8 +59,8 @@ def create_refresh_token(
         "exp": expire,
         "type": "refresh",
     }
-    if organization_id is not None:
-        to_encode["organization_id"] = organization_id
+    if tenant_id is not None:
+        to_encode["tenant_id"] = tenant_id
     if role is not None:
         to_encode["role"] = role
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHMS)

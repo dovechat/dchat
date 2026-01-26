@@ -35,14 +35,45 @@ class UserStatus(enum.Enum):
     inactive = "inactive"
     suspended = "suspended"
 
+class TenantPayment(enum.Enum):
+    acquiring = "acquiring"
+    wire = "wire"
+
+
+class BankDetails(Base):
+    __tablename__ = "banking_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+
+    # Universal fields
+    bank_name = Column(String(255), nullable=False)
+    account_number = Column(String(34), nullable=False)  # Supports both RU account and IBAN
+    bic = Column(String(11), nullable=False)  # Supports both RU BIK and SWIFT
+
+    # Specific fields
+    corr_account = Column(String(20), nullable=True)  # Required for RU, optional for others
+    kpp = Column(String(9), nullable=True)  # Required for RU, optional for others
+
+    currency = Column(String(3), default="RUB", nullable=False)
+    is_primary = Column(Boolean, default=False, nullable=False)
+
+
 class Tenant(Base):
     __tablename__ = "tenants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, index=True, nullable=False)
-    details = Column(JSON)
+    banking_details = relationship(
+        "BankDetails",
+        backref="tenant",
+        cascade="all, delete-orphan",
+        uselist=False,
+        lazy="joined"
+    )
     locale = Column(String, default="en_US")
+    payment = Column(Enum(TenantPayment, name="tenantpayment"), default=TenantPayment.acquiring, nullable=False)
     status = Column(Enum(TenantStatus, name="tenantstatus"), default=TenantStatus.active, nullable=False)
 
 

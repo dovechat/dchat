@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI
 from fastapi.security import HTTPBearer
 
 from app.api.v1.auth import private_router, public_router
-# from app.api.v1.contacts import router as contacts_router
+from app.api.v1.tenant import tenant_router
 from core.config import settings
 
 
@@ -18,5 +18,6 @@ app = FastAPI(
     }
 )
 
-app.include_router(public_router, prefix="/api/v1/auth")
-app.include_router(private_router, prefix="/api/v1/auth")
+app.include_router(public_router, prefix="/api/v1")
+app.include_router(private_router, prefix="/api/v1")
+app.include_router(tenant_router, prefix="/api/v1")

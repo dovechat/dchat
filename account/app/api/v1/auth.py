@@ -25,7 +25,7 @@ async def register(
     )
 
 
-@private_router.post("/login", response_model=TokenPair)
+@public_router.post("/login", response_model=TokenPair)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service),

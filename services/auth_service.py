@@ -48,7 +48,7 @@ class AuthService:
         self,
         request: LoginRequest,
         db: AsyncSession,
-        organization_id: int | None = None,
+        tenant_id: int | str | uuid.UUID | None = None,
     ) -> TokenPair:
         """User login"""
         user_repo = UserRepository(db)

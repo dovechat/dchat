@@ -47,6 +47,7 @@ async def get_current_user(
     user_repo: UserRepository = Depends(get_user_repository),
 ) -> UserContext:
     """Validate JWT token and return current user context."""
+    print(f"\n\n\n *******************[DEBUG] get_current_user STARTED. Token: {token[:15]}...")
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
@@ -55,7 +56,8 @@ async def get_current_user(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHMS])
         token_data = TokenPayload(**payload)
-    except InvalidTokenError:
+    except InvalidTokenError as e:
+        print(f"\n\n ******************* DEBUG: JWT Decode Error: {e}")
         raise credentials_exception
 
     if token_data.type != "access":
@@ -63,6 +65,7 @@ async def get_current_user(
     log.info(f" /n/n --------------- token_data {token_data}  /n/n")
     user = await user_repo.get_by_id(token_data.sub)
     if not user:
+        print(f"\n\n ******************* NOT FOUND IN DB: {token_data.sub} (type: {type(token_data.sub)})\n")
         raise credentials_exception
 
     return UserContext(

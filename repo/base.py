@@ -1,5 +1,5 @@
 """Base repository with common CRUD operations."""
-
+import uuid
 from typing import Any, Generic, TypeVar
 
 from sqlalchemy import func, select
@@ -16,11 +16,16 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.session = session
 
-    async def get_by_id(self, id: int) -> ModelType | None:
-        """Get record by ID."""
-        result = await self.session.execute(
-            select(self.model).where(self.model.id == id)
-        )
+    async def get_by_id(self, id: uuid.UUID, **filters: Any) -> ModelType | None:
+        """Get record by UUID with optional filters."""
+        query = select(self.model).where(self.model.id == id)
+
+        if filters:
+            for key, value in filters.items():
+                if hasattr(self.model, key) and value is not None:
+                    query = query.where(getattr(self.model, key) == value)
+
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def get_multi(
