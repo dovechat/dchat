@@ -30,9 +30,6 @@ services:
   account:
     build: .
     image: account:1
-    command: uvicorn app.api.main:app --host  ${APP_HOST} --port ${APP_PORT} --workers=1
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
     volumes:
       - ..:/mono
       - ../infra:/mono/infra
@@ -45,6 +42,8 @@ services:
       - ../.env:/mono/.env
     env_file:
       - ../.env
+    working_dir: /mono/account
+    command: python3 -m app.api.main
     networks:
       - dchat_net
     depends_on:

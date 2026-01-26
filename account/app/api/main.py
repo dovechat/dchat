@@ -1,5 +1,6 @@
 """Main FastAPI application entry point."""
-
+import signal
+import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.security import HTTPBearer
 
@@ -21,3 +22,25 @@ app = FastAPI(
 app.include_router(public_router, prefix="/api/v1")
 app.include_router(private_router, prefix="/api/v1")
 app.include_router(tenant_router, prefix="/api/v1")
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+# Signal handler for graceful shutdown
+def handle_sigterm(_signo, _stack_frame):
+    # Add cleanup logic here if needed
+    sys.exit(0)
+
+if __name__ == "__main__":
+    # Register SIGTERM handler
+    signal.signal(signal.SIGTERM, handle_sigterm)
+# Run uvicorn programmatically
+    uvicorn.run(
+        "app.api.main:app",
+        host=settings.app_host,
+        port=settings.app_port,
+        log_level="info",
+        reload=False  # Must be False when running programmatically in prod
+    )
