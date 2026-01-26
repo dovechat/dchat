@@ -42,6 +42,7 @@ def test_send_sms_network_error():
 
     assert result is False
 
+# uncomment when stage sms send system will be implemented
 '''
 @pytest.mark.real
 def test_send_sms_real():
