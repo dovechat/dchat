@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     smtp_from: str | None = None
     otp_subject: str = "Authorization code"
 
+    app_host: str = "localhost"
+    app_port: int =  8070
+
     device_id: str = "69728ef652ef775390b32f83"
     phone: str = "+995511221503"
     apikey: str = "0f0f0dad-ce62-4ffa-b1e3-76634a59eb67"

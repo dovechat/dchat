@@ -52,7 +52,7 @@ async def cleanup_engines():
 
 @pytest_asyncio.fixture(scope="function")
 async def client():
-    async with AsyncClient(base_url="http://localhost:8070", timeout=10.0) as ac:
+    async with AsyncClient(base_url=f"http://{settings.app_host}:{settings.app_port}", timeout=10.0) as ac:
         yield ac
 
 
