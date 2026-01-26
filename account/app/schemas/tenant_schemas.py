@@ -27,12 +27,23 @@ class TenantPayment(str, Enum):
 
 class BankDetailsCreate(BaseModel):
     bank_name: str = Field(..., max_length=255)
-    account_number: str = Field(..., max_length=34)
-    bic: str = Field(..., max_length=11)
-    corr_account: Optional[str] = Field(None, max_length=20)
-    kpp: Optional[str] = Field(None, max_length=9)
+    account_number: str = Field(..., min_length=20, max_length=20)
+    bic: str = Field(..., min_length=9, max_length=9)
+    corr_account: str = Field(..., min_length=20, max_length=20)
+    kpp: str | None = Field(None, min_length=9, max_length=9)
     currency: str = Field("RUB", max_length=3)
-    is_primary: bool = False
+    is_primary: bool = Field(True)
+
+    @field_validator("account_number", "bic", "corr_account", "kpp")
+    @classmethod
+    def validate_digits(cls, v: str | None) -> str | None:
+        if v and not v.isdigit():
+            raise ValueError("Field must contain only digits")
+        return v
+
+class BankDetailsRUUpdate(BankDetailsCreate):
+    """Inherits all fields and validators from BankDetailsCreate"""
+    pass
 
 
 class Tenant(BaseModel):
@@ -41,7 +52,6 @@ class Tenant(BaseModel):
     locale: str = Field("en_US", max_length=10)
     payment: TenantPayment = TenantPayment.AQUIRING
     status: TenantStatus = TenantStatus.ACTIVE
-    banking_details: Optional[BankDetailsCreate] = None
 
 
 class TenantCreate(Tenant):
@@ -64,21 +74,6 @@ class TenantResponse(TenantCreate):
     # Один объект вместо списка
     banking_details: Optional[BankDetailsResponse] = None
 
-
-class BankDetailsRUUpdate(BaseModel):
-    bank_name: str = Field(..., max_length=255)
-    account_number: str = Field(..., min_length=20, max_length=20)
-    bic: str = Field(..., min_length=9, max_length=9)
-    corr_account: str = Field(..., min_length=20, max_length=20)
-    kpp: str | None = Field(None, min_length=9, max_length=9)
-    currency: str = Field("RUB", max_length=3)
-
-    @field_validator("account_number", "bic", "corr_account", "kpp")
-    @classmethod
-    def validate_digits(cls, v: str | None) -> str | None:
-        if v and not v.isdigit():
-            raise ValueError("Field must contain only digits")
-        return v
 
 class BankDetailsRead(BaseModel):
     id: uuid.UUID
