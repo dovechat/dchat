@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.tenants import BankDetails, Tenant
+from models.tenants import BankDetails, Membership, Tenant
 from app.schemas.tenant_schemas import BankDetailsRUUpdate, TenantCreate, Tenant as TenandPD
 from repo.base import BaseRepository
 
@@ -30,22 +30,28 @@ class TenantRepository(BaseRepository[Tenant]):
             **data.model_dump()
         )
 
-    async def get_all_tenants(self, user_id: uuid.UUID, skip: int = 0, limit: int = 100) -> list[Tenant]:
-        """Get all tenants for user"""
+    async def get_all_tenants(
+            self,
+            user_id: uuid.UUID,
+            skip: int = 0,
+            limit: int = 100
+    ) -> list[Tenant]:
+        """Get all tenants for user via Membership association."""
         return await self.get_multi(
             skip=skip,
             limit=limit,
-            filters={"user_id": user_id}
+            filters={"user_id": user_id, "is_active": True},
+            join_model=Membership
         )
 
-    async def get_tenant_by_id(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> Tenant | None:
+    async def get_tenant_by_id(self, tenant_id: uuid.UUID) -> Tenant | None:
         """Get tenant by ID and owner"""
-        return await self.get_by_id(tenant_id, user_id=user_id)
+        return await self.get_by_id(tenant_id)
 
-    async def update_tenant(self, tenant_id: uuid.UUID, user_id: uuid.UUID, data: dict) -> Tenant | None:
+    async def update_tenant(self, tenant_id: uuid.UUID, data: dict) -> Tenant | None:
         """Update tenant only if owned by user"""
         # Search with ownership check
-        tenant = await self.get_by_id(tenant_id, user_id=user_id)
+        tenant = await self.get_by_id(tenant_id)
         if not tenant:
             return None
 
@@ -54,9 +60,9 @@ class TenantRepository(BaseRepository[Tenant]):
             **data
         )
 
-    async def delete_tenant(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    async def delete_tenant(self, tenant_id: uuid.UUID) -> bool:
         """Delete tenant using BaseRepository logic"""
-        tenant = await self.get_tenant_by_id(tenant_id, user_id)
+        tenant = await self.get_tenant_by_id(tenant_id)
         if not tenant:
             return False
         await self.delete(tenant)
@@ -71,7 +77,6 @@ class RequisitsRepository(BaseRepository[BankDetails]):
             self,
             tenant_id: uuid.UUID,
             data: BankDetailsRUUpdate,
-            user_id: uuid.UUID
     ) -> BankDetails:
         # Use get_multi to find record by tenant_id instead of primary key
         existing_records = await self.get_multi(

@@ -3,13 +3,17 @@ import contextlib
 
 import pytest
 import pytest_asyncio
+from datetime import datetime, timedelta, timezone
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from core.config import settings
 from core.database import engine, get_db
 from core.security import create_access_token
-from models.tenants import Tenant, TenantPayment, TenantStatus, User
+from models.tenants import Membership, Tenant, TenantPayment, TenantStatus, User
+from models.lines import Line, Instance, InstanceStatus
+from app.schemas.line_schemas import ChannelType
+
 
 import logging
 
@@ -84,7 +88,6 @@ async def test_user():
 async def test_tenant(test_user):
     async with get_test_db() as session:
         tenant = Tenant(
-            user_id=test_user.id,
             name="Test Company",
             payment=TenantPayment.acquiring,
             status=TenantStatus.active
@@ -93,11 +96,18 @@ async def test_tenant(test_user):
         await session.commit()
         await session.refresh(tenant)
 
+        # Create membership to avoid 403 Forbidden on switch
+        membership = Membership(
+            user_id=test_user.id,
+            tenant_id=tenant.id,
+            role="owner"
+        )
+        session.add(membership)
+        await session.commit()
+
         yield tenant
 
-        # Чистим без ворнингов:
         async with get_test_db() as session:
-            # merge подтянет объект, если он есть, или вернет None без ошибки
             obj = await session.get(Tenant, tenant.id)
             if obj:
                 await session.delete(obj)
@@ -114,3 +124,88 @@ async def token_headers(test_user):
         role="admin"
     )
     return {"Authorization": f"Bearer {access_token}"}
+
+
+@pytest.fixture
+async def token_with_tenant(client, test_user, test_tenant, token_headers):
+    """Token with tenant_id after switching tenant"""
+    response = await client.post(
+        f"/api/v1/auth/switch-tenant",
+        json={"tenant_id": str(test_tenant.id)},
+        headers=token_headers
+    )
+    assert response.status_code == 200
+    new_token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {new_token}"}
+
+
+# ------ lines
+
+@pytest.fixture
+async def test_line(test_tenant):
+    """Create test line for tenant"""
+    async with get_test_db() as session:
+        line = Line(
+            tenant_id=test_tenant.id,
+            name="Test WhatsApp Line",
+            channel_type=ChannelType.WHATSAPP_QR.value,
+            status="active",
+            is_demo=False,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            connection_state={"status": "not_connected"}
+        )
+        session.add(line)
+        await session.commit()
+        await session.refresh(line)
+        yield line
+
+        async with get_test_db() as session:
+            obj = await session.get(Line, line.id)
+            if obj:
+                await session.delete(obj)
+                await session.commit()
+
+
+@pytest.fixture
+async def test_instance():
+    """Create test WhatsApp instance in pool"""
+    async with get_test_db() as session:
+        instance = Instance(
+            provider="green_api",
+            external_id="test_instance_12345",
+            status=InstanceStatus.idle
+        )
+        session.add(instance)
+        await session.commit()
+        await session.refresh(instance)
+        yield instance
+
+        # Cleanup
+        async with get_test_db() as session:
+            obj = await session.get(Instance, instance.id)
+            if obj:
+                await session.delete(obj)
+                await session.commit()
+
+
+@pytest.fixture
+async def test_allocated_instance(test_line):
+    """Create instance allocated to test line"""
+    async with get_test_db() as session:
+        instance = Instance(
+            provider="green_api",
+            external_id="test_allocated_instance",
+            status=InstanceStatus.busy,
+            allocated_to_line_id=test_line.id
+        )
+        session.add(instance)
+        await session.commit()
+        await session.refresh(instance)
+        yield instance
+
+        # Cleanup
+        async with get_test_db() as session:
+            obj = await session.get(Instance, instance.id)
+            if obj:
+                await session.delete(obj)
+                await session.commit()

@@ -30,7 +30,7 @@ class Line(Base):
     channel_type = Column(String, nullable=False, index=True)
     status = Column(Enum(LineStatus, native_enum=False), default=LineStatus.active, nullable=False, index=True)
     is_demo = Column(Boolean, default=False, index=True)
-    expires_at = Column(DateTime, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
     connection_state = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
 

@@ -1,0 +1,216 @@
+import uuid
+import json
+from typing import Optional
+from fastapi import HTTPException
+from app.repositories.line_repo import ChannelAccountRepository, LineRepository
+from app.schemas.channel_schemas import (
+    TelegramBotCredentials,
+    TelegramUserCredentials,
+    VKCredentials,
+    ChannelAccountResponse
+)
+from models.lines import ChannelAccount
+import logging
+
+log = logging.getLogger("uvicorn.error")
+
+
+class ChannelAccountService:
+    """Service for managing channel accounts and credentials"""
+
+    def __init__(
+            self,
+            channel_repo: ChannelAccountRepository,
+            line_repo: LineRepository
+    ):
+        self.channel_repo = channel_repo
+        self.line_repo = line_repo
+
+    def _encrypt_credentials(self, credentials: dict) -> dict:
+        """
+        Encrypt credentials before storing
+        # !!! Placeholder - implement actual encryption
+        """
+        # TODO: Use cryptography library (Fernet, etc.)
+        encrypted = json.dumps(credentials)  # Temporary placeholder
+        return {"encrypted_data": encrypted}
+
+    def _decrypt_credentials(self, encrypted: dict) -> dict:
+        """
+        Decrypt credentials for internal use
+        # !!! Placeholder - implement actual decryption
+        """
+        # TODO: Use cryptography library
+        if "encrypted_data" in encrypted:
+            return json.loads(encrypted["encrypted_data"])
+        return {}
+
+    async def _verify_line_channel_type(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            expected_type: str
+    ) -> None:
+        """Verify line exists and has correct channel type"""
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+
+        if line.channel_type != expected_type:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Line channel type is {line.channel_type}, expected {expected_type}"
+            )
+
+    async def get_account(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID
+    ) -> ChannelAccountResponse:
+        """Get channel account info (without decrypted credentials)"""
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+
+        account = await self.channel_repo.get_by_line(line_id)
+        if not account:
+            raise HTTPException(status_code=404, detail="Channel account not found")
+
+        return ChannelAccountResponse(
+            id=account.id,
+            line_id=account.line_id,
+            channel_type=line.channel_type,
+            state_json=account.state_json,
+            updated_at=account.updated_at.isoformat() if account.updated_at else None
+        )
+
+    async def update_telegram_bot(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            credentials: TelegramBotCredentials
+    ) -> ChannelAccountResponse:
+        """Update Telegram Bot credentials"""
+        await self._verify_line_channel_type(line_id, tenant_id, "telegram_bot")
+
+        encrypted = self._encrypt_credentials(credentials.model_dump())
+
+        account = await self.channel_repo.get_by_line(line_id)
+        if account:
+            updated = await self.channel_repo.update_account(
+                account,
+                credentials_encrypted=encrypted
+            )
+        else:
+            # Create if doesn't exist
+            updated = await self.channel_repo.create_account(
+                line_id=line_id,
+                credentials_encrypted=encrypted
+            )
+
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=line.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+
+    async def update_telegram_user(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            credentials: TelegramUserCredentials
+    ) -> ChannelAccountResponse:
+        """Update Telegram User credentials"""
+        await self._verify_line_channel_type(line_id, tenant_id, "telegram_user")
+
+        encrypted = self._encrypt_credentials(credentials.model_dump())
+
+        account = await self.channel_repo.get_by_line(line_id)
+        if account:
+            updated = await self.channel_repo.update_account(
+                account,
+                credentials_encrypted=encrypted
+            )
+        else:
+            updated = await self.channel_repo.create_account(
+                line_id=line_id,
+                credentials_encrypted=encrypted
+            )
+
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=line.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+
+    async def update_vk(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            credentials: VKCredentials
+    ) -> ChannelAccountResponse:
+        """Update VK credentials"""
+        await self._verify_line_channel_type(line_id, tenant_id, "vk")
+
+        encrypted = self._encrypt_credentials(credentials.model_dump())
+
+        account = await self.channel_repo.get_by_line(line_id)
+        if account:
+            updated = await self.channel_repo.update_account(
+                account,
+                credentials_encrypted=encrypted
+            )
+        else:
+            updated = await self.channel_repo.create_account(
+                line_id=line_id,
+                credentials_encrypted=encrypted
+            )
+
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=line.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+
+    '''
+    Needs to move to connector service, it's shouldn't belong to account service 
+    async def update_state(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            state_json: dict
+    ) -> ChannelAccountResponse:
+        """Update only state_json (e.g., connection status)"""
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+
+        account = await self.channel_repo.get_by_line(line_id)
+        if not account:
+            raise HTTPException(status_code=404, detail="Channel account not found")
+
+        updated = await self.channel_repo.update_account(
+            account,
+            state_json=state_json
+        )
+
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=line.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+    '''

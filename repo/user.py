@@ -1,9 +1,9 @@
 """Repository for working with users"""
-
+import uuid
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.tenants import User
+from models.tenants import Membership, User
 from repo.base import BaseRepository
 from schemas.auth_schemas import RegisterRequest, RegisterDB
 
@@ -43,3 +43,25 @@ class UserRepository(BaseRepository[User]):
         user = await self.get_by_id(user_id)
         if user:
             return await self.update(user, status="trial")
+
+    async def get_membership(
+            self,
+            user_id: uuid.UUID,
+            tenant_id: uuid.UUID | None = None) -> Membership | None:
+        """
+        Get active membership for a specific user and tenant.
+        """
+        if tenant_id:
+            query = select(Membership).where(
+                Membership.user_id == user_id,
+                Membership.tenant_id == tenant_id,
+                Membership.is_active == True
+            )
+        else:
+            query = select(Membership).where(
+                Membership.user_id == user_id,
+                Membership.role == "owner",
+                Membership.is_active == True,
+            )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()

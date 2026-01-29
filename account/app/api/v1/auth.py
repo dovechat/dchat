@@ -1,8 +1,9 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.dependencies import get_auth_service, get_db, get_current_user
+from core.dependencies import get_auth_service, get_current_user, get_db
 from schemas.auth_schemas import LoginRequest, RegisterRequest, TokenPair, UserContext as User
 from services.auth_service import AuthService
 
@@ -70,3 +71,13 @@ async def verify(
         raise HTTPException(status_code=404, detail="User not found")
 
     raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+
+@private_router.post("/switch-tenant")
+async def switch_tenant(
+    tenant_id: uuid.UUID | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    return await auth_service.switch_context(db, current_user.id, tenant_id)

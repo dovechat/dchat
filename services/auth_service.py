@@ -139,3 +139,33 @@ class AuthService:
         log.info(f"AUTH_VERIFY: ok for user={user_id}")
 
         return "ok"
+
+    async def switch_context(
+            self,
+            db: AsyncSession,
+            user_id: uuid.UUID,
+            tenant_id: uuid.UUID | None = None
+    ):
+        """
+        Switch user context and issue a new token pair.
+        """
+        user_repo = UserRepository(db)
+        result = await user_repo.get_membership(user_id, tenant_id)
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No access to tenant"
+            )
+
+        # Handle both list (when tenant_id is None) and single object
+        if isinstance(result, list):
+            membership = min(result, key=lambda m: 0 if m.role == "owner" else 1)
+        else:
+            membership = result
+
+        return self.jwt_service.create_token_pair(
+            user_id=user_id,
+            role=membership.role,
+            tenant_id=membership.tenant_id
+        )

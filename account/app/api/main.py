@@ -4,9 +4,11 @@ import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.security import HTTPBearer
 
-from app.api.v1.auth import private_router, public_router
-from app.api.v1.tenant import tenant_router
 from core.config import settings
+from app.api.v1.auth import private_router, public_router
+from app.api.v1.lines import line_router
+from app.api.v1.tenant import tenant_router
+from app.api.v1.channels import channel_router
 
 
 app = FastAPI(
@@ -19,9 +21,11 @@ app = FastAPI(
     }
 )
 
-app.include_router(public_router, prefix="/api/v1")
-app.include_router(private_router, prefix="/api/v1")
-app.include_router(tenant_router, prefix="/api/v1")
+app.include_router(public_router, prefix=settings.api_v1_prefix)
+app.include_router(private_router, prefix=settings.api_v1_prefix)
+app.include_router(tenant_router, prefix=settings.api_v1_prefix)
+app.include_router(line_router, prefix=settings.api_v1_prefix)
+app.include_router(channel_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/health")

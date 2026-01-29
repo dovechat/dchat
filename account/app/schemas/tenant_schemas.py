@@ -56,7 +56,7 @@ class Tenant(BaseModel):
 
 class TenantCreate(Tenant):
     """Tenant model to create database record"""
-    user_id: uuid.UUID
+    pass
     
 
 class BankDetailsResponse(BankDetailsCreate):
@@ -87,3 +87,9 @@ class BankDetailsRead(BaseModel):
     is_primary: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MembershipCreate(BaseModel):
+    user_id: uuid.UUID
+    tenant_id: uuid.UUID
+    role: str = "owner"

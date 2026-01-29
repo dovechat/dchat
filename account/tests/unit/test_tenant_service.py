@@ -2,8 +2,9 @@ import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 from fastapi import HTTPException, status
-from app.services.tenant_services import RequisitsService, TenantService
-from app.schemas.tenant_schemas import BankDetailsRead, TenantResponse
+from models.tenants import Tenant
+from app.services.tenant_services import RequisitsService, TenantCreateService, TenantService
+from app.schemas.tenant_schemas import BankDetailsRead, TenantCreate, TenantResponse
 
 
 @pytest.fixture
@@ -18,6 +19,27 @@ def mock_tenant():
     tenant.status = "active"
     tenant.banking_details = None
     return tenant
+
+
+@pytest.mark.asyncio
+async def test_create_with_owner_success():
+    mock_uow = MagicMock()
+    mock_uow.__aenter__.return_value = mock_uow
+    mock_uow.__aexit__ = AsyncMock()
+
+    tenant_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+
+    tenant_data = TenantCreate(name="Test Corp")
+    created_tenant = Tenant(id=tenant_id, name="Test Corp")
+
+    mock_uow.tenants.create_tenant = AsyncMock(return_value=created_tenant)
+    mock_uow.memberships.create_membership = AsyncMock()
+
+    service = TenantCreateService(mock_uow)
+    result = await service.create_with_owner(user_id, tenant_data)
+
+    assert result.id == tenant_id
 
 
 @pytest.mark.asyncio

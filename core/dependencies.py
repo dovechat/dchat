@@ -47,32 +47,29 @@ async def get_current_user(
     user_repo: UserRepository = Depends(get_user_repository),
 ) -> UserContext:
     """Validate JWT token and return current user context."""
-    print(f"\n\n\n *******************[DEBUG] get_current_user STARTED. Token: {token[:15]}...")
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        # Use SECRET_KEY and ALGORITHMS from core.security as in your snippet
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHMS])
         token_data = TokenPayload(**payload)
-    except InvalidTokenError as e:
-        print(f"\n\n ******************* DEBUG: JWT Decode Error: {e}")
+    except InvalidTokenError:
         raise credentials_exception
 
     if token_data.type != "access":
         raise credentials_exception
-    log.info(f" /n/n --------------- token_data {token_data}  /n/n")
+
     user = await user_repo.get_by_id(token_data.sub)
     if not user:
-        print(f"\n\n ******************* NOT FOUND IN DB: {token_data.sub} (type: {type(token_data.sub)})\n")
         raise credentials_exception
 
+    # tenant_id will be None if user hasn't switched context yet
     return UserContext(
         id=user.id,
         email=user.email,
         role=token_data.role,
+        tenant_id=token_data.tenant_id 
     )
-
-# Annotated dependency for current user
-CurrentUser = Annotated[UserContext, Depends(get_current_user)]

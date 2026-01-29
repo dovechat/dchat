@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -37,35 +39,38 @@ class JWTService:
         )
 
     def _create_token(
-        self,
-        user_id: int,
-        token_type: TokenType,
-        role: str | None = None,
-        expires_delta: timedelta | None = None,
+            self,
+            user_id: int,
+            token_type: TokenType,
+            role: str | None = None,
+            tenant_id: str | uuid.UUID | None = None,
     ) -> str:
-        """Create JWT token"""
-        expire = datetime.now(UTC) + (
-            expires_delta
-            or (self.access_expires if token_type == TokenType.ACCESS else self.refresh_expires)
-        )
+        """Create a single JWT token"""
         payload = {
             "sub": str(user_id),
-            "exp": expire,
             "type": token_type.value,
             "role": role,
+            "tenant_id": str(tenant_id) if tenant_id else None,
+            "iat": datetime.utcnow(),
         }
+
+        expire = datetime.utcnow() + (
+            self.access_expires if token_type == TokenType.ACCESS else self.refresh_expires
+        )
+        payload.update({"exp": expire})
+
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
     def create_token_pair(
-        self,
-        user_id: int,
-        role: str | None = None,
+            self,
+            user_id: int,
+            role: str | None = None,
+            tenant_id: str | None = None,
     ) -> dict[str, str]:
         """Create access + refresh token pair"""
-        access = self._create_token(user_id, TokenType.ACCESS, role)
-        refresh = self._create_token(
-            user_id, TokenType.REFRESH, role, self.refresh_expires
-        )
+        access = self._create_token(user_id, TokenType.ACCESS, role, tenant_id)
+        refresh = self._create_token(user_id, TokenType.REFRESH, role, tenant_id)
+
         return {
             "access_token": access,
             "refresh_token": refresh,

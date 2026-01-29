@@ -63,7 +63,6 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, index=True, nullable=False)
     banking_details = relationship(
         "BankDetails",
@@ -89,6 +88,24 @@ class User(Base):
     full_name = Column(String, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.now, nullable=True, index=True)
     invite_token = Column(String, nullable=True, index=True)
+
+
+class Membership(Base):
+    __tablename__ = "memberships"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+
+    # Roles: owner, admin, staff
+    role = Column(String, nullable=False, default="staff")
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "tenant_id", name="uq_user_tenant"),
+    )
+
+
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"

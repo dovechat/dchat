@@ -28,9 +28,10 @@ class TokenPayload(BaseModel):
     """JWT token payload"""
 
     sub: str | int | uuid.UUID
-    exp: int
+    exp: int | None = None
+    iat: int | None = None
     type: str
-    tenant_id: int | None = None
+    tenant_id: str | uuid.UUID | None = None
     role: str | None = None
 
 
@@ -60,6 +61,7 @@ class UserContext(BaseModel):
 
     id: uuid.UUID
     email: str
+    tenant_id: uuid.UUID | None = None
     role: UserRole | None = None
 
     def is_owner(self) -> bool:

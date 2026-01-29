@@ -1,6 +1,6 @@
 """Base repository with common CRUD operations."""
 import uuid
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Type, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,22 +29,34 @@ class BaseRepository(Generic[ModelType]):
         return result.scalar_one_or_none()
 
     async def get_multi(
-        self,
-        *,
-        skip: int = 0,
-        limit: int = 100,
-        filters: dict[str, Any] | None = None,
+            self,
+            *,
+            skip: int = 0,
+            limit: int = 100,
+            filters: dict[str, Any] | None = None,
+            join_model: Any | None = None,
     ) -> list[ModelType]:
-        """Get list of records with pagination and filters."""
         query = select(self.model)
+
+        if join_model:
+            query = query.join(join_model)
 
         if filters:
             for key, value in filters.items():
-                if hasattr(self.model, key) and value is not None:
-                    query = query.where(getattr(self.model, key) == value)
+                target = None
+                if hasattr(self.model, key):
+                    target = self.model
+                elif join_model and hasattr(join_model, key):
+                    target = join_model
 
-        query = query.offset(skip).limit(limit)
-        result = await self.session.execute(query)
+                if target and value is not None:
+                    column = getattr(target, key)
+                    if isinstance(value, list):
+                        query = query.where(column.in_(value))
+                    else:
+                        query = query.where(column == value)
+
+        result = await self.session.execute(query.offset(skip).limit(limit))
         return list(result.scalars().all())
 
     async def count(self, filters: dict[str, Any] | None = None) -> int:
