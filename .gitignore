@@ -11,3 +11,5 @@ venv/
 # Tests & OS
 .pytest_cache/
 .DS_Store
+
+account/docker-compose.override.yml
