@@ -4,7 +4,12 @@ from core.database import get_db
 from fastapi import Depends
 from core.dependencies import get_current_user
 from schemas.auth_schemas import UserContext
-from app.repositories.line_repo import LineRepository, ChannelAccountRepository
+from app.repositories.billing_repo import (
+    BalanceRepository,
+    BalanceLedgerRepository,
+    PaymentRepository,
+    TariffRepository
+)
 from app.repositories.tenant_repo import RequisitsRepository, TenantRepository
 from app.repositories.line_repo import (
     LineRepository,
@@ -17,6 +22,35 @@ from app.core.uow import TenantMembershipUoW
 
 import logging
 log = logging.getLogger("uvicorn.error")
+
+
+# ------- billing
+from app.services.billing_service import BillingService
+
+
+async def get_balance_repo(db: AsyncSession = Depends(get_db)) -> BalanceRepository:
+    return BalanceRepository(db)
+
+
+async def get_ledger_repo(db: AsyncSession = Depends(get_db)) -> BalanceLedgerRepository:
+    return BalanceLedgerRepository(db)
+
+
+async def get_payment_repo(db: AsyncSession = Depends(get_db)) -> PaymentRepository:
+    return PaymentRepository(db)
+
+
+async def get_tariff_repo(db: AsyncSession = Depends(get_db)) -> TariffRepository:
+    return TariffRepository(db)
+
+
+async def get_billing_service(
+    balance_repo: BalanceRepository = Depends(get_balance_repo),
+    ledger_repo: BalanceLedgerRepository = Depends(get_ledger_repo),
+    payment_repo: PaymentRepository = Depends(get_payment_repo),
+    tariff_repo: TariffRepository = Depends(get_tariff_repo)
+) -> BillingService:
+    return BillingService(balance_repo, ledger_repo, payment_repo, tariff_repo)
 
 # ------- channels
 async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:

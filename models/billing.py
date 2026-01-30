@@ -38,6 +38,13 @@ class Payment(Base):
     status = Column(String)
     created_at = Column(DateTime, server_default=func.now())
 
+class Balance(Base):
+    __tablename__ = "balances"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    main_balance = Column(Numeric(10, 2), default=0, nullable=False)
+    bonus_balance = Column(Numeric(10, 2), default=0, nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 class BalanceLedger(Base):
     __tablename__ = "balance_ledger"
