@@ -30,6 +30,7 @@ class ChannelAccountResponse(BaseModel):
     id: uuid.UUID
     line_id: uuid.UUID
     channel_type: str  # from related Line
+    phone: str | None = None
     state_json: Optional[dict] = None
     # !!! credentials_encrypted not exposed for security
     updated_at: Optional[str] = None

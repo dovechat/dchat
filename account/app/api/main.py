@@ -10,6 +10,7 @@ from app.api.v1.lines import line_router
 from app.api.v1.tenant import tenant_router
 from app.api.v1.channels import channel_router
 from app.api.v1.billing import billing_router, tariff_router
+from app.api.v1.notifications import router as notification_router  # ← ДОБАВИТЬ
 
 
 app = FastAPI(
@@ -22,6 +23,21 @@ app = FastAPI(
     }
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/routes")
+def list_routes():
+    return [route.path for route in app.routes]
+
 app.include_router(public_router, prefix=settings.api_v1_prefix)
 app.include_router(private_router, prefix=settings.api_v1_prefix)
 app.include_router(tenant_router, prefix=settings.api_v1_prefix)
@@ -29,6 +45,7 @@ app.include_router(line_router, prefix=settings.api_v1_prefix)
 app.include_router(channel_router, prefix=settings.api_v1_prefix)
 app.include_router(billing_router, prefix=settings.api_v1_prefix)
 app.include_router(tariff_router, prefix=settings.api_v1_prefix)
+app.include_router(notification_router, prefix=settings.api_v1_prefix) 
 
 
 @app.get("/health")

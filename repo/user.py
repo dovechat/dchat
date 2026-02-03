@@ -51,6 +51,8 @@ class UserRepository(BaseRepository[User]):
         """
         Get active membership for a specific user and tenant.
         """
+        log.info(f"user.repo.get_membership user_id {user_id} tenant_id {tenant_id}")
+
         if tenant_id:
             query = select(Membership).where(
                 Membership.user_id == user_id,
@@ -63,5 +65,9 @@ class UserRepository(BaseRepository[User]):
                 Membership.role == "owner",
                 Membership.is_active == True,
             )
-        result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+        result_q = await self.session.execute(query)
+        # result = result_q.scalar_one_or_none()
+        result = result_q.scalars().all()
+        if len(result) > 0:
+            log.info(f"result {result}")        
+            return result[0]

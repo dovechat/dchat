@@ -21,6 +21,12 @@ class PoolEventType(enum.Enum):
     clean = "clean"
     release = "release"
 
+class ConnectionStatus(enum.Enum):
+    connected = "connected"
+    disconnected = "disconnected"
+    error = "error"
+    blocked = "blocked"
+
 class Line(Base):
     __tablename__ = "lines"
 
@@ -43,6 +49,15 @@ class ChannelAccount(Base):
     encryption_metadata = Column(JSON, server_default='{"v": 1}')
     state_json = Column(JSON)
     updated_at = Column(DateTime, onupdate=func.now())
+    connection_status = Column(
+        Enum(ConnectionStatus, native_enum=False),
+        server_default='disconnected',  # ⬅️ добавить
+        default=ConnectionStatus.disconnected,
+        nullable=False,
+        index=True
+    )
+    connection_error = Column(String, nullable=True)
+    last_checked_at = Column(DateTime, nullable=True)
 
 class Instance(Base):
     __tablename__ = "instances"

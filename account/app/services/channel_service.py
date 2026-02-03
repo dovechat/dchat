@@ -76,10 +76,18 @@ class ChannelAccountService:
         if not account:
             raise HTTPException(status_code=404, detail="Channel account not found")
 
+        credentials = self._decrypt_credentials(account.credentials_encrypted)
+        if credentials is not None:
+            log.info(f"\n\n *************** credentials {type(credentials)} {credentials} \n\n ")
+        phone = credentials.get("phone") if credentials else None
+        log.info(f"\n\n *************** phone {phone} {phone} \n\n ")
+
+
         return ChannelAccountResponse(
             id=account.id,
             line_id=account.line_id,
             channel_type=line.channel_type,
+            phone=phone,
             state_json=account.state_json,
             updated_at=account.updated_at.isoformat() if account.updated_at else None
         )
