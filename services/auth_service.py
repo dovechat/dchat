@@ -34,9 +34,9 @@ async def is_throttled(key: str, seconds: int) -> bool:
 
 def send_otp(data, code) -> bool:
     if data.ifsms:
-        return SMSSender().send(data.email, code)
+        return SMSSender().send(data.phone, code)
     else:
-        return OTPSender().send(data.phone, code)
+        return OTPSender().send(data.email, code)
 
 
 class AuthService:
