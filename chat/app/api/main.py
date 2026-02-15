@@ -12,7 +12,6 @@ app = FastAPI(
     title="DoveChat Chat Service",
     description="WebSocket and REST API for real-time messaging",
     version="0.1.0",
-    lifespan=lifespan,
     swagger_ui_parameters={
         "defaultModelsExpandDepth": -1,
         "persistAuthorization": True
