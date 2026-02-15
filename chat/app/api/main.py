@@ -7,13 +7,6 @@ from .v1.websocket import router as websocket_router
 from app.core.kafka_producer import kafka_producer
 from contextlib import asynccontextmanager
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    await kafka_producer.start()
-    yield
-    # Shutdown
-    await kafka_producer.close()
 
 app = FastAPI(
     title="DoveChat Chat Service",
