@@ -1,6 +1,8 @@
 services:
   db:
     image: postgres:16-alpine
+    networks:
+      - dchat_net
     container_name: postgres-dchat
     restart: always
     ports:
@@ -14,8 +16,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - dchat_net
+
 
   rdb:
     image: "redis:alpine"

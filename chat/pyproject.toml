@@ -1,0 +1,82 @@
+[tool.poetry]
+name = "chat"
+version = "0.1.0"
+description = "dchat"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+sqlalchemy = "^2.0.25"
+alembic = "^1.13.1"
+asyncpg = "^0.29.0"
+pydantic = {version = "^2.5.3", extras = ["email"]} 
+pydantic-settings = "^2.1.0"
+pyjwt = "^2.10.1"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-multipart = "^0.0.6"
+Faker = "^30.0.0"
+psycopg2-binary = "^2.9.11"
+tqdm = "^4.67.1"
+jinja2 = "^3.1.6"
+aiokafka = "^0.13.0"
+redis = "^7.1.0"
+loguru = "^0.7.3"
+telethon = "^1.42.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-asyncio = "^0.23.3"
+pytest-cov = "^4.1.0"
+httpx = "^0.26.0"
+mypy = "^1.8.0"
+ruff = "^0.1.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# ============================================================================
+# RUFF Configuration (современный линтер + форматтер)
+# ============================================================================
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+# Директории для проверки
+include = ["app/**/*.py", "tests/**/*.py"]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache"
+]
+
+# Правила линтинга
+lint.select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort (import sorting)
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade (modern Python)
+    "S",   # bandit (security)
+]
+
+# Игнорируем некоторые правила
+lint.ignore = [
+    "E501",  # line too long (handled by black)
+    "S101",  # Use of `assert` detected (ok in tests)
+    "B008",  # Do not perform function calls in argument defaults
+]
+
+# Форматтер
+format.indent-style = "space"
+format.indent-width = 4
+format.quote-style = "double"

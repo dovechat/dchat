@@ -20,7 +20,7 @@ from services.jwt_services import JWTService
 
 log = logging.getLogger("uvicorn.error")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_v1_prefix}/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"http://0.0.0.0:8071/api/v1/auth/login")
 
 
 # Global redis instance

@@ -40,7 +40,9 @@ class Settings(BaseSettings):
     device_id: str = "69728ef652ef775390b32f83"
     phone: str = "+995511221503"
     apikey: str = "0f0f0dad-ce62-4ffa-b1e3-76634a59eb67"
-
+    kafka_bootstrap_servers: str = ""
+    tg_api_id: str = ""
+    tg_api_hash: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

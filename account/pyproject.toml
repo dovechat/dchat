@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "kitchen"
+name = "account"
 version = "0.1.0"
-description = "Multi-tenant CRM system with FastAPI"
+description = "dchat"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 

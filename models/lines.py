@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, Index, Integer, BigInteger, String, JSON, Enum, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Index, Integer, BigInteger, String, Text, JSON, Enum, ForeignKey, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from core.database import Base
@@ -45,6 +45,7 @@ class ChannelAccount(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    phone = Column(String, nullable=True, index=True)
     credentials_encrypted = Column(JSON, nullable=False)
     encryption_metadata = Column(JSON, server_default='{"v": 1}')
     state_json = Column(JSON)
@@ -58,6 +59,7 @@ class ChannelAccount(Base):
     )
     connection_error = Column(String, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
+    session_string = Column(Text)
 
 class Instance(Base):
     __tablename__ = "instances"

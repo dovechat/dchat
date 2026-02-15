@@ -1,0 +1,40 @@
+services:
+  chat:
+    build: .
+    image: chat:1
+    environment:
+      PYTHONPATH: /mono
+    volumes:
+      - ..:/mono
+      - ../infra:/mono/infra
+      # - .:/mono/chat
+      - ../repo:/mono/repo
+      - ../schemas:/mono/schemas
+      - ../models:/mono/models
+      - ../core:/mono/core
+      - ../services:/mono/services
+      - ../.env:/mono/.env
+    working_dir: /mono/chat
+    env_file:
+      - ../.env
+    ports:
+      - "8001:8001"
+    networks:
+      - account_dchat_net 
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+
+  # telegram-consumer:
+  # image: chat:1
+  #  command: python3 -m app.consumers.telegram_consumer
+  #  working_dir: /mono/chat
+  #  volumes:
+  #    - ..:/mono
+  #  env_file:
+  #    - ../.env
+  #  networks:
+  #    - account_dchat_net
+  
+networks:
+  account_dchat_net:
+    external: true

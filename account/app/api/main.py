@@ -27,12 +27,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+'''
+[
+    "http://0.0.0.0:8071",
+    "http://0.0.0.0:8001",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:3001",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001"
+],
+'''
 
 @app.get("/routes")
 def list_routes():

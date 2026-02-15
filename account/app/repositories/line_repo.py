@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -151,9 +152,24 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
         )
         return existing[0] if existing else None
 
+   
     async def update_account(
             self,
             account: ChannelAccount,
             **data
     ) -> ChannelAccount:
-        return await self.update(account, **data)
+        import copy
+        log.info(f"--------------- ChannelAccountRepository.update_account account {account} data {type(data)} {data['credentials_encrypted']}")
+
+        data_dict = {}
+        data_dict["credentials_encrypted"] = data["credentials_encrypted"]
+        enc_data = json.loads(data["credentials_encrypted"]["encrypted_data"])
+        log.info(enc_data["phone"])
+    
+        log.info(enc_data["session_string"])
+        data_dict["phone"] = enc_data["phone"]
+        data_dict["session_string"] = enc_data["session_string"]
+        log.info(f"--------------- phone {data_dict['phone']} ")
+        log.info(f"--------------- session_string {data_dict['session_string']} ")
+        log.info(f"--------------- data_dict {type(data_dict)} {data_dict}")
+        return await self.update(account, **data_dict)

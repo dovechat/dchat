@@ -80,7 +80,7 @@ class ChannelAccountService:
         if credentials is not None:
             log.info(f"\n\n *************** credentials {type(credentials)} {credentials} \n\n ")
         phone = credentials.get("phone") if credentials else None
-        log.info(f"\n\n *************** phone {phone} {phone} \n\n ")
+        log.info(f"\n\n *************** phone {phone}\n\n ")
 
 
         return ChannelAccountResponse(
@@ -133,12 +133,15 @@ class ChannelAccountService:
             credentials: TelegramUserCredentials
     ) -> ChannelAccountResponse:
         """Update Telegram User credentials"""
-        await self._verify_line_channel_type(line_id, tenant_id, "telegram_user")
+        # await self._verify_line_channel_type(line_id, tenant_id, "telegram_user")
 
         encrypted = self._encrypt_credentials(credentials.model_dump())
-
+        log.info(f"\n\n !!!!!! ******************* encrypted {encrypted} \n\n")
         account = await self.channel_repo.get_by_line(line_id)
         if account:
+            account.session_string = credentials.session_string
+            log.info(f"\n\n ******************* account {account} \n\n")
+            log.info(f"\n\n ******************* account.session_string {account.session_string} \n\n")
             updated = await self.channel_repo.update_account(
                 account,
                 credentials_encrypted=encrypted

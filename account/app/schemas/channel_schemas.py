@@ -14,7 +14,7 @@ class TelegramUserCredentials(BaseModel):
     phone: str = Field(..., min_length=10, description="Phone number with country code")
     # api_id: str = Field(..., description="Telegram API ID")
     # api_hash: str = Field(..., description="Telegram API hash")
-    # session_string: Optional[str] = Field(None, description="Session string for authorized account")
+    session_string: Optional[str] = Field(None, description="Session string for authorized account")
 
 
 class VKCredentials(BaseModel):

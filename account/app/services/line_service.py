@@ -147,6 +147,9 @@ class LineService:
         update_data = data.model_dump(exclude_unset=True)
         updated_line = await self.line_repo.update_line(line, **update_data)
 
+        log.info(f"/n/n ******************** update_data {update_data}")
+        log.info(f"/n/n ******************** updated_line {updated_line}")
+
         return LineResponse.model_validate(updated_line)
 
     async def delete_line(
