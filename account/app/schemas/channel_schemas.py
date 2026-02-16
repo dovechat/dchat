@@ -27,7 +27,7 @@ class ChannelAccountResponse(BaseModel):
     """Response with channel account info"""
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
+    id: uuid.UUID | None
     line_id: uuid.UUID
     channel_type: str  # from related Line
     phone: str | None = None

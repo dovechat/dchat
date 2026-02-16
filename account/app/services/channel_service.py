@@ -74,7 +74,12 @@ class ChannelAccountService:
 
         account = await self.channel_repo.get_by_line(line_id)
         if not account:
-            raise HTTPException(status_code=404, detail="Channel account not found")
+            return ChannelAccountResponse(
+                id = None,
+                line_id = line.id,
+                channel_type=line.channel_type,
+            )
+            # raise HTTPException(status_code=404, detail="Channel account not found")
 
         credentials = self._decrypt_credentials(account.credentials_encrypted)
         if credentials is not None:
