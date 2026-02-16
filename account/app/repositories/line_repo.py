@@ -138,8 +138,8 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
     ) -> ChannelAccount:
 
         data_dict = {}
-        data_dict["credentials_encrypted"] = data["credentials_encrypted"]
-        enc_data = json.loads(data["credentials_encrypted"]["encrypted_data"])
+        data_dict["credentials_encrypted"] = credentials_encrypted["credentials_encrypted"]
+        enc_data = json.loads(credentials_encrypted["credentials_encrypted"]["encrypted_data"])
 
         return await self.create(
             line_id=line_id,
