@@ -136,10 +136,17 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             credentials_encrypted: dict,
             state_json: Optional[dict] = None
     ) -> ChannelAccount:
+
+        data_dict = {}
+        data_dict["credentials_encrypted"] = data["credentials_encrypted"]
+        enc_data = json.loads(data["credentials_encrypted"]["encrypted_data"])
+
         return await self.create(
             line_id=line_id,
             credentials_encrypted=credentials_encrypted,
-            state_json=state_json or {}
+            state_json=state_json or {},
+            phone=enc_data["phone"],
+            session_string=enc_data["session_string"],
         )
 
     async def get_by_line(
