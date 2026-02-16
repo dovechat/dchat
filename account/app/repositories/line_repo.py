@@ -137,9 +137,8 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             state_json: Optional[dict] = None
     ) -> ChannelAccount:
 
-        data_dict = {}
-        data_dict["credentials_encrypted"] = credentials_encrypted["credentials_encrypted"]
-        enc_data = json.loads(credentials_encrypted["credentials_encrypted"]["encrypted_data"])
+        log.info(f"credentials_encrypted {type(credentials_encrypted)} {credentials_encrypted}")
+        enc_data = json.loads(credentials_encrypted["encrypted_data"])
 
         return await self.create(
             line_id=line_id,
