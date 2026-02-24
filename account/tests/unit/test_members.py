@@ -74,7 +74,7 @@ async def test_add_line_permission(client: AsyncClient, token_with_tenant: dict,
         json={
             "user_id": str(test_user.id),
             "line_id": str(test_line.id),
-            "action": "send"
+            "action": "member"
         },
         headers=token_with_tenant
     )
@@ -82,7 +82,7 @@ async def test_add_line_permission(client: AsyncClient, token_with_tenant: dict,
     data = response.json()
     assert data["user_id"] == str(test_user.id)
     assert data["line_id"] == str(test_line.id)
-    assert data["action"] == "send"
+    assert data["action"] == "member"
 
 
 @pytest.mark.asyncio
@@ -140,7 +140,7 @@ async def test_permission_repo_get_by_user_and_resource(test_user, test_line, te
             tenant_id=test_tenant.id,
             resource_type="line",
             resource_id=test_line.id,
-            action="send"
+            action="member"
         )
         db.add(perm)
         await db.commit()
@@ -152,4 +152,4 @@ async def test_permission_repo_get_by_user_and_resource(test_user, test_line, te
             resource_id=test_line.id
         )
         assert result is not None
-        assert result.action == "send"
+        assert result.action == "member"

@@ -44,12 +44,12 @@ async def test_verify_throttle_and_trial_status(client):
 @pytest.mark.asyncio
 async def test_switch_tenant_success(client, token_headers, test_tenant):
     tenant_id = test_tenant.id
-
+    print("------------- tenant_id", tenant_id)
     response = await client.post(
-        f"/api/v1/auth/switch-tenant/{tenant_id}",
+        f"/api/v1/auth/switch-tenant?tenant_id={tenant_id}",
         headers=token_headers
     )
-
+    print("response", response.status_code)
     assert response.status_code == 200
     data = response.json()
 
@@ -67,7 +67,7 @@ async def test_switch_tenant_api_forbidden(client, token_headers):
     # Random UUID should return 403 as no membership exists
     random_id = uuid.uuid4()
     response = await client.post(
-        f"/api/v1/auth/switch-tenant/{random_id}",
+        f"/api/v1/auth/switch-tenant?tenant_id={random_id}",
         headers=token_headers
     )
     assert response.status_code == 403

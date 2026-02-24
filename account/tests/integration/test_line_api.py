@@ -3,8 +3,10 @@ from datetime import datetime, timedelta, timezone
 
 
 @pytest.mark.asyncio
-async def test_create_line_whatsapp(client, test_tenant, token_headers):
+async def test_create_line_whatsapp(client, test_tenant, token_with_tenant):
     """Test creating WhatsApp line via API"""
+    print(f"------- test_tenant {test_tenant.id}")
+    print(f"------- token_with_tenant {token_with_tenant}")
     response = await client.post(
         f"/api/v1/tenants/{test_tenant.id}/lines/",
         json={
@@ -13,7 +15,7 @@ async def test_create_line_whatsapp(client, test_tenant, token_headers):
             "subscription_period": "month",
             "is_demo": False
         },
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 201
@@ -28,7 +30,7 @@ async def test_create_line_whatsapp(client, test_tenant, token_headers):
 
 
 @pytest.mark.asyncio
-async def test_create_demo_line(client, test_tenant, token_headers):
+async def test_create_demo_line(client, test_tenant, token_with_tenant):
     """Test creating demo line with 7 days expiry"""
     response = await client.post(
         f"/api/v1/tenants/{test_tenant.id}/lines/",
@@ -37,7 +39,7 @@ async def test_create_demo_line(client, test_tenant, token_headers):
             "channel_type": "telegram_bot",
             "is_demo": True
         },
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 201
@@ -54,11 +56,11 @@ async def test_create_demo_line(client, test_tenant, token_headers):
 
 
 @pytest.mark.asyncio
-async def test_list_lines(client, test_tenant, test_line, token_headers):
+async def test_list_lines(client, test_tenant, test_line, token_with_tenant):
     """Test listing all lines for tenant"""
     response = await client.get(
         f"/api/v1/tenants/{test_tenant.id}/lines/",
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 200
@@ -76,11 +78,11 @@ async def test_list_lines(client, test_tenant, test_line, token_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_line_by_id(client, test_tenant, test_line, token_headers):
+async def test_get_line_by_id(client, test_tenant, test_line, token_with_tenant):
     """Test getting single line by ID"""
     response = await client.get(
         f"/api/v1/tenants/{test_tenant.id}/lines/{test_line.id}",
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 200
@@ -92,26 +94,26 @@ async def test_get_line_by_id(client, test_tenant, test_line, token_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_line_not_found(client, test_tenant, token_headers):
+async def test_get_line_not_found(client, test_tenant, token_with_tenant):
     """Test 404 when line doesn't exist"""
     import uuid
     fake_id = uuid.uuid4()
 
     response = await client.get(
         f"/api/v1/tenants/{test_tenant.id}/lines/{fake_id}",
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_update_line_name(client, test_tenant, test_line, token_headers):
+async def test_update_line_name(client, test_tenant, test_line, token_with_tenant):
     """Test updating line name"""
     response = await client.patch(
         f"/api/v1/tenants/{test_tenant.id}/lines/{test_line.id}",
         json={"name": "Updated Line Name"},
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 200
@@ -122,12 +124,12 @@ async def test_update_line_name(client, test_tenant, test_line, token_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_line_status(client, test_tenant, test_line, token_headers):
+async def test_update_line_status(client, test_tenant, test_line, token_with_tenant):
     """Test updating line status"""
     response = await client.patch(
         f"/api/v1/tenants/{test_tenant.id}/lines/{test_line.id}",
         json={"status": "disabled"},
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 200
@@ -137,24 +139,24 @@ async def test_update_line_status(client, test_tenant, test_line, token_headers)
 
 
 @pytest.mark.asyncio
-async def test_delete_line(client, test_tenant, test_line, token_headers):
+async def test_delete_line(client, test_tenant, test_line, token_with_tenant):
     """Test deleting line"""
     response = await client.delete(
         f"/api/v1/tenants/{test_tenant.id}/lines/{test_line.id}",
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 204
 
     get_response = await client.get(
         f"/api/v1/tenants/{test_tenant.id}/lines/{test_line.id}",
-        headers=token_headers
+        headers=token_with_tenant
     )
     assert get_response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_line_releases_instance(client, test_tenant, test_allocated_instance, token_headers):
+async def test_delete_line_releases_instance(client, test_tenant, test_allocated_instance, token_with_tenant):
     """Test that deleting WhatsApp line releases instance back to pool"""
     from tests.conftest import get_test_db
     from models.lines import Instance, Line
@@ -165,7 +167,7 @@ async def test_delete_line_releases_instance(client, test_tenant, test_allocated
 
     response = await client.delete(
         f"/api/v1/tenants/{test_tenant.id}/lines/{line_id}",
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 204
@@ -194,7 +196,7 @@ async def test_unauthorized_access(client, test_tenant, test_line):
     "vk"
 ])
 @pytest.mark.asyncio
-async def test_create_line_all_channel_types(client, test_tenant, token_headers, channel_type):
+async def test_create_line_all_channel_types(client, test_tenant, token_with_tenant, channel_type):
     """Test creating lines for all supported channel types"""
     response = await client.post(
         f"/api/v1/tenants/{test_tenant.id}/lines/",
@@ -203,7 +205,7 @@ async def test_create_line_all_channel_types(client, test_tenant, token_headers,
             "channel_type": channel_type,
             "subscription_period": "month"
         },
-        headers=token_headers
+        headers=token_with_tenant
     )
 
     assert response.status_code == 201

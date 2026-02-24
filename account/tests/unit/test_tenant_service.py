@@ -43,14 +43,14 @@ async def test_create_with_owner_success():
 
 
 @pytest.mark.asyncio
-async def test_get_all_tenants_service(mock_tenant):
+async def test_get_all_tenants_service(mock_tenant, test_user):
     mock_repo = AsyncMock()
     service = TenantService(repo=mock_repo)
     mock_repo.get_all_tenants.return_value = [mock_tenant]
 
-    result = await service.get_all_tenants(user_id=mock_tenant.user_id)
+    result = await service.get_all_tenants(test_user)
 
-    mock_repo.get_all_tenants.assert_called_once_with(user_id=mock_tenant.user_id)
+    mock_repo.get_all_tenants.assert_called_once_with(user_id=test_user.id)
     assert len(result) == 1
     assert isinstance(result[0], TenantResponse)
 
@@ -62,8 +62,10 @@ async def test_get_tenant_success(mock_tenant):
     mock_repo.get_tenant_by_id.return_value = mock_tenant
 
     result = await service.get_tenant(mock_tenant.id, mock_tenant.user_id)
+    print(f"-------------- result {result}")
+    print(f"-------------- mock_tenant {mock_tenant.id} {mock_tenant.user_id}")
 
-    mock_repo.get_tenant_by_id.assert_called_once_with(mock_tenant.id, user_id=mock_tenant.user_id)
+    mock_repo.get_tenant_by_id.assert_called_once_with(mock_tenant.id)
     assert result.id == mock_tenant.id
 
 
@@ -79,23 +81,22 @@ async def test_update_tenant_success(mock_tenant):
     # Match the actual call structure: (tenant_id, user_id, data) as keywords
     mock_repo.update_tenant.assert_called_once_with(
         tenant_id=mock_tenant.id, 
-        user_id=mock_tenant.user_id, 
         data=update_data
     )
 
 @pytest.mark.asyncio
-async def test_delete_tenant_api(client, test_tenant, token_headers):
+async def test_delete_tenant_api(client, test_tenant, token_with_tenant):
     # Delete the tenant
     response = await client.delete(
         f"/api/v1/tenant/{test_tenant.id}", 
-        headers=token_headers
+        headers=token_with_tenant
     )
     assert response.status_code == 204
 
     # Verify it is gone
     get_response = await client.get(
         f"/api/v1/tenant/{test_tenant.id}", 
-        headers=token_headers
+        headers=token_with_tenant
     )
     assert get_response.status_code == 404
 
@@ -121,7 +122,7 @@ async def test_tenant_methods_404(method_name, args):
 # --- bank requisites
 
 @pytest.mark.asyncio
-async def test_update_tenant_success(mock_tenant):
+async def test_update_tenant_banking_success(mock_tenant):
     """
     Testing successful banking details update with all required fields.
     """
@@ -146,7 +147,6 @@ async def test_update_tenant_success(mock_tenant):
     result = await service.update_tenant_banking(
         tenant_id=mock_tenant.id,
         data=update_data,
-        user_id=mock_tenant.user_id
     )
 
     # Assert
@@ -154,8 +154,7 @@ async def test_update_tenant_success(mock_tenant):
     assert result.id == repo_output["id"]
     mock_repo.update_bank_details.assert_called_once_with(
         tenant_id=mock_tenant.id,
-        data=update_data,
-        user_id=mock_tenant.user_id
+        data=update_data
     )
 
 
@@ -175,7 +174,6 @@ async def test_update_tenant_banking_not_found(mock_tenant):
         await service.update_tenant_banking(
             tenant_id=mock_tenant.id,
             data=update_data,
-            user_id=mock_tenant.user_id
         )
 
     assert exc.value.status_code == 404
