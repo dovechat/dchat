@@ -60,6 +60,7 @@ class ChannelAccount(Base):
     connection_error = Column(String, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
     session_string = Column(Text)
+    bot_token = Column(String, nullable=True, index=True)
 
 class Instance(Base):
     __tablename__ = "instances"

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChannelType(str, Enum):
@@ -43,8 +43,9 @@ class LineUpdate(BaseModel):
     status: Optional[LineStatus] = None
     connection_state: Optional[Dict[str, str]] = None
 
-    @validator('connection_state', pre=True)
-    def parse_connection_state(cls, v):
+    @field_validator('connection_state', mode='before')
+    @classmethod
+    def validate_connection_state(cls, v):
         if isinstance(v, str):
             return json.loads(v)
         return v

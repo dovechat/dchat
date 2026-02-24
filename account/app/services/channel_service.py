@@ -9,6 +9,7 @@ from app.schemas.channel_schemas import (
     VKCredentials,
     ChannelAccountResponse
 )
+from infra.crypto import decrypt, encrypt
 from models.lines import ChannelAccount
 import logging
 
@@ -32,7 +33,8 @@ class ChannelAccountService:
         # !!! Placeholder - implement actual encryption
         """
         # TODO: Use cryptography library (Fernet, etc.)
-        encrypted = json.dumps(credentials)  # Temporary placeholder
+        creds_js = json.dumps(credentials)
+        encrypted = encrypt(creds_js)  # Temporary placeholder
         return {"encrypted_data": encrypted}
 
     def _decrypt_credentials(self, encrypted: dict) -> dict:
@@ -42,7 +44,10 @@ class ChannelAccountService:
         """
         # TODO: Use cryptography library
         if "encrypted_data" in encrypted:
-            return json.loads(encrypted["encrypted_data"])
+            log.info(f"************* _decrypt_credentials encrypted {encrypted} {type(encrypted['encrypted_data'])}")
+            creds_js = decrypt(encrypted["encrypted_data"])
+            creds = json.loads(creds_js)
+            return creds
         return {}
 
     async def _verify_line_channel_type(
@@ -106,6 +111,8 @@ class ChannelAccountService:
         """Update Telegram Bot credentials"""
         await self._verify_line_channel_type(line_id, tenant_id, "telegram_bot")
 
+        log.info(f"\n\n ------------ credentials {credentials} \n\n")
+
         encrypted = self._encrypt_credentials(credentials.model_dump())
 
         account = await self.channel_repo.get_by_line(line_id)
@@ -139,7 +146,9 @@ class ChannelAccountService:
     ) -> ChannelAccountResponse:
         """Update Telegram User credentials"""
         # await self._verify_line_channel_type(line_id, tenant_id, "telegram_user")
-
+        log.info(f"\n\n !!!!!! ******************* channel_service update_telegram_user credentials {credentials} \n\n")
+        phone = credentials.phone
+        session_string = credentials.session_string
         encrypted = self._encrypt_credentials(credentials.model_dump())
         log.info(f"\n\n !!!!!! ******************* encrypted {encrypted} \n\n")
         account = await self.channel_repo.get_by_line(line_id)
@@ -149,12 +158,16 @@ class ChannelAccountService:
             log.info(f"\n\n ******************* account.session_string {account.session_string} \n\n")
             updated = await self.channel_repo.update_account(
                 account,
-                credentials_encrypted=encrypted
+                credentials_encrypted=encrypted,
+                phone=phone,
+                session_string=session_string,
             )
         else:
             updated = await self.channel_repo.create_account(
                 line_id=line_id,
-                credentials_encrypted=encrypted
+                credentials_encrypted=encrypted,
+                phone=phone,
+                session_string=session_string,
             )
 
         line = await self.line_repo.get_line_by_id(line_id, tenant_id)

@@ -1,6 +1,8 @@
+import httpx
 import json
 import asyncio
 import logging
+import os
 from aiokafka import AIOKafkaConsumer
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -30,41 +32,78 @@ async def get_or_create_client(session_string: str, phone: str) -> TelegramClien
 
 
 async def start_consumer():
+    topic = os.getenv('KAFKA_TOPIC', 'telegram_user_retry')
+    group_id = os.getenv('KAFKA_GROUP_ID', 'telegram-retry-group')
+
     consumer = AIOKafkaConsumer(
-        'telegram_outgoing_messages',
+        topic,
         bootstrap_servers='kafka:9092',
-        group_id='telegram-sender-group',
+        group_id=group_id,
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest'
     )
 
     await consumer.start()
-    log.info("Telegram consumer started")
+    log.info(f"Telegram retry consumer started for topic {topic}")
 
     try:
         async for message in consumer:
-            data = message.value
-            log.info(f"Processing message: {data}")
+            event_data = message.value
+            log.info(f"Processing retry event: {event_data}")
+
+            # Извлекаем вложенные данные
+            payload = event_data.get('payload', {})
+            conversation_id = payload.get('conversation_id')
+            text = payload.get('text')
+            phone = event_data.get('account_phone')
+
+            if not conversation_id or not text or not phone:
+                log.error(f"Missing required fields in retry event: {event_data}")
+                continue
+
+            log.info(f"\n\n ++++++++++ start_consumer payload {payload} \n\n")
 
             async for db in get_db():
                 chat_repo = ChatRepository(db)
-                session_string = await chat_repo.get_session_by_conversation(data["conversation_id"])
-                my_phone = await chat_repo.get_line_phone_by_conversation(data["conversation_id"])
+                if topic == 'telegram_user_retry':
+                    session_string = await chat_repo.get_session_by_conversation(conversation_id)
+                    my_phone = await chat_repo.get_line_phone_by_conversation(conversation_id)
+                    # отправка через Telethon
+                    if not session_string:
+                        log.error(f"No session for conversation {conversation_id}")
+                        continue
+    
+                    try:
+                        client = await get_or_create_client(session_string, my_phone)
+                        await client.send_message(phone, text)
+                        log.info(f"Retry message sent to {phone}")
+                    except Exception as e:
+                        log.error(f"Retry failed: {e}")
+
+                elif topic == 'telegram_bot_retry':
+                    channel_acc = await chat_repo.get_channel_acc_by_conversation(conversation_id)
+                    if not channel_acc:
+                        log.error(f"No bot token for conversation {conversation_id}")
+                        continue
+
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            url = f"https://api.telegram.org/bot{channel_acc.bot_token}/sendMessage"
+                            await client.post(
+                                url,
+                                json={
+                                    "chat_id": phone,
+                                    "text": text
+                                }
+                            )
+                        log.info(f"Bot retry sent to {phone}")
+                    except Exception as e:
+                        log.error(f"Bot retry failed: {e}")
                 break
 
-            if not session_string:
-                log.error(f"No session for conversation {data['conversation_id']}")
-                continue
 
-            try:
-                client = await get_or_create_client(session_string, my_phone)
-                await client.send_message(data['phone'], data['text'])
-                log.info(f"Message sent to {data['phone']}")
-            except Exception as e:
-                log.error(f"Failed to send: {e}")
     finally:
         await consumer.stop()
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

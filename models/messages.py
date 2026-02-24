@@ -2,6 +2,7 @@ import uuid
 import enum
 from sqlalchemy import Column, Index, BigInteger, String, JSON, Enum, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
 
@@ -20,6 +21,7 @@ class Conversation(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), nullable=False, index=True)
+    line = relationship("Line", foreign_keys=[line_id])
     crm_type = Column(String, nullable=False)
     crm_chat_id = Column(String, index=True)
     client_phone = Column(String, index=True)
@@ -31,6 +33,8 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    user = relationship("User", foreign_keys=[user_id])
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
     channel_msg_id = Column(String, index=True)
     direction = Column(Enum(MessageDirection, native_enum=False), nullable=False, index=True)

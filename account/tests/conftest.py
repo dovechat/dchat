@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -209,3 +210,41 @@ async def test_allocated_instance(test_line):
             if obj:
                 await session.delete(obj)
                 await session.commit()
+
+
+@pytest.fixture
+async def temp_user():
+    """Create a temporary user and delete after test"""
+    email = f"test-{uuid4()}@example.com"
+    async with get_test_db() as db:
+        user = User(
+            email=email,
+            password_hash="fake_hash_for_test",
+            status="active"
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        yield user
+        await db.delete(user)
+        await db.commit()
+
+
+
+@pytest.fixture
+async def test_line_permission(test_user, test_line, test_tenant):
+    """Create a line permission and delete after test"""
+    async with get_test_db() as db:
+        perm = ResourcePermission(
+            user_id=test_user.id,
+            tenant_id=test_tenant.id,
+            resource_type="line",
+            resource_id=test_line.id,
+            action="send"
+        )
+        db.add(perm)
+        await db.commit()
+        await db.refresh(perm)
+        yield perm
+        await db.delete(perm)
+        await db.commit()

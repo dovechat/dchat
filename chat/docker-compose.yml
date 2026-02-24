@@ -18,23 +18,38 @@ services:
     env_file:
       - ../.env
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     networks:
       - account_dchat_net 
     command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
 
 
-  # telegram-consumer:
-  # image: chat:1
-  #  command: python3 -m app.consumers.telegram_consumer
-  #  working_dir: /mono/chat
-  #  volumes:
-  #    - ..:/mono
-  #  env_file:
-  #    - ../.env
-  #  networks:
-  #    - account_dchat_net
-  
+  telegram-consumer-user:
+    image: chat:1
+    command: python3 -m app.consumers.telegram_consumer
+    working_dir: /mono/chat
+    volumes:
+      - ..:/mono
+    env_file:
+      - ../.env
+    environment:
+      - KAFKA_TOPIC=telegram_user_retry
+    networks:
+      - account_dchat_net
+
+  telegram-consumer-bot:
+    image: chat:1
+    command: python3 -m app.consumers.telegram_consumer
+    working_dir: /mono/chat
+    volumes:
+      - ..:/mono
+    env_file:
+      - ../.env
+    environment:
+      - KAFKA_TOPIC=telegram_bot_retry
+    networks:
+      - account_dchat_net
+
 networks:
   account_dchat_net:
     external: true

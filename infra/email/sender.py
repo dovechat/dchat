@@ -45,5 +45,8 @@ class OTPSender(BaseEmailSender):
         msg = self._create_message(settings.otp_subject, html, to_email)
         return self._send_raw(msg)
 
-
-
+class ManagerSender(BaseEmailSender):
+    def send(self, to_email: str, password: str) -> bool:
+        html = self._render('manager.html', subject=settings.manager_subject, password=password)
+        msg = self._create_message(settings.manager_subject, html, to_email)
+        return self._send_raw(msg)

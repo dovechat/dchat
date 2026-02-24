@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     smtp_password: str | None = None  # ← Optional  
     smtp_from: str | None = None
     otp_subject: str = "Authorization code"
+    manager_subject: str = "Invitation to DChat"
 
     app_host: str = "localhost"
     app_port: int =  8070

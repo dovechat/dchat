@@ -134,18 +134,21 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             self,
             line_id: uuid.UUID,
             credentials_encrypted: dict,
+            phone: str | None = None,
+            session_string: str | None = None,
+            bot_token: str | None = None,
             state_json: Optional[dict] = None
     ) -> ChannelAccount:
 
         log.info(f"credentials_encrypted {type(credentials_encrypted)} {credentials_encrypted}")
-        enc_data = json.loads(credentials_encrypted["encrypted_data"])
 
         return await self.create(
             line_id=line_id,
             credentials_encrypted=credentials_encrypted,
             state_json=state_json or {},
-            phone=enc_data["phone"],
-            session_string=enc_data["session_string"],
+            phone=phone,
+            session_string=session_string,
+            bot_token=bot_token,
         )
 
     async def get_by_line(
@@ -162,20 +165,9 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
     async def update_account(
             self,
             account: ChannelAccount,
-            **data
+            **data,
+            
     ) -> ChannelAccount:
         import copy
         log.info(f"--------------- ChannelAccountRepository.update_account account {account} data {type(data)} {data['credentials_encrypted']}")
-
-        data_dict = {}
-        data_dict["credentials_encrypted"] = data["credentials_encrypted"]
-        enc_data = json.loads(data["credentials_encrypted"]["encrypted_data"])
-        log.info(enc_data["phone"])
-    
-        log.info(enc_data["session_string"])
-        data_dict["phone"] = enc_data["phone"]
-        data_dict["session_string"] = enc_data["session_string"]
-        log.info(f"--------------- phone {data_dict['phone']} ")
-        log.info(f"--------------- session_string {data_dict['session_string']} ")
-        log.info(f"--------------- data_dict {type(data_dict)} {data_dict}")
-        return await self.update(account, **data_dict)
+        return await self.update(account, **data)

@@ -28,4 +28,4 @@ class TenantMembershipUoW(UnitOfWork):
         super().__init__(session)
         # MembershipRepository needs model AND session
         self.tenants = TenantRepository(self.session)
-        self.memberships = MembershipRepository(Membership, self.session)
+        self.memberships = MembershipRepository(self.session)

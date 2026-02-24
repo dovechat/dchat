@@ -13,7 +13,7 @@ class UserRole(str, Enum):
 
     OWNER = "owner"
     ADMIN = "admin"
-    MANAGER = "manager"
+    SUPPORT = "manager"
     MEMBER = "member"
 
 

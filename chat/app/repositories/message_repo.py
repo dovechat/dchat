@@ -1,9 +1,13 @@
 import uuid
 from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from models.messages import Message
 from repo.base import BaseRepository
+
+import logging
+log = logging.getLogger("uvicorn.error")
 
 
 class MessageRepository(BaseRepository[Message]):
@@ -18,16 +22,19 @@ class MessageRepository(BaseRepository[Message]):
             skip: int = 0,
             limit: int = 100
     ) -> List[Message]:
+        log.info("**************** MessageRepository ****************")
         """Get messages for conversation"""
         stmt = (
             select(self.model)
             .where(self.model.conversation_id == conversation_id)
-            .order_by(desc(self.model.created_at))
+            .options(joinedload(Message.user))
+            .order_by(self.model.created_at)
             .offset(skip)
             .limit(limit)
         )
         result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+        res = list(result.scalars().all())
+        return res
 
     async def get_last_message(
             self,
@@ -59,6 +66,7 @@ class MessageRepository(BaseRepository[Message]):
     
     async def create_message(
         self,
+        user_id: uuid.UUID,
         conversation_id: uuid.UUID,
         direction: str,
         text: Optional[str] = None,
@@ -68,6 +76,7 @@ class MessageRepository(BaseRepository[Message]):
     ) -> Message:
         """Create new message"""
         return await self.create(
+            user_id=user_id,
             conversation_id=conversation_id,
             channel_msg_id=channel_msg_id,
             direction=direction,

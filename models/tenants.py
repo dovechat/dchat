@@ -27,13 +27,18 @@ class TenantStatus(enum.Enum):
 class UserRole(enum.Enum):
     admin = "admin"
     user = "user"
-    manager = "manager"
+    support = "support"
+    owner = "owner"
 
 class UserStatus(enum.Enum):
     trial = "trial"
     active = "active"
     inactive = "inactive"
     suspended = "suspended"
+
+class PermissionAction(enum.Enum):
+    owner = "owner" 
+    member = "member"
 
 class TenantPayment(enum.Enum):
     acquiring = "acquiring"
@@ -156,7 +161,7 @@ class ResourcePermission(Base):
 
     resource_type = Column(String, nullable=False)  # e.g., 'whatsapp_line'
     resource_id = Column(UUID(as_uuid=True), nullable=False)
-    action = Column(String, nullable=False)  # 'admin', 'operator', 'viewer'
+    action = Column(Enum(PermissionAction), default=PermissionAction.member, nullable=False)
 
     __table_args__ = (
         UniqueConstraint('user_id', 'resource_type', 'resource_id', 'action', name='_user_resource_action_uc'),

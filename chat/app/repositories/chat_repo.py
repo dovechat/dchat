@@ -73,19 +73,33 @@ class ChatRepository(BaseRepository[Conversation]):
         result = await self.session.execute(stmt)
         return result.all()
     
-    async def get_conversation_with_messages(self, conversation_id: uuid.UUID, tenant_id: uuid.UUID):
+    async def get_conversation_with_messages(self, conversation_id: uuid.UUID):
         stmt = (
             select(Conversation)
             .join(Line, Conversation.line_id == Line.id)
             .where(
                 and_(
-                    Conversation.id == conversation_id,
-                    Line.tenant_id == tenant_id
+                    Conversation.id == conversation_id
                 )
             )
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+
+    async def get_channel_acc_by_conversation(
+        self,
+        conversation_id: uuid.UUID
+    ) -> Optional[str]:
+        """Get session_string from channel_account by conversation_id"""
+        stmt = (
+            select(ChannelAccount)
+            .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
+            .where(Conversation.id == conversation_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
 
     async def get_session_by_conversation(
         self,
@@ -96,6 +110,19 @@ class ChatRepository(BaseRepository[Conversation]):
             select(ChannelAccount.session_string)
             .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
             .where(Conversation.id == conversation_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+
+    async def get_channel_acc_by_line_id(
+        self,
+        line_id: uuid.UUID
+    ) -> Optional[ChannelAccount]:
+        """Get session_string from channel_account by conversation_id"""
+        stmt = (
+            select(ChannelAccount)
+            .where(ChannelAccount.line_id == line_id)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -116,6 +143,20 @@ class ChatRepository(BaseRepository[Conversation]):
         return result.scalar_one_or_none()
 
 
+    async def get_channel_acc_by_phone(
+        self,
+        phone: str
+    ) -> Optional[str]:
+        """Get session_string from channel_account by conversation_id"""
+        stmt = (
+            select(ChannelAccount)
+            .where(ChannelAccount.phone == phone)
+            .order_by(ChannelAccount.updated_at.desc())  # свежие сверху
+            .limit(1)
+        ) 
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_line_phone_by_conversation(
         self,
         conversation_id: uuid.UUID
@@ -128,3 +169,35 @@ class ChatRepository(BaseRepository[Conversation]):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_or_create_by_chat_id(
+            self,
+            line_id: uuid.UUID,
+            chat_id: str,
+            tenant_id: uuid.UUID,
+            client_phone: str = None
+    ) -> Conversation:
+        """Find conversation by Telegram chat_id or create new one"""
+        # Ищем существующий
+        stmt = select(Conversation).where(
+            Conversation.line_id == line_id,
+            Conversation.client_phone == chat_id  # chat_id храним как client_phone
+        )
+        result = await self.session.execute(stmt)
+        conversation = result.scalar_one_or_none()
+
+        if conversation:
+            return conversation
+
+        # Создаём новый
+        new_conv = Conversation(
+            line_id=line_id,
+            client_phone=chat_id,  # здесь храним chat_id из Telegram
+            crm_type="telegram_bot",
+            crm_chat_id=chat_id,
+            meta={"username": client_phone} if client_phone else {}
+        )
+        self.session.add(new_conv)
+        await self.session.commit()
+        await self.session.refresh(new_conv)
+        return new_conv

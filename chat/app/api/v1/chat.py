@@ -1,24 +1,34 @@
 import uuid
-from typing import List
-from fastapi import APIRouter, Depends, Query, HTTPException
+from typing import List, Any
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.dependencies import get_current_user
 from schemas.auth_schemas import UserContext
+from app.services.bot_service import BotService
 from app.services.chat_service import ChatService
+from app.services.line_service import LineService
 from app.schemas.chat_schemas import (
     ConversationResponse,
     MessageResponse,
     ConversationListResponse,
     ConversationCreate,
     MessageCreate,
+    LineResponse,
 )
+from models.tenants import User
+
+import logging
+log = logging.getLogger("uvicorn.error")
 
 router = APIRouter(tags=["Chat"])
 
 def get_chat_service(db: AsyncSession = Depends(get_db)) -> ChatService:
     return ChatService(db)
+
+def get_bot_service(db: AsyncSession = Depends(get_db)) -> ChatService:
+    return BotService(db)
 
 @router.get("/conversations", response_model=List[ConversationListResponse])
 async def list_conversations(
@@ -78,14 +88,55 @@ async def create_conversation(
     )
 
 
-@router.post("/messages", response_model=MessageResponse)
-async def create_message(
+@router.post("/messages/tguser", response_model=MessageResponse)
+async def create_message_tguser(
+    request: Request,
     data: MessageCreate,
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
     """Create new message in conversation"""
-    return await chat_service.create_message(
-        tenant_id=current_user.tenant_id,
-        data=data
+    log.info(f"************ @router.post /messages/tguser create_message_tguser current_user {current_user}")
+    return await chat_service.create_msg_tguser(
+        request=request,
+        data=data,
+        current_user=current_user,
+    )
+
+
+@router.post("/messages/tgbot", response_model=MessageResponse)
+async def create_message_tgbot(
+    data: MessageCreate,
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """Create new message in conversation"""
+    return await chat_service.create_msg_tgbot(
+        data=data,
+        current_user=current_user,
+    )
+
+
+@router.post("/bot/webhook/{line_id}")
+async def telegram_bot_webhook(
+    line_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.services.bot_service import BotService
+    bot_service = BotService(db)
+    data = await request.json()
+    return await bot_service.handle_webhook(line_id, data)
+
+
+@router.get("/lines", response_model=List[LineResponse])
+async def get_my_lines(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    service = LineService(db)
+    return await service.get_user_lines(
+        user_id=current_user.id,
+        role=current_user.role,
+        tenant_id=current_user.tenant_id
     )

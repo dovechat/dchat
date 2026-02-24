@@ -11,8 +11,9 @@ class MessageDirection(str, Enum):
 
 class KafkaEvent(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     account_phone: str  # Номер телефона аккаунта Telegram
+    payload: dict = {}
 
 class IncomingMessageEvent(KafkaEvent):
     """Событие входящего сообщения"""
