@@ -215,6 +215,7 @@ class ChatService:
         # Получаем bot_token
         channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
         creds_enc = channel_acc.credentials_encrypted["encrypted_data"]
+        log.info(f"--------------- creds_enc {type(creds_enc)} {creds_enc}")
         creds_str = decrypt(creds_enc)
         log.info(f"--------------- creds {type(creds_str)} {creds_str}")
         if not channel_acc or 'bot_token' not in creds_str:
@@ -232,7 +233,7 @@ class ChatService:
                 }
                 await client.post(url, json=payload)
             data.status = "sent"
-            log.info(f"\n\n +++++++++++++ async with httpx.AsyncClient data {data}  \n\n")
+            log.info(f"\n\n +++++++++++++ create_msg_tgbot async with httpx.AsyncClient data {data}  \n\n")
         except Exception as e:
             data.status = "error"
             log.error(f"Send failed: {e}")

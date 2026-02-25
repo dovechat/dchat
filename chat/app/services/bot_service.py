@@ -22,19 +22,24 @@ class BotService:
         """Handle incoming update from Telegram Bot API"""
         # 1. Get line and bot token
         line = await self.db.get(Line, line_id)
+        log.info(f"line {line}")
         if not line or line.channel_type != "telegram_bot":
             log.error(f"Line {line_id} not found or not a bot")
             return {"ok": False}
 
         # 2. Extract message data
         message = update_data.get("message", {})
+        log.info(f"message {message}")
         chat = message.get("chat", {})
+        log.info(f"chat {chat}")
         chat_id = chat.get("id")
         text = message.get("text", "")
+        log.info(f"text {text}")
         message_id = message.get("message_id")
+        log.info(f"message_id {message_id}")
 
         if not chat_id or not text:
-            log.debug("Ignoring non-message update")
+            log.error("Ignoring non-message update")
             return {"ok": True}
 
         # 3. Find or create conversation
@@ -44,7 +49,7 @@ class BotService:
             tenant_id=line.tenant_id,
             client_phone=chat.get("username") or str(chat_id)
         )
-
+        log.info(f"conversation {conversation.id} {conversation.__dict__}")
         # 4. Save message
         db_message = await self.msg_repo.create_message(
             conversation_id=conversation.id,
@@ -54,7 +59,7 @@ class BotService:
             raw_content=update_data,
             user_id=None
         )
-
+        log.info(f"db_message {db_message}")
         # 5. Send to WebSocket
         await manager.send_new_message(str(conversation.id), {
             "id": db_message.id,
@@ -63,7 +68,7 @@ class BotService:
             "created_at": db_message.created_at.isoformat(),
             "phone": str(chat_id)
         })
-
+        log.info(f"send_new_message done")
         return {"ok": True}
 
     async def send_message(self, bot_token: str, chat_id: str, text: str):

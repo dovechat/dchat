@@ -172,6 +172,12 @@ class TelegramListener:
         log.info("TelegramListener initialized")
 
     async def start_listening(self, conversation_id: str, my_phone: str, peer_phone: str):
+        log.info(f"******* start_listening my_phone {my_phone}")
+        if my_phone is None:
+            # Это бот — не запускаем слушатель
+            log.info(f"*********** Bot detected for {conversation_id}, skipping listener")
+            return
+
         log.info(f"start_listening called for {conversation_id}")
         if conversation_id in self.tasks:
             task = self.tasks[conversation_id]
