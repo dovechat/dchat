@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     phone: str = "+995511221503"
     apikey: str = "0f0f0dad-ce62-4ffa-b1e3-76634a59eb67"
     kafka_bootstrap_servers: str = ""
+    kafka_topic: str = ""
+    kafka_group_id: str = ""
     tg_api_id: str = ""
     tg_api_hash: str = ""
 

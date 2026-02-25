@@ -37,7 +37,7 @@ async def start_consumer():
 
     consumer = AIOKafkaConsumer(
         topic,
-        bootstrap_servers='kafka:9092',
+        bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id=group_id,
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest'
