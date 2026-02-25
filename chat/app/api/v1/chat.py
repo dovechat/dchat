@@ -32,6 +32,7 @@ def get_bot_service(db: AsyncSession = Depends(get_db)) -> ChatService:
 
 @router.get("/conversations", response_model=List[ConversationListResponse])
 async def list_conversations(
+    line_id: str | None = None,
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
     skip: int = Query(0, ge=0),
@@ -40,6 +41,7 @@ async def list_conversations(
     """Get list of conversations for current tenant"""
     return await chat_service.get_conversations(
         tenant_id=current_user.tenant_id,
+        line_id=line_id,
         skip=skip,
         limit=limit
     )

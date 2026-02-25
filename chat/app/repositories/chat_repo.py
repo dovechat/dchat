@@ -55,7 +55,7 @@ class ChatRepository(BaseRepository[Conversation]):
             order_by="-updated_at"
         )
     
-    async def get_conversations_with_stats(self, tenant_id: uuid.UUID, skip: int, limit: int):
+    async def get_conversations_with_stats(self, tenant_id: uuid.UUID, line_id: uuid.UUID, skip: int, limit: int):
         stmt = (
             select(
                 Conversation,
@@ -64,7 +64,7 @@ class ChatRepository(BaseRepository[Conversation]):
             )
             .join(Line, Conversation.line_id == Line.id)
             .outerjoin(Message, Conversation.id == Message.conversation_id)
-            .where(Line.tenant_id == tenant_id)
+            .where(Line.tenant_id == tenant_id, Line.id == line_id)
             .group_by(Conversation.id)
             .order_by(desc(func.max(Message.created_at)))
             .offset(skip)

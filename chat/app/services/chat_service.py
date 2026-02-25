@@ -33,11 +33,12 @@ class ChatService:
     async def get_conversations(
             self,
             tenant_id: uuid.UUID,
+            line_id: uuid.UUID,
             skip: int = 0,
             limit: int = 100
     ) -> List[ConversationListResponse]:
         """Get conversations list with last message for tenant"""
-        rows = await self.conv_repo.get_conversations_with_stats(tenant_id, skip, limit)
+        rows = await self.conv_repo.get_conversations_with_stats(tenant_id, line_id, skip, limit)
 
         conversations = []
         for conv, unread_count, last_msg_at in rows:
