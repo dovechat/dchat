@@ -118,9 +118,6 @@ class ChannelAccountService:
                 )
                 log.info(f"res {res.json()}")
             log.info(f"\n\n +++++++++++++ set_webhook with httpx.AsyncClient done \n\n")
-            if res.status_code != 300:
-                log.info(f"\n\n +++++++++++++ EXCEPT !")
-                raise f"Error while setting webhook {res.json()}"
         except Exception as e:
             log.error(f"Send set_webhook failed : {e}")
 
