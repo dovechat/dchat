@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     kafka_group_id: str = ""
     tg_api_id: str = ""
     tg_api_hash: str = ""
+    tg_webhook_url: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

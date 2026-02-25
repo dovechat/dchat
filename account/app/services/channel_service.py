@@ -1,3 +1,4 @@
+import httpx
 import uuid
 import json
 from typing import Optional
@@ -9,6 +10,7 @@ from app.schemas.channel_schemas import (
     VKCredentials,
     ChannelAccountResponse
 )
+from core.config import settings
 from infra.crypto import decrypt, encrypt
 from models.lines import ChannelAccount
 import logging
@@ -103,6 +105,25 @@ class ChannelAccountService:
             updated_at=account.updated_at.isoformat() if account.updated_at else None
         )
 
+    async def set_webhook(self, line_id, bot_token):
+        try:
+            # raise Exception("Test retry")
+            log.info(f"\n\n +++++++++++++  data {settings.tg_webhook_url}/{line_id}  \n\n")
+            async with httpx.AsyncClient() as client:
+                res = await client.post(
+                    f"https://api.telegram.org/bot{bot_token}/setWebhook",
+                    json={
+                        "url": f"{settings.tg_webhook_url}/{line_id}"
+                    },
+                )
+                log.info(f"res {res.json()}")
+            log.info(f"\n\n +++++++++++++ set_webhook with httpx.AsyncClient done \n\n")
+            if res.status_code != 300:
+                log.info(f"\n\n +++++++++++++ EXCEPT !")
+                raise f"Error while setting webhook {res.json()}"
+        except Exception as e:
+            log.error(f"Send set_webhook failed : {e}")
+
     async def update_telegram_bot(
             self,
             line_id: uuid.UUID,
@@ -128,6 +149,10 @@ class ChannelAccountService:
                 line_id=line_id,
                 credentials_encrypted=encrypted
             )
+
+        # send webhook on telegram
+        log.info(f"\n\n ------------ send webhook on telegram \n\n")
+        await self.set_webhook(line_id, credentials.bot_token)
 
         line = await self.line_repo.get_line_by_id(line_id, tenant_id)
 
