@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from core.database import get_db
 from api.auth import public_router, private_router
 from api.tenant import tenant_router
-
+from api.lines import line_router
 
 app = FastAPI(
     title="DoveChat Chat Service",
@@ -50,3 +50,4 @@ app.include_router(private_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(tenant_router, prefix="/api/v1")
 app.include_router(websocket_router, prefix="/ws")
+app.include_router(line_router, prefix="/api/v1")

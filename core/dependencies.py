@@ -15,9 +15,11 @@ from core.security import ALGORITHMS, SECRET_KEY
 # from app.repositories.contact import ContactRepository
 from repo.user import UserRepository
 from repo.tenant_repo import TenantRepository
+from repo.line_repo import LineRepository
 from schemas.auth_schemas import TokenPayload, UserContext
 from services.auth_service import AuthService
 from services.jwt_services import JWTService
+from services.line_service import LineService
 
 log = logging.getLogger("uvicorn.error")
 
@@ -79,3 +81,12 @@ async def get_current_user(
 async def get_tenant_repo(db: AsyncSession = Depends(get_db)) -> TenantRepository:
     """Get tenant repository instance."""
     return TenantRepository(db)
+
+# ------- lines
+async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:
+    return LineRepository(db)
+
+async def get_line_service(
+    line_repo: LineRepository = Depends(get_line_repo),
+) -> LineService:
+    return LineService(line_repo)
