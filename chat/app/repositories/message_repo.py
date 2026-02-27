@@ -84,3 +84,9 @@ class MessageRepository(BaseRepository[Message]):
             media_id=media_id,
             raw_content=raw_content or {}
         )
+    
+    async def set_message_status(self, id: str, status: str):
+        """Update status to active using base update logic"""
+        message = await self.get_by_id(id)
+        if message:
+            return await self.update(message, status=status)

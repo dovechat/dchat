@@ -226,9 +226,9 @@ class TelegramListener:
             log.info(f"--------------- Entity for {recipient}: {entity.id} - {getattr(entity, 'phone', 'no phone')}")
             log.info(f"Entity resolved: {type(entity).__name__}")
             log.info(f"------------------- Sending to entity: {entity.id}")
-            await client.send_message(entity, text)
+            sent = await client.send_message(entity, text)
             log.info(f"Message sent successfully to {recipient}")
-            return True
+            return sent
         except Exception as e:
             log.error(f"Failed to send message to {recipient}: {e}", exc_info=True)
             raise  # или вернуть False

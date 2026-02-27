@@ -43,6 +43,7 @@ class ConnectionManager:
             if role == "owner":
                 if conv.line.tenant_id != uuid.UUID(tenant_id):
                     await websocket.close(code=1008, reason="Access denied")
+                    log.info("\n\n ************** connect: start")
                     return
             else:
                 perm_query = select(ResourcePermission).where(
@@ -63,13 +64,13 @@ class ConnectionManager:
         self.active_connections[conversation_id].append(websocket)
 
         # Если это первое соединение - запускаем listener
-        if len(self.active_connections[conversation_id]) == 1:
+        if len(self.active_connections[conversation_id]) == 1 and conv.crm_type == "telegram_user":
             listener = app.state.listener
             log.info(f"+++++++++ listener.start_listening")
             await listener.start_listening(conversation_id, my_phone, peer_phone)
             log.info(f"+++++++++ listener.start_listening DONE")
 
-        log.info(f"Connected: conversation={conversation_id}, total={len(self.active_connections[conversation_id])}")
+        log.info(f"+++++++ Connected: conversation={conversation_id}, total={len(self.active_connections[conversation_id])}")
 
     async def disconnect(self, conversation_id: str, websocket: WebSocket):
         listener = websocket.app.state.listener
@@ -85,6 +86,7 @@ class ConnectionManager:
         if conversation_id not in self.active_connections:
             return
         # Рассылаем всем соединениям
+        log.info(f"\n\n +++++++++ Sending new_message to conv {conversation_id}: {message_data} \n\n ")
         for ws in self.active_connections[conversation_id][:]:  # копия списка
             try:
                 await ws.send_json({
@@ -94,6 +96,19 @@ class ConnectionManager:
             except Exception as e:
                 log.error(f"send_new_message error for {conversation_id}: {e}")
                 await self.disconnect(conversation_id, ws)
+        log.info(f"\n\n ---------- Sending new_message to conv {conversation_id}: {message_data} \n\n ")
+
+    async def send_message_status(self, conversation_id: str, data: dict):
+        if conversation_id not in self.active_connections:
+            return
+        for ws in self.active_connections[conversation_id][:]:
+            try:
+                await ws.send_json({
+                    'type': 'message_status',
+                    'data': data
+                })
+            except Exception as e:
+                log.error(f"send_message_status error: {e}")
 
 
 manager = ConnectionManager()

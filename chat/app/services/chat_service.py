@@ -1,6 +1,8 @@
+import asyncio
 import httpx
 import json
 import uuid
+from datetime import datetime
 from typing import List, Optional
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -161,20 +163,43 @@ class ChatService:
         current_user: UserContext = Depends(get_current_user),
     ) -> MessageResponse:
         """Create new message in conversation"""
-        log.info(f"++++++++ **** create_msg_tguser current_user {current_user}")
         listener = request.app.state.listener
 
-        log.info(f"********* data {data}")
-
+        conv, message = await self.conv_msg(data, current_user)
 
         try:
-            await listener.send_message_user(
+            sent = await listener.send_message_user(
                 conversation_id=str(data.conversation_id),
                 recipient=data.phone,
                 text=data.text
             )
             data.status = "sent"
-            # raise Exception("Test retry")
+
+            await manager.send_new_message(str(data.conversation_id), {
+                "id": message.id,
+                "text": message.text,
+                "direction": "outbound",
+                "created_at": message.created_at.isoformat(),
+                "user_id": str(current_user.id),
+                "user_email": current_user.email,
+                "status": "sent"
+            })
+
+            if sent is not None:
+                data.channel_msg_id = str(sent.id)
+                raw_data = sent.to_dict()
+                if 'date' in raw_data and isinstance(raw_data['date'], datetime):
+                    raw_data['date'] = raw_data['date'].isoformat()
+                data.raw_content = raw_data
+                    # raise Exception("Test retry")
+
+                await asyncio.sleep(1)
+
+                # update msg status in chat
+                await manager.send_message_status(str(data.conversation_id), {
+                    "message_id": message.id,
+                    "status": "delivered"
+                })
         except Exception as e:
             data.status = "error"
             log.error(f"ERROR: listener.send_message_user has been failed e={e}")
@@ -193,18 +218,6 @@ class ChatService:
                 )
             )
         finally:
-            log.info(f"********* create_msg_tguser data {data} ")
-            conv, message = await self.conv_msg(data, current_user)
-
-            await manager.send_new_message(str(data.conversation_id), {
-                "id": str(message.id),
-                "text": message.text,
-                "direction": "outbound",
-                "created_at": message.created_at.isoformat(),
-                "user_id": str(current_user.id),
-                "user_email": current_user.email,
-            })
-
             return MessageResponse.model_validate(message)
 
     async def create_msg_tgbot(
@@ -223,6 +236,18 @@ class ChatService:
             raise ValueError("Bot token not found")
         bot_token = json.loads(creds_str)["bot_token"]
 
+        # Сохраняем сообщение в БД с нужным статусом
+        _, message = await self.conv_msg(data, current_user)
+
+        await manager.send_new_message(str(data.conversation_id), {
+            "id": str(message.id),
+            "text": message.text,
+            "direction": "outbound",
+            "created_at": message.created_at.isoformat(),
+            "user_id": str(current_user.id),
+            "user_email": current_user.email,
+            "status": "sent"
+        })
         # Отправка через Bot API
         try:
             # raise Exception("Test retry")
@@ -233,7 +258,11 @@ class ChatService:
                     "text": data.text
                 }
                 await client.post(url, json=payload)
-            data.status = "sent"
+            # update msg status in chat
+            await manager.send_message_status(str(data.conversation_id), {
+                "message_id": message.id,
+                "status": "delivered"
+            })
             log.info(f"\n\n +++++++++++++ create_msg_tgbot async with httpx.AsyncClient data {data}  \n\n")
         except Exception as e:
             data.status = "error"
@@ -252,18 +281,6 @@ class ChatService:
                 )
             )
         finally:
-            # Сохраняем сообщение в БД с нужным статусом
-            _, message = await self.conv_msg(data, current_user)
-
-            await manager.send_new_message(str(data.conversation_id), {
-                "id": str(message.id),
-                "text": message.text,
-                "direction": "outbound",
-                "created_at": message.created_at.isoformat(),
-                "user_id": str(current_user.id),
-                "user_email": current_user.email,
-            })
-
             return MessageResponse.model_validate(message)
 
 

@@ -59,11 +59,13 @@ async def websocket_endpoint(
         role=user["role"]
     )
 
+    log.info("+++*** Manager connect done")
+
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         await manager.disconnect(conversation_id, websocket)
     except Exception as e:
-        log.error(f"WebSocket error: {e}")
+        log.error(f"ERROR: WebSocket error: {e}")
         await manager.disconnect(conversation_id, websocket)
