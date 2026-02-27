@@ -14,6 +14,7 @@ from core.database import get_db, get_db_read, get_db_write
 from core.security import ALGORITHMS, SECRET_KEY
 # from app.repositories.contact import ContactRepository
 from repo.user import UserRepository
+from repo.tenant_repo import TenantRepository
 from schemas.auth_schemas import TokenPayload, UserContext
 from services.auth_service import AuthService
 from services.jwt_services import JWTService
@@ -73,3 +74,8 @@ async def get_current_user(
         role=token_data.role,
         tenant_id=token_data.tenant_id 
     )
+
+# ------- tenants
+async def get_tenant_repo(db: AsyncSession = Depends(get_db)) -> TenantRepository:
+    """Get tenant repository instance."""
+    return TenantRepository(db)

@@ -8,6 +8,8 @@ from app.consumers.telegram_listener import TelegramListener
 from app.core.kafka_producer import kafka_producer
 from contextlib import asynccontextmanager
 from core.database import get_db
+from api.auth import public_router, private_router
+from api.tenant import tenant_router
 
 
 app = FastAPI(
@@ -43,6 +45,8 @@ app.add_middleware(
 async def startup():
     app.state.listener = TelegramListener()
 
-
+app.include_router(public_router, prefix="/api/v1")
+app.include_router(private_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(tenant_router, prefix="/api/v1")
 app.include_router(websocket_router, prefix="/ws")

@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 WORKDIR /mono
+COPY api api/
 COPY core core/
 COPY chat chat/
 COPY models models/

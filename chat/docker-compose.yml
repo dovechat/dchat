@@ -11,6 +11,7 @@ services:
       - ../repo:/mono/repo
       - ../schemas:/mono/schemas
       - ../models:/mono/models
+      - ../api:/mono/api
       - ../core:/mono/core
       - ../services:/mono/services
       - ../.env:/mono/.env
