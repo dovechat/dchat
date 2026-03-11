@@ -1,0 +1,15 @@
+from abc import ABC, abstractmethod
+from  app.schemas.chat_schemas import MessageCreate
+
+class BaseSender(ABC):
+    """Базовый класс для отправки сообщений в разные каналы"""
+
+    @abstractmethod
+    async def send(self, data: MessageCreate) -> dict:
+        """Отправить текстовое сообщение"""
+        pass
+
+#    @abstractmethod
+#    async def send_file(self, conversation_id: str, recipient: str, file_data: dict, caption: str = None) -> dict:
+#        """Отправить файл"""
+#        pass

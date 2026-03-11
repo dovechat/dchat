@@ -1,13 +1,17 @@
 # app/services/bot_service.py
-
-import uuid
 import httpx
+import json
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
 from app.services.websocket_manager import manager
+from app.services.chat_service import ChatService
 from core.database import get_db
+from infra.crypto import decrypt
 from models.lines import Line
+from repo.line_repo import ChannelAccountRepository
+from app.utils import decrypt_credentials
 
 import logging
 log = logging.getLogger("uvicorn.error")
@@ -15,61 +19,166 @@ log = logging.getLogger("uvicorn.error")
 class BotService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.channel_repo = ChannelAccountRepository(db)
         self.conv_repo = ChatRepository(db)
         self.msg_repo = MessageRepository(db)
 
     async def handle_webhook(self, line_id: uuid.UUID, update_data: dict):
         """Handle incoming update from Telegram Bot API"""
-        # 1. Get line and bot token
+        # Get line and bot token
         line = await self.db.get(Line, line_id)
-        log.info(f"line {line}")
-        if not line or line.channel_type != "telegram_bot":
+        log.info(f"line {line} {line.channel_type}")
+        if not line or line.channel_type.value != "telegram_bot":
             log.error(f"Line {line_id} not found or not a bot")
             return {"ok": False}
 
-        # 2. Extract message data
+        # Extract message data
         message = update_data.get("message", {})
         log.info(f"message {message}")
         chat = message.get("chat", {})
         log.info(f"chat {chat}")
         chat_id = chat.get("id")
-        text = message.get("text", "")
-        log.info(f"text {text}")
         message_id = message.get("message_id")
-        log.info(f"message_id {message_id}")
 
-        if not chat_id or not text:
+        # Check if it's a valid message
+        has_media = any(key in message for key in ["photo", "document", "video", "audio"])
+        text = message.get("text") or message.get("caption", "")
+
+        if not chat_id or (not text and not has_media):
             log.error("Ignoring non-message update")
             return {"ok": True}
 
-        # 3. Find or create conversation
+        # Find or create conversation
         conversation = await self.conv_repo.get_or_create_by_chat_id(
             line_id=line_id,
             chat_id=str(chat_id),
             tenant_id=line.tenant_id,
             client_phone=chat.get("username") or str(chat_id)
         )
-        log.info(f"conversation {conversation.id} {conversation.__dict__}")
-        # 4. Save message
+
+        # Get bot token from line credentials
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*    self.channel_repo {dir(self.channel_repo)}   \n\n ")
+        channel_acc = await self.channel_repo.get_by_line(line_id)
+        creds = decrypt_credentials(channel_acc.credentials_encrypted)
+        bot_token = creds["bot_token"]
+        raw_content = update_data
+
+        # Process media if present
+        media_id = None
+        if has_media:
+            media_id, file_name, mime_type, raw_content = await self._process_media_message(
+                message, bot_token, raw_content
+            )
+
         db_message = await self.msg_repo.create_message(
             conversation_id=conversation.id,
             direction="inbound",
             text=text,
             channel_msg_id=str(message_id),
-            raw_content=update_data,
+            raw_content=raw_content,
+            media_id=media_id,
             user_id=None
         )
-        log.info(f"db_message {db_message}")
-        # 5. Send to WebSocket
-        await manager.send_new_message(str(conversation.id), {
-            "id": db_message.id,
+        log.info(f"db_message {db_message.id}")
+
+        # 8. Send to WebSocket
+        ws_message = {
+            "id": str(db_message.id),
             "text": text,
             "direction": "inbound",
             "created_at": db_message.created_at.isoformat(),
             "phone": str(chat_id)
-        })
+        }
+
+        if media_id:
+            ws_message["media_id"] = media_id
+            ws_message["file_name"] = file_name
+            ws_message["mime_type"] = mime_type
+
+        await manager.send_new_message(str(conversation.id), ws_message)
         log.info(f"send_new_message done")
+
         return {"ok": True}
+
+    async def _process_media_message(
+            self, message: dict, bot_token: str, raw_content: dict
+    ) -> tuple[str | None, str | None, str | None, dict | None]:
+        """
+        Process media from Telegram message, download and save to S3
+        Returns: (media_id, file_name, mime_type)
+        """
+        media_id = None
+        file_name = None
+        mime_type = None
+
+        chat_service = ChatService(self.db)
+
+        try:
+            # Handle photo
+            if "photo" in message:
+                # Get the largest photo
+                photo = message["photo"][-1]
+                file_id = photo["file_id"]
+                file_name = f"photo_{file_id}.jpg"
+                mime_type = "image/jpeg"
+
+                # Get file path from Telegram
+                async with httpx.AsyncClient() as client:
+                    # Get file info
+                    file_info_url = f"https://api.telegram.org/bot{bot_token}/getFile"
+                    file_info_resp = await client.post(file_info_url, json={"file_id": file_id})
+                    file_info = file_info_resp.json()
+
+                    if not file_info.get("ok"):
+                        log.error(f"Failed to get file info: {file_info}")
+                        return None, None, None, None
+
+                    file_path = file_info["result"]["file_path"]
+
+                    # Download file
+                    file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+                    file_resp = await client.get(file_url)
+                    file_bytes = file_resp.content
+
+            # Handle document
+            elif "document" in message:
+                doc = message["document"]
+                file_id = doc["file_id"]
+                file_name = doc.get("file_name", "document")
+                mime_type = doc.get("mime_type", "application/octet-stream")
+
+                # Same download logic as above
+                async with httpx.AsyncClient() as client:
+                    file_info_url = f"https://api.telegram.org/bot{bot_token}/getFile"
+                    file_info_resp = await client.post(file_info_url, json={"file_id": file_id})
+                    file_info = file_info_resp.json()
+
+                    if not file_info.get("ok"):
+                        log.error(f"Failed to get file info: {file_info}")
+                        return None, None, None, None
+
+                    file_path = file_info["result"]["file_path"]
+                    file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+                    file_resp = await client.get(file_url)
+                    file_bytes = file_resp.content
+
+            if file_bytes:
+                media_id = str(uuid.uuid4())
+                await chat_service._save_file(file_bytes, media_id, file_name, mime_type)
+
+        except Exception as e:
+            log.error(f"Error processing media: {e}")
+            return None, None, None, None
+
+        if media_id:
+            # Save message with media info
+            raw_content["media_id"] = media_id
+            raw_content["file_name"] = file_name
+            raw_content["mime_type"] = mime_type
+
+        log.info(f"-------  media_id {media_id}, file_name {file_name}, mime_type {mime_type}, raw_content {raw_content}")
+        return media_id, file_name, mime_type, raw_content
+
 
     async def send_message(self, bot_token: str, chat_id: str, text: str):
         """Send message via Telegram Bot API"""

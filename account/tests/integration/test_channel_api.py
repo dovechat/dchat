@@ -72,7 +72,7 @@ async def test_update_wrong_channel_type(client, test_tenant, test_line, token_w
         headers=token_with_tenant
     )
 
-    # test_line is whatsapp_qr, so VK update should fail
+    # test_line is whatsapp_green, so VK update should fail
     assert response.status_code == 400
 
 '''

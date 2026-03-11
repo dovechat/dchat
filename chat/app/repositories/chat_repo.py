@@ -11,6 +11,9 @@ class ChatRepository(BaseRepository[Conversation]):
     def __init__(self, session: AsyncSession):
         super().__init__(Conversation, session)  # ← передать model и session
 
+    async def get_conv_by_id(self, conv_id):
+        return await self.get_by_id(conv_id)
+
     async def get_conversation_by_crm_id(
         self,
         line_id: uuid.UUID,
@@ -54,7 +57,25 @@ class ChatRepository(BaseRepository[Conversation]):
             filters={"line_id": line_id},
             order_by="-updated_at"
         )
-    
+
+    async def get_conversations_by_phone(
+        self,
+        line_id: uuid.UUID,
+        client_phone: uuid.UUID,
+        crm_type: str,
+        skip: int = 0,
+        limit: int = 1
+    ) -> Conversation:
+        """Get conversations for specific line"""
+        res = await self.get_multi(
+            skip=skip,
+            limit=limit,
+            filters={"line_id": line_id, "client_phone": client_phone, "crm_type": crm_type}
+        )
+        if res and len(res) > 0:
+            return res[0]
+
+
     async def get_conversations_with_stats(self, tenant_id: uuid.UUID, line_id: uuid.UUID, skip: int, limit: int):
         stmt = (
             select(

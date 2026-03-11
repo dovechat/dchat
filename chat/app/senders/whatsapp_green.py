@@ -1,0 +1,29 @@
+import logging
+from core.config import settings
+from app.senders.base import BaseSender
+from app.schemas.chat_schemas import MessageCreate
+from app.consumers.green_whatsapp import GreenWhatsAppConnection
+
+log = logging.getLogger(__name__)
+
+class WhatsAppGreenSender(BaseSender):
+    def __init__(self):
+        self.creds = None
+
+    def set_creds(self, creds: dict):
+        self.creds = creds
+
+    async def send(self, data: MessageCreate) -> dict:
+        conn = GreenWhatsAppConnection(
+            id_instance=self.creds["id_instance"],
+            api_token=self.creds["api_token"]
+        )
+
+        clean_phone = data.phone.lstrip('+')
+        chat_id = f"{clean_phone}@c.us"
+
+        if data.media_id:
+            file_url = f"{settings.s3_external_url}{data.media_id}"
+            return await conn.send_file(chat_id, file_url, data.text)
+        else:
+            return await conn.send_message(chat_id, data.text)

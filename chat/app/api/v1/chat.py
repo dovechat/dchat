@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -70,12 +70,15 @@ async def get_messages(
     limit: int = Query(100, ge=1, le=1000)
 ):
     """Get messages for specific conversation"""
-    return await chat_service.get_messages(
+    res = await chat_service.get_messages(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
         skip=skip,
         limit=limit
     )
+    if len(res) > 0:
+        log.info(f"*********** res {res[0]}")
+    return res
 
 @router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(
@@ -93,28 +96,50 @@ async def create_conversation(
 @router.post("/messages/tguser", response_model=MessageResponse)
 async def create_message_tguser(
     request: Request,
-    data: MessageCreate,
+    data: str = Form(...),
+    file: UploadFile | None = File(None),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    message_data = MessageCreate.parse_raw(data)
+    return await chat_service.create_msg_tguser(
+        request=request,
+        data=message_data,
+        file=file,
+        current_user=current_user,
+    )
+
+@router.post("/messages/tgbot", response_model=MessageResponse)
+async def create_message_tgbot(
+    # data: MessageCreate,
+    request: Request,
+    data: str = Form(...),
+    file: UploadFile | None = File(None),
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
     """Create new message in conversation"""
-    log.info(f"************ @router.post /messages/tguser create_message_tguser current_user {current_user}")
-    return await chat_service.create_msg_tguser(
+    message_data = MessageCreate.parse_raw(data)
+    return await chat_service.create_msg_tgbot(
         request=request,
-        data=data,
+        data=message_data,
+        file=file,
         current_user=current_user,
     )
 
 
-@router.post("/messages/tgbot", response_model=MessageResponse)
-async def create_message_tgbot(
-    data: MessageCreate,
+@router.post("/messages/whatsapp/green", response_model=MessageResponse)
+async def create_message_whatsapp_green(
+    request: Request,
+    data: str = Form(...),
+    file: UploadFile | None = File(None),
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
-    """Create new message in conversation"""
-    return await chat_service.create_msg_tgbot(
-        data=data,
+    message_data = MessageCreate.parse_raw(data)
+    return await chat_service.create_msg_whatsapp_green(
+        data=message_data,
+        file=file,
         current_user=current_user,
     )
 
@@ -144,3 +169,17 @@ async def get_my_lines(
         role=current_user.role,
         tenant_id=current_user.tenant_id
     )
+
+
+@router.post("/upload")
+async def upload_file(
+    request: Request,
+    media_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """Upload file to S3"""
+    log.info(f"Uploading file: {file.filename}")
+    result = await chat_service.upload(media_id, file)
+    return result

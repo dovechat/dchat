@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     tg_api_hash: str = ""
     tg_webhook_url: str = ""
 
+    s3_endpoint: str = "minio:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_secure: bool = False
+    s3_bucket: str = "dovechat-media"
+    s3_external_url: str = "http://localhost:9000/dovechat-media/"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

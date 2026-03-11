@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.lines import Line
+from models.lines import ChannelAccount, Line
 from repo.base import BaseRepository
 import logging
 
@@ -33,3 +33,18 @@ class LineRepository(BaseRepository[Line]):
     ) -> Line | None:
         return await self.get_by_id(line_id, tenant_id=tenant_id)
 
+
+class ChannelAccountRepository(BaseRepository[ChannelAccount]):
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(ChannelAccount, session)
+
+    async def get_by_line(
+            self,
+            line_id: uuid.UUID
+    ) -> ChannelAccount | None:
+        existing = await self.get_multi(
+            filters={"line_id": line_id},
+            limit=1
+        )
+        return existing[0] if existing else None

@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,14 @@ async def register(
         data=data,
         db=db,
     )
+
+
+@public_router.post("/refresh", response_model=TokenPair)
+async def refresh_token(
+    refresh_token: str = Body(..., embed=True),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    return await auth_service.refresh(refresh_token)
 
 
 @public_router.post("/login", response_model=TokenPair)
@@ -84,5 +92,5 @@ async def switch_tenant(
     db: AsyncSession = Depends(get_db),
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    log.info('---------- switch_tenant in new monrepo common auth handler')
+    log.info(f'---------- switch_tenant in new monrepo common auth handler tenant_id={tenant_id}')
     return await auth_service.switch_context(db, current_user.id, tenant_id)

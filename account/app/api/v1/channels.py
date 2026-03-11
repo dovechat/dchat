@@ -8,7 +8,8 @@ from app.schemas.channel_schemas import (
     TelegramUserCredentials,
     VKCredentials,
     ChannelAccountResponse,
-    ChannelAccountUpdate
+    ChannelAccountUpdate,
+    CreateWhatsAppGreenSchema
 )
 from app.services.channel_service import ChannelAccountService
 from schemas.auth_schemas import UserContext
@@ -69,6 +70,30 @@ async def update_vk_credentials(
 ) -> ChannelAccountResponse:
     """Update VK credentials"""
     return await channel_service.update_vk(line_id, tenant_id, credentials)
+
+@channel_router.post("/whatsapp-green")
+async def configure_whatsapp_green(
+    line_id: uuid.UUID,
+    data: CreateWhatsAppGreenSchema,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    current_user: UserContext = Depends(get_current_user),
+    service: ChannelAccountService = Depends(get_channel_service)
+):
+    res = await service.update_whatsapp_green(line_id, tenant_id, data.id_instance, data.api_token)
+    log.info(f"channel_router configure_whatsapp_green res {res}")
+    return {"status": "ok", "line_id": res.line_id}
+
+
+@channel_router.post("/whatsapp-green/qr")
+async def get_whatsapp_qr(
+    line_id: uuid.UUID,
+    data: CreateWhatsAppGreenSchema,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    service: ChannelAccountService = Depends(get_channel_service)
+):
+    """Получить QR-код от Green API"""
+    qr_data = await service.get_qr_from_green(data.id_instance, data.api_token)
+    return {"qr": qr_data}
 
 '''
 Needs to move to connector service, it's shouldn't belong to account service 

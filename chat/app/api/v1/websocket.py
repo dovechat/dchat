@@ -63,8 +63,11 @@ async def websocket_endpoint(
 
     try:
         while True:
+            log.info("Waiting for message...")
             await websocket.receive_text()
+            log.info(f"Received: {message}")
     except WebSocketDisconnect:
+        log.info("Client disconnected normally")
         await manager.disconnect(conversation_id, websocket)
     except Exception as e:
         log.error(f"ERROR: WebSocket error: {e}")

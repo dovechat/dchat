@@ -3,16 +3,22 @@ import uuid
 import json
 from typing import Optional
 from fastapi import HTTPException
-from app.repositories.line_repo import ChannelAccountRepository, LineRepository
+from app.repositories.line_repo import (
+    ChannelAccountRepository,
+    InstanceRepository,
+    LineRepository,
+)
 from app.schemas.channel_schemas import (
     TelegramBotCredentials,
     TelegramUserCredentials,
     VKCredentials,
-    ChannelAccountResponse
+    ChannelAccountResponse,
 )
+from app.schemas.line_schemas import ChannelType 
 from core.config import settings
 from infra.crypto import decrypt, encrypt
-from models.lines import ChannelAccount
+from models.lines import ChannelAccount, Line
+
 import logging
 
 log = logging.getLogger("uvicorn.error")
@@ -24,10 +30,12 @@ class ChannelAccountService:
     def __init__(
             self,
             channel_repo: ChannelAccountRepository,
-            line_repo: LineRepository
+            line_repo: LineRepository,
+            instance_repo: InstanceRepository
     ):
         self.channel_repo = channel_repo
         self.line_repo = line_repo
+        self.instance_repo = instance_repo
 
     def _encrypt_credentials(self, credentials: dict) -> dict:
         """
@@ -203,6 +211,77 @@ class ChannelAccountService:
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
 
+    async def update_whatsapp_green(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            id_instance: str,
+            api_token: str
+    ) -> ChannelAccountResponse:
+        """Update WhatsApp Green API credentials"""
+        # 1. Проверяем линию и получаем её
+        log.info("+++++++++++ update_whatsapp_green ++++++++++++")
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        log.info(f"+++++++++++ line {line} ++++++++++++")
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+        log.info(f"line.channel_type {line.channel_type} ChannelType.WHATSAPP_GREEN {ChannelType.WHATSAPP_GREEN}")
+        if line.channel_type.value != ChannelType.WHATSAPP_GREEN.value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Line channel type is {line.channel_type}, expected whatsapp_green"
+            )
+        log.info(f"+++++++++++ line AFTER {line} ++++++++++++")
+        # 2. Шифруем токен (id_instance не шифруем, это public)
+        credentials = {
+            "id_instance": id_instance,
+            "api_token": api_token
+        }
+        encrypted = self._encrypt_credentials(credentials)
+
+        # 3. Сохраняем в channel_accounts
+        account = await self.channel_repo.get_by_line(line_id)
+        if account:
+            updated = await self.channel_repo.update_account(
+                account,
+                credentials_encrypted=encrypted
+            )
+        else:
+            updated = await self.channel_repo.create_account(
+                line_id=line_id,
+                credentials_encrypted=encrypted
+            )
+
+        # после сохранения account, но до return:
+
+        # 4. Обновляем external_id в instances
+        # если есть доступ к сессии
+        await self.instance_repo.update_by_line(
+            line_id=line_id,
+            external_id=str(id_instance)  # id_instance и так строка
+        )
+
+        # 4. Возвращаем ответ
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=line.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+
+    async def get_qr_from_green(self, id_instance: str, api_token: str) -> str:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
+            )
+            response.raise_for_status()
+            data = response.json()
+            log.info(f"----------------- data {data} ")
+            if data.get("type") == "qrCode":
+                return data["message"]  # base64
+            raise HTTPException(400, "Failed to get QR")
+
     async def update_vk(
             self,
             line_id: uuid.UUID,
@@ -228,6 +307,7 @@ class ChannelAccountService:
 
         line = await self.line_repo.get_line_by_id(line_id, tenant_id)
 
+
         return ChannelAccountResponse(
             id=updated.id,
             line_id=updated.line_id,
@@ -235,6 +315,9 @@ class ChannelAccountService:
             state_json=updated.state_json,
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
+
+
+
 
     '''
     Needs to move to connector service, it's shouldn't belong to account service 

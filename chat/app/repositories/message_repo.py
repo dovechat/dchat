@@ -22,7 +22,6 @@ class MessageRepository(BaseRepository[Message]):
             skip: int = 0,
             limit: int = 100
     ) -> List[Message]:
-        log.info("**************** MessageRepository ****************")
         """Get messages for conversation"""
         stmt = (
             select(self.model)

@@ -92,7 +92,7 @@ class LineService:
             is_demo=data.is_demo
         )
 
-        if data.channel_type.value == "whatsapp_qr":
+        if data.channel_type.value == "whatsapp_green":
             await self._allocate_whatsapp_instance(line.id)
 
         return LineResponse.model_validate(line)
@@ -161,7 +161,7 @@ class LineService:
         if not line:
             raise HTTPException(status_code=404, detail="Line not found")
 
-        if line.channel_type == "whatsapp_qr":
+        if line.channel_type == "whatsapp_green":
             instance = await self.instance_repo.get_instance_by_line(line.id)
             if instance:
                 await self.instance_repo.release_instance(instance)

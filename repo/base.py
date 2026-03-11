@@ -40,36 +40,27 @@ class BaseRepository(Generic[ModelType]):
             join_model: Any | None = None,
     ) -> list[ModelType]:
         query = select(self.model)
-        log.info(f"Initial query: {query}")
 
         if join_model:
             query = query.join(join_model)
-            log.info(f"After join: {query}")
 
         if filters:
-            log.info(f"Applying filters: {filters}")
             for key, value in filters.items():
                 target = None
                 if hasattr(self.model, key):
                     target = self.model
-                    log.info(f"Field {key} found in main model")
                 elif join_model and hasattr(join_model, key):
                     target = join_model
-                    log.info(f"Field {key} found in join model")
 
                 if target and value is not None:
                     column = getattr(target, key)
                     if isinstance(value, list):
                         query = query.where(column.in_(value))
-                        log.info(f"Applied IN filter on {target.__name__}.{key}")
                     else:
                         query = query.where(column == value)
-                        log.info(f"Applied equality filter on {target.__name__}.{key}")
 
-        log.info(f"Final query: {query}")
         result = await self.session.execute(query.offset(skip).limit(limit))
         items = list(result.scalars().all())
-        log.info(f"Found {len(items)} items")
         return items
 
     async def count(self, filters: dict[str, Any] | None = None) -> int:

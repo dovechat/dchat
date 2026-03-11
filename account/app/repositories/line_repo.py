@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.lines import Line, Instance, ChannelAccount, InstanceStatus
+from models.lines import ChannelAccount, Line, Instance, InstanceStatus, Provider
+
 from repo.base import BaseRepository
 import logging
 
@@ -65,6 +66,11 @@ class LineRepository(BaseRepository[Line]):
     ) -> None:
         await self.delete(line)
 
+    async def update_connection_state(self, line_id: uuid.UUID, state: dict) -> None:
+        line = await self.get_by_id(line_id)
+        if line:
+            await self.update(line, connection_state=state)
+
 
 class InstanceRepository(BaseRepository[Instance]):
 
@@ -124,6 +130,36 @@ class InstanceRepository(BaseRepository[Instance]):
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
+    async def get_by_external_id(self, external_id: str) -> Instance | None:
+        stmt = select(Instance).where(Instance.external_id == external_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_or_create_by_external_id(self, provider: Provider, external_id: str) -> Instance:
+        instance = await self.get_by_external_id(external_id)
+        if not instance:
+            instance = Instance(
+                provider=provider,
+                external_id=external_id,
+                status=InstanceStatus.idle
+            )
+            self.session.add(instance)
+            await self.session.flush()
+        return instance
+
+    async def update_by_line(self, line_id: uuid.UUID, external_id: str) -> Instance | None:
+        """Update instance external_id by line_id"""
+        instance = await self.session.execute(
+            select(Instance).where(Instance.allocated_to_line_id == line_id)
+        )
+        instance = instance.scalar_one_or_none()
+        if not instance:
+            return None
+
+        return await self.update(
+            instance,
+            external_id=external_id
+        )
 
 class ChannelAccountRepository(BaseRepository[ChannelAccount]):
 
@@ -161,13 +197,18 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
         )
         return existing[0] if existing else None
 
-   
     async def update_account(
-            self,
-            account: ChannelAccount,
-            **data,
-            
+        self,
+        account: ChannelAccount,
+        **data,
     ) -> ChannelAccount:
-        import copy
-        log.info(f"--------------- ChannelAccountRepository.update_account account {account} data {type(data)} {data['credentials_encrypted']}")
         return await self.update(account, **data)
+
+    async def update_connection_status(self, line_id: uuid.UUID, status: str) -> None:
+        account = await self.get_by_line(line_id)
+        if account:
+            await self.update(
+                account,
+                connection_status=status,
+                last_checked_at=datetime.now()
+            )

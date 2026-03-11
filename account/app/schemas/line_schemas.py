@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChannelType(str, Enum):
-    WHATSAPP_QR = "whatsapp_qr"
+    WHATSAPP_GREEN = "whatsapp_green"
     WHATSAPP_BUSINESS = "whatsapp_business"
     TELEGRAM_USER = "telegram_user"
     TELEGRAM_BOT = "telegram_bot"

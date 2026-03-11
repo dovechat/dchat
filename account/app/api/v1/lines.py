@@ -77,3 +77,5 @@ async def delete_line(
     line_service: LineService = Depends(get_line_service)
 ) -> None:
     await line_service.delete_line(line_id, tenant_id)
+
+

@@ -19,6 +19,7 @@ from app.repositories.line_repo import (
 from app.services.channel_service import ChannelAccountService
 from app.services.line_service import LineService
 from app.core.uow import TenantMembershipUoW
+from app.services.webhook_service import WebhookService
 
 import logging
 log = logging.getLogger("uvicorn.error")
@@ -59,11 +60,15 @@ async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:
 async def get_channel_account_repo(db: AsyncSession = Depends(get_db)) -> ChannelAccountRepository:
     return ChannelAccountRepository(db)
 
+async def get_instance_repo(db: AsyncSession = Depends(get_db)) -> InstanceRepository:
+    return InstanceRepository(db)
+
 async def get_channel_service(
     channel_repo: ChannelAccountRepository = Depends(get_channel_account_repo),
-    line_repo: LineRepository = Depends(get_line_repo)
+    line_repo: LineRepository = Depends(get_line_repo),
+    instance_repo: InstanceRepository = Depends(get_instance_repo)
 ) -> ChannelAccountService:
-    return ChannelAccountService(channel_repo, line_repo)
+    return ChannelAccountService(channel_repo, line_repo, instance_repo)
 
 async def get_tenant_uow(session: AsyncSession = Depends(get_db)) -> TenantMembershipUoW:
     return TenantMembershipUoW(session)
@@ -89,9 +94,6 @@ async def get_requisits_repo(db: AsyncSession = Depends(get_db)) -> RequisitsRep
 async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:
     return LineRepository(db)
 
-async def get_instance_repo(db: AsyncSession = Depends(get_db)) -> InstanceRepository:
-    return InstanceRepository(db)
-
 async def get_channel_account_repo(db: AsyncSession = Depends(get_db)) -> ChannelAccountRepository:
     return ChannelAccountRepository(db)
 
@@ -101,3 +103,10 @@ async def get_line_service(
     channel_account_repo: ChannelAccountRepository = Depends(get_channel_account_repo)
 ) -> LineService:
     return LineService(line_repo, instance_repo, channel_account_repo)
+
+async def get_webhook_service():
+    async for session in get_db():
+        line_repo = LineRepository(session)
+        channel_repo = ChannelAccountRepository(session)
+        yield WebhookService(line_repo, channel_repo)
+        break

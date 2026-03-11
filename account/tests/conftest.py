@@ -38,6 +38,11 @@ async def get_test_db():
         finally:
             await session.close()
 
+@pytest.fixture
+async def test_db():
+    async with get_test_db() as session:
+        yield session
+
 @pytest.fixture(scope="session", autouse=True)
 async def cleanup_all():
     yield
@@ -135,9 +140,19 @@ async def token_with_tenant(client, test_user, test_tenant, token_headers):
         json={"tenant_id": str(test_tenant.id)},
         headers=token_headers
     )
+
+
+
+    print(f"test_user {test_user.id}")
+    print(f"test_tenant {test_tenant.id}")
+    print(f"token_headers {token_headers}")
+
+
+
     assert response.status_code == 200
     new_token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {new_token}"}
+    print(f"new_token {new_token}")
+    yield {"Authorization": f"Bearer {new_token}"}
 
 
 # ------ lines
@@ -149,7 +164,7 @@ async def test_line(test_tenant):
         line = Line(
             tenant_id=test_tenant.id,
             name="Test WhatsApp Line",
-            channel_type=ChannelType.WHATSAPP_QR.value,
+            channel_type=ChannelType.WHATSAPP_GREEN.value,
             status="active",
             is_demo=False,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),

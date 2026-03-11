@@ -65,7 +65,7 @@ class PaymentStatusUpdate(BaseModel):
 class TariffCreate(BaseModel):
     """Create new tariff"""
     name: str = Field(..., description="name of the tariff")
-    channel_type: str = Field(..., description="whatsapp_qr, telegram_bot, etc")
+    channel_type: str = Field(..., description="whatsapp_green, telegram_bot, etc")
     period: int = Field(..., description="number of days")
     price: Decimal = Field(..., ge=0)
     is_active: bool = Field(True)

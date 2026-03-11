@@ -46,6 +46,7 @@ class MessageResponse(BaseModel):
     user_id: uuid.UUID | None = None
     user_email: str | None = None
     user_full_name: str | None = None
+    file_name: str | None = None
 
 
 class ConversationListResponse(BaseModel):

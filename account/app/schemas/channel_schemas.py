@@ -39,3 +39,8 @@ class ChannelAccountResponse(BaseModel):
 class ChannelAccountUpdate(BaseModel):
     """Generic update for state_json (without credentials)"""
     state_json: Optional[dict] = None
+
+
+class CreateWhatsAppGreenSchema(BaseModel):
+    id_instance: str
+    api_token: str

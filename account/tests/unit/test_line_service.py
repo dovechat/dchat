@@ -25,7 +25,7 @@ def mock_line():
             self.id = uuid.uuid4()
             self.tenant_id = uuid.uuid4()
             self.name = "Test Line"
-            self.channel_type = "whatsapp_qr"
+            self.channel_type = "whatsapp_green"
             self.status = "active"
             self.is_demo = False
             self.expires_at = datetime.now(timezone.utc) + timedelta(days=30)
@@ -70,7 +70,7 @@ async def test_create_line_whatsapp_with_instance_allocation(line_service, mock_
 
     line_data = LineCreate(
         name="My WhatsApp",
-        channel_type=ChannelType.WHATSAPP_QR,
+        channel_type=ChannelType.WHATSAPP_GREEN,
         subscription_period=SubscriptionPeriod.MONTH
     )
 
@@ -97,7 +97,7 @@ async def test_create_line_whatsapp_creates_new_instance_if_pool_empty(line_serv
 
     line_data = LineCreate(
         name="My WhatsApp",
-        channel_type=ChannelType.WHATSAPP_QR,
+        channel_type=ChannelType.WHATSAPP_GREEN,
         subscription_period=SubscriptionPeriod.MONTH
     )
 

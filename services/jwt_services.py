@@ -46,6 +46,7 @@ class JWTService:
             tenant_id: str | uuid.UUID | None = None,
     ) -> str:
         """Create a single JWT token"""
+        log.info(f"\n\n ******* jwt_service._create_token tenant_id {tenant_id} \n\n")
         payload = {
             "sub": str(user_id),
             "type": token_type.value,
@@ -71,6 +72,8 @@ class JWTService:
         access = self._create_token(user_id, TokenType.ACCESS, role, tenant_id)
         refresh = self._create_token(user_id, TokenType.REFRESH, role, tenant_id)
 
+        log.info(f"\n\n ******* jwt_service.create_token_pair tenant_id {tenant_id} \n\n")
+        log.info(f"\n\n ******* jwt_service.create_token_pair refresh {refresh} \n\n")
         return {
             "access_token": access,
             "refresh_token": refresh,

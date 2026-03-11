@@ -9,7 +9,8 @@ from infra.email.sender import OTPSender
 from infra.sms.sender import SMSSender
 from models.tenants import UserStatus
 from repo.user import UserRepository
-from schemas.auth_schemas import LoginRequest, RegisterRequest, TokenPair, UserContext as User
+from schemas.auth_schemas import LoginRequest, RegisterRequest, TokenPair, TokenType, UserContext as User
+# from schemas.auth_schemas import TokenPayload, TokenType
 from services.jwt_services import JWTService
 
 import logging
@@ -99,6 +100,18 @@ class AuthService:
             role="owner",
         )
 
+    async def refresh(self, refresh_token: str) -> TokenPair:
+        payload = self.jwt_service.verify_token(refresh_token, token_type=TokenType.REFRESH)
+        log.info(f"\n\n ******* REFRESH refresh_token {refresh_token} \n\n")
+        log.info(f"\n\n ******* REFRESH payload.tenant_id {payload.tenant_id} \n\n")
+        log.info(f"\n\n ******* REFRESH getattr payload, tenant_id, {getattr(payload, 'tenant_id', None)} \n\n")
+
+        return self.jwt_service.create_token_pair(
+            user_id=payload.sub,
+            role=payload.role,
+            tenant_id=payload.tenant_id
+        )
+
     async def verify_code(self, user_id: str, code: str, db: AsyncSession) -> str:
         lock_key = f"activated_lock:{user_id}"
 
@@ -150,6 +163,7 @@ class AuthService:
         """
         Switch user context and issue a new token pair.
         """
+        log.info(f"\n\n ******* switch_context tenant_id {tenant_id} \n\n")
         user_repo = UserRepository(db)
         result = await user_repo.get_membership(user_id, tenant_id)
 
@@ -165,8 +179,13 @@ class AuthService:
         else:
             membership = result
 
-        return self.jwt_service.create_token_pair(
+        log.info(f"\n\n ******* switch_context membership.tenant_id {membership.tenant_id} \n\n")
+
+        res = self.jwt_service.create_token_pair(
             user_id=user_id,
             role=membership.role,
             tenant_id=membership.tenant_id
         )
+
+        log.info(f"\n\n ******* auth_service.switch_context refresh.refresh_token {res['refresh_token']} \n\n")
+        return res

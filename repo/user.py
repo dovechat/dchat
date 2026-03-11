@@ -51,8 +51,6 @@ class UserRepository(BaseRepository[User]):
         """
         Get active membership for a specific user and tenant.
         """
-        log.info(f"user.repo.get_membership user_id {user_id} tenant_id {tenant_id}")
-
         if tenant_id:
             query = select(Membership).where(
                 Membership.user_id == user_id,

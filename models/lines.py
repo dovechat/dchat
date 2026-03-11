@@ -27,13 +27,22 @@ class ConnectionStatus(enum.Enum):
     error = "error"
     blocked = "blocked"
 
+class ChannelType(enum.Enum):
+    telegram_user = "telegram_user"
+    telegram_bot = "telegram_bot"
+    whatsapp_green = "whatsapp_green"
+
+class Provider(enum.Enum):
+    green = "green"
+    waba = "waba"
+
 class Line(Base):
     __tablename__ = "lines"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False)
-    channel_type = Column(String, nullable=False, index=True)
+    channel_type = Column(Enum(ChannelType, native_enum=False), default=ChannelType.telegram_user, nullable=False, index=True)
     status = Column(Enum(LineStatus, native_enum=False), default=LineStatus.active, nullable=False, index=True)
     is_demo = Column(Boolean, default=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
@@ -66,7 +75,7 @@ class Instance(Base):
     __tablename__ = "instances"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    provider = Column(String, nullable=False, index=True)
+    provider = Column(Enum(Provider, native_enum=False), default=Provider.green, nullable=False, index=True)
     external_id = Column(String, unique=True, index=True)
     status = Column(Enum(InstanceStatus, native_enum=False), default=InstanceStatus.idle, nullable=False, index=True)
     last_cleanup_at = Column(DateTime)

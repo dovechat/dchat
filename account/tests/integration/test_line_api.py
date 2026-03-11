@@ -11,7 +11,7 @@ async def test_create_line_whatsapp(client, test_tenant, token_with_tenant):
         f"/api/v1/tenants/{test_tenant.id}/lines/",
         json={
             "name": "My WhatsApp Line",
-            "channel_type": "whatsapp_qr",
+            "channel_type": "whatsapp_green",
             "subscription_period": "month",
             "is_demo": False
         },
@@ -22,7 +22,7 @@ async def test_create_line_whatsapp(client, test_tenant, token_with_tenant):
     data = response.json()
 
     assert data["name"] == "My WhatsApp Line"
-    assert data["channel_type"] == "whatsapp_qr"
+    assert data["channel_type"] == "whatsapp_green"
     assert data["tenant_id"] == str(test_tenant.id)
     assert data["status"] == "active"
     assert "id" in data
@@ -189,7 +189,7 @@ async def test_unauthorized_access(client, test_tenant, test_line):
 
 
 @pytest.mark.parametrize("channel_type", [
-    "whatsapp_qr",
+    "whatsapp_green",
     "whatsapp_business",
     "telegram_user",
     "telegram_bot",
