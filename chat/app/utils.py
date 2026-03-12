@@ -7,7 +7,7 @@ import logging
 log = logging.getLogger("uvicorn.error")
 
 async def get_file_from_s3(media_id: str) -> tuple[bytes, str]:
-    url = f"{settings.s3_external_url}{settings.s3_bucket}/{media_id}"
+    url = f"{settings.s3_external_url}{media_id}"
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         response.raise_for_status()
@@ -15,6 +15,7 @@ async def get_file_from_s3(media_id: str) -> tuple[bytes, str]:
         filename = 'unnamed'
         if 'filename=' in cd:
             filename = cd.split('filename=')[-1].strip('"\'')
+        log.info(f"utils.get_file_from_s3 url {url}")
         return response.content, filename
 
 def decrypt_credentials(encrypted: dict) -> dict:

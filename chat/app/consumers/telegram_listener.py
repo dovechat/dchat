@@ -51,14 +51,22 @@ class TelegramConnection:
         async for db in get_db():
             chat_repo = ChatRepository(db)
             # enc_data = await chat_repo.get_session_by_phone(self.my_phone)
-            log.info(f"-------- get_session {self.my_phone}")
-            channes_acc = await chat_repo.get_channel_acc_by_phone(self.my_phone)
-            log.info(f"-------- get_session {self.my_phone} channes_acc  {type(channes_acc.credentials_encrypted)} {channes_acc.credentials_encrypted}")
+            log.info(f"-----*--- get_session phone {self.my_phone} conv_id {self.conversation_id}")
+            # if self.phone:
+            #    channes_acc = await chat_repo.get_channel_acc_by_phone(self.my_phone)
+            #else:
+            channes_acc = await chat_repo.get_channel_acc_by_conversation(self.conversation_id)
+
+            # log.info(f"-------- get_session {self.my_phone} channes_acc  {type(channes_acc.credentials_encrypted)} {channes_acc.credentials_encrypted}")
+
             creds_enc = json.loads(decrypt(channes_acc.credentials_encrypted["encrypted_data"]))
             log.info(f"-------- session decrypted creds_enc {type(creds_enc)}  {creds_enc}")
+            log.info(f"-------- get_session channes_acc {creds_enc} AFTER")
+
             session = creds_enc["session_string"]
             log.info(f"------ session {session}")
             log.info(f"-------- Session retrieved for {self.my_phone}: {'found' if session else 'not found'}")
+
             break
 
         # !!!!! ----------------- TEMPORARY set hardcoded session
@@ -244,9 +252,10 @@ class TelegramListener:
             log.info(f"Stopped listening for {conversation_id}")
 
     async def send_message_user(self, data: MessageCreate):
-        log.info(f"*********** TelegramListener.send_message_user")
+        log.info(f"*********** TelegramListener.send_message_user self.clients {self.clients} {type(self.clients)} {type(data.conversation_id)}")
         log.info(f"*********** TelegramListener.send_message_user for {data.conversation_id} to {data.phone}")
-        client = self.clients.get(data.conversation_id)
+        client = self.clients.get(str(data.conversation_id))
+        log.info(f"*********** TelegramListener.send_message_user client {client}")
         if not client:
             log.info(f"No client for {data.conversation_id}, waiting...")
             for i in range(30):
@@ -259,8 +268,17 @@ class TelegramListener:
                 log.error(f"No client for {data.conversation_id} after waiting")
                 return
 
+        me = await client.get_me()
+        # print(me.id, me.username, me.phone)
+        log.info(f"TelegramListener Message sending to data.phone {data.phone} from me.phone {me.phone}")
+        if not data.phone:
+            data.phone = me.phone
+        
+
         try:
             # Явно получаем entity и отправляем
+
+
             entity = await client.get_entity(data.phone)
             log.info(f"--------------- TelegramListener Entity for {data.phone}: {entity.id} - {getattr(entity, 'phone', 'no phone')}")
             log.info(f"Entity resolved: {type(entity).__name__}")
@@ -274,9 +292,11 @@ class TelegramListener:
 
     async def send_file_user(self, data: MessageCreate):
         """Отправить файл из S3 по media_id"""
+        log.info(f"------------------- TelegramListener send_file_user start")
         conversation_id = str(data.conversation_id)
         filename = data.raw_content.get("file_name")
         client = self.clients.get(conversation_id)
+        
         if not client:
             for i in range(30):
                 await asyncio.sleep(0.1)
@@ -288,6 +308,7 @@ class TelegramListener:
                 return
 
         file_bytes, _ = await get_file_from_s3(data.media_id)
+        log.info(f"------------------- TelegramListener send_file_user client {client}")
         file_stream = BytesIO(file_bytes)
         file_stream.name = filename
 

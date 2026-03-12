@@ -11,7 +11,7 @@ class TelegramBotCredentials(BaseModel):
 
 class TelegramUserCredentials(BaseModel):
     """Credentials for Telegram User (phone number) channel"""
-    phone: str = Field(..., min_length=10, description="Phone number with country code")
+    phone: str = Field(None, description="Phone number with country code")
     # api_id: str = Field(..., description="Telegram API ID")
     # api_hash: str = Field(..., description="Telegram API hash")
     session_string: Optional[str] = Field(None, description="Session string for authorized account")

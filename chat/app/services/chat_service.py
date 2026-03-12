@@ -186,7 +186,6 @@ class ChatService:
         """Общая обработка результата отправки"""
 
         # 1. Вебсокет о новом сообщении (всегда)
-
         if success:
             # 2. Обновляем message (channel_msg_id, raw_content)
             if channel_msg_id or raw_content:
@@ -312,7 +311,7 @@ class ChatService:
             # log.info(f"\n\n +++++++++++++ ChatService.create_msg_tguser file sent {sent} file.filename {file.filename}  \n\n")
             success = True
         except Exception as e:
-            log.error(f"ERROR: {e}")
+            log.error(f"ERROR: create_msg_tguser sender.send {e} data {data}")
             success = False
         finally:
             raw_content = None

@@ -6,6 +6,8 @@ from models.lines import ChannelAccount, Line
 from models.messages import Conversation, Message
 from repo.base import BaseRepository
 
+import logging
+log = logging.getLogger(__name__)
 
 class ChatRepository(BaseRepository[Conversation]):
     def __init__(self, session: AsyncSession):
@@ -119,6 +121,7 @@ class ChatRepository(BaseRepository[Conversation]):
             .where(Conversation.id == conversation_id)
         )
         result = await self.session.execute(stmt)
+        log.info(f"get_channel_acc_by_conversation result {result}")
         return result.scalar_one_or_none()
 
 
@@ -166,30 +169,39 @@ class ChatRepository(BaseRepository[Conversation]):
 
     async def get_channel_acc_by_phone(
         self,
-        phone: str
+        phone: Optional[str] = None
     ) -> Optional[str]:
         """Get session_string from channel_account by conversation_id"""
-        stmt = (
-            select(ChannelAccount)
-            .where(ChannelAccount.phone == phone)
-            .order_by(ChannelAccount.updated_at.desc())  # свежие сверху
-            .limit(1)
-        ) 
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        try:
+            stmt = (
+                select(ChannelAccount)
+                .where(ChannelAccount.phone == phone)
+                .order_by(ChannelAccount.updated_at.desc())  # свежие сверху
+                .limit(1)
+            ) 
+            result = await self.session.execute(stmt)
+            return result.scalar_one_or_none()
+        except Exception as e:
+            log.error(f"get_channel_acc_by_phone {e}")
+            
+
 
     async def get_line_phone_by_conversation(
         self,
         conversation_id: uuid.UUID
     ) -> Optional[str]:
         """Get owner phone from channel_account by conversation_id"""
-        stmt = (
-            select(ChannelAccount.phone)
-            .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
-            .where(Conversation.id == conversation_id)
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        log.info(f"get_line_phone_by_conversation  {conversation_id}")
+        try:
+            stmt = (
+                select(ChannelAccount.phone)
+                .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
+                .where(Conversation.id == conversation_id)
+            )
+            result = await self.session.execute(stmt)
+            return result.scalar_one_or_none()
+        except Exception as e:
+            log.error(f"get_line_phone_by_conversation {e}")
 
     async def get_or_create_by_chat_id(
             self,
