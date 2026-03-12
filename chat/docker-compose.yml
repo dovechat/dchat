@@ -38,6 +38,7 @@ services:
     networks:
       - account_dchat_net
 
+
   telegram-consumer-bot:
     image: chat:1
     command: python3 -m app.consumers.telegram_consumer

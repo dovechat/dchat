@@ -57,7 +57,7 @@ async def start_consumer():
             text = payload.get('text')
             phone = event_data.get('account_phone')
 
-            if not conversation_id or not text or not phone:
+            if not conversation_id:
                 log.error(f"Missing required fields in retry event: {event_data}")
                 continue
 

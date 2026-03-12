@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     s3_secure: bool = False
     s3_bucket: str = "dovechat-media"
     s3_external_url: str = "http://localhost:9000/dovechat-media/"
+    s3_internal_url: str = "http://minio:9000/"
 
     @property
     def cors_origins_list(self) -> list[str]:
