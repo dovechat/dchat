@@ -61,7 +61,7 @@ class LineService:
         if not instance:
             external_id = f"wa_instance_{uuid.uuid4().hex[:8]}"
             instance = await self.instance_repo.create_instance(
-                provider="green_api",
+                provider="green",
                 external_id=external_id
             )
             log.info(f"Created new WhatsApp instance: {external_id}")
