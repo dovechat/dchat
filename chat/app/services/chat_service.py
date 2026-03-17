@@ -21,6 +21,7 @@ from app.schemas.chat_schemas import (
 )
 from app.schemas.telegram_schemas import KafkaEvent
 from app.senders.factory import SenderFactory
+from app.senders.waba import WabaSender
 from app.services.websocket_manager import manager
 from app.core.kafka_producer import kafka_producer
 from core.config import settings
@@ -234,16 +235,19 @@ class ChatService:
 
     async def _save_file(self, file_bytes: bytes, media_id: uuid.UUID, filename: str, mime_type: str ) -> dict:
         stream = BytesIO(file_bytes)
+        if file_bytes is None:
+            return
+        size = len(file_bytes)
         metadata = {
             "filename": filename,
             "content_type": mime_type,
-            "size": len(file_bytes)
+            "size": size
         }
         self.s3_client.put_object(
             settings.s3_bucket,  # bucket_name
             str(media_id),  # object_name
             stream,  # data
-            len(file_bytes),  # length
+            size,  # length
             content_type=mime_type,
             metadata=metadata,
         )
@@ -251,7 +255,7 @@ class ChatService:
             "media_id": media_id,
             "filename": filename,
             "mime_type": mime_type,
-            "size": len(file_bytes)
+            "size": size
         }
 
     def clean_raw_content(self, obj):
@@ -470,6 +474,68 @@ class ChatService:
 
         return MessageResponse.model_validate(message)
 
+    async def create_msg_waba(
+            self,
+            request: Request,
+            data: MessageCreate,
+            file: UploadFile | None = None,
+            current_user: UserContext = Depends(get_current_user),
+    ) -> MessageResponse:
+        """Create new WABA message"""
+        # Получаем креды линии
+        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
+        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+
+        log.info(f"\n\n ***** ChatService.create_msg_waba creds {creds} \n\n")
+        log.info(f"\n\n ***** ChatService.create_msg_waba creds {creds} \n\n")
+
+        # Сохраняем сообщение в БД
+        conv, message = await self.conv_msg(data, current_user)
+
+        # Отправляем на фронт сразу
+        await manager.send_new_message(str(data.conversation_id), {
+            "id": str(message.id),
+            "text": message.text,
+            "direction": "outbound",
+            "created_at": message.created_at.isoformat(),
+            "user_id": str(current_user.id),
+            "user_email": current_user.email,
+            "status": "sent",
+            "media_id": data.media_id,
+        })
+
+        # Отправка через WABA
+        sender = SenderFactory.get_sender("waba")
+        sender.set_listener(request.app.state.waba_listener)
+        sender.set_creds(creds)
+        success = False
+        channel_msg_id = None
+
+        try:
+            if file:
+                file_info = await self._save_uploaded_file(file, data.media_id)
+                data.media_id = file_info["media_id"]  # сохраняем media_id в data
+                data.raw_content["file_name"] =  file.filename
+                data.raw_content["mime_type"] = file_info['mime_type']
+            result = await sender.send(data)
+            success = True
+            channel_msg_id = result.get("messages", [{}])[0].get("id")
+        except Exception as e:
+            log.error(f"WABA send failed: {e}")
+
+        # Финальное обновление
+        await self._finalize_message(
+            message=message,
+            conversation_id=data.conversation_id,
+            channel_type="waba",
+            data=data,
+            current_user=current_user,
+            success=success,
+            channel_msg_id=channel_msg_id,
+            raw_content={"file_name": file.filename, "mime_type": file_info['mime_type']} if file else None
+        )
+
+        return MessageResponse.model_validate(message)
 
 
     async def save_incoming_message(
@@ -526,7 +592,8 @@ class ChatService:
                 res = await client.get(file_url)
                 if res:
                     file_bytes = res.content
-                    await self._save_file(file_bytes, media_id, file_name, mime_type)
+                    if file_bytes:
+                        await self._save_file(file_bytes, media_id, file_name, mime_type)
 
         raw_content = payload
         if mime_type:
@@ -546,7 +613,36 @@ class ChatService:
         _, message = await self.conv_msg(data)
         return MessageResponse.model_validate(message)
 
-    
+    async def save_incoming_waba(
+            self,
+            conversation_id: uuid.UUID,
+            external_id: str,
+            text: str | None,
+            msg_type: str,
+            media_id: uuid.UUID | None = None,
+            file_name: str | None = None,
+            file_url: str | None = None,
+            mime_type: str | None = None,
+            raw_data: dict | None = None
+    ) -> MessageResponse:
+        """Сохранить входящее сообщение из WABA"""
+
+        data = MessageCreate(
+            conversation_id=conversation_id,
+            direction=MessageDirection.inbound,
+            text=text or "",
+            channel_msg_id=external_id,
+            media_id=str(media_id) if media_id else None,
+            file_name=file_name,
+            mime_type=mime_type,
+            raw_content=raw_data
+        )
+
+        _, message = await self.conv_msg(data, None)  # user_id=None для входящих
+        return MessageResponse.model_validate(message)
+
+
+
     async def upload_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
         """Upload file to S3"""
         # 1. Читаем файл

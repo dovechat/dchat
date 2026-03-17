@@ -5,6 +5,8 @@ from typing import Dict, Optional
 from fastapi import Request
 from core.database import get_db
 from app.repositories.chat_repo import ChatRepository
+from app.repositories.message_repo import MessageRepository
+from repo.line_repo import ChannelAccountRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 
@@ -72,15 +74,21 @@ class GreenWhatsAppListener:
         event_type = payload.get("typeWebhook")
         log.info(f"Green webhook for line {line_id}, type: {event_type}")
 
-        async for db in get_db():
-            chat_service = ChatService(db)
-            if event_type == "incomingMessageReceived":
-                await self._handle_incoming_message(line_id, payload, chat_service)
-            # elif event_type == "outgoingMessageStatus":
-            #    await self._handle_message_status(line_id, payload, chat_service)
-            else:
-                log.warning(f"Unhandled webhook type: {event_type}")
+        # !!! ----  remove after wa queue will stop to spam ---- !!!
+        # if event_type != "incomingMessageReceived":
+        #    return
 
+        if event_type == "incomingMessageReceived":
+            async for db in get_db():
+                chat_service = ChatService(db)
+                await self._handle_incoming_message(line_id, payload, chat_service)
+                break
+        elif event_type == "outgoingMessageStatus":
+            await self._handle_message_status(line_id, payload)
+        elif event_type == "stateInstanceChanged":
+            await self._handle_instance_state(line_id, payload)
+        else:
+            log.warning(f"Unhandled webhook type: {event_type}")
 
     async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService"):
         """Обработка входящего сообщения"""
@@ -94,14 +102,13 @@ class GreenWhatsAppListener:
         phone = f"+{phone}"
 
         msg_type = message_data.get("typeMessage")
-        file_name, mime_type = None, None
-        # log.info(f"\n\n --------- _handle_incoming_message message_data {message_data}")
 
         media_id = None
         file_url = None
         file_name = None
         mime_type = None
 
+        text = None
         if msg_type == "textMessage":
             text = message_data.get("textMessageData", {}).get("textMessage")
         if msg_type in ["imageMessage", "videoMessage", "documentMessage", "audioMessage"]:
@@ -114,13 +121,11 @@ class GreenWhatsAppListener:
             ext = file_name_rcv.split(".")[1]
             file_name = f"{media_id}.{ext}"
 
-        async for db in get_db():
-            self.chat_repo = ChatRepository(db)
-            conv = await self.chat_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
-            # log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
-            break
+        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
+        # log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
+        if conv is None:
+            return
 
-        
         # Сохраняем в БД
         message = await chat_service.save_incoming_green(
             conversation_id=conv.id,
@@ -145,27 +150,52 @@ class GreenWhatsAppListener:
             ws_message["file_name"] = file_name
             ws_message["mime_type"] = mime_type
 
-        # Отправляем через WebSocket
         await manager.send_new_message(conv.id, ws_message)
 
-    '''
-    async def _handle_message_status(self, line_id: str, payload: dict, chat_service: ChatService):
-        """Обработка статуса доставки"""
+    async def _handle_message_status(self, line_id: str, payload: dict):
         external_id = payload.get("idMessage")
         status = payload.get("status")
+        log.warning(f"_handle_message_status external_id {external_id}")
 
-        if external_id and status:
-            await chat_service.update_message_status(
-                external_id=external_id,
-                status=status
+        if not external_id or not status:
+            log.warning(f"Missing fields in message status: {payload}")
+            return
+
+        async for db in get_db():
+            chat_repo = MessageRepository(db)
+            msg = await chat_repo.get_message_by_channel_msg_id(external_id)
+            log.warning(f"_handle_message_status msg {msg}")
+            if msg:
+                await chat_repo.set_message_status(msg.id, status)
+                await manager.send_message_status(str(msg.conversation_id), {
+                    "message_id": str(msg.id),
+                    "status": status
+                })
+                log.warning(f"_handle_message_status end")
+            break
+
+    async def _handle_instance_state(self, line_id: str, payload: dict):
+        """Обработка изменения статуса инстанса"""
+        log.info("*** GreenWhatsAppListener._handle_instance_state")
+        state = payload.get("stateInstance")
+        log.info(f"*** GreenWhatsAppListener._handle_instance_state state {state}")
+        if state not in ["blocked", "sleepMode"]:
+            return
+
+        conn_status = "error" if state == "blocked" else "disconnected"
+        error_reason = "account_blocked" if state == "blocked" else "phone_offline"
+        log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state} error_reason {error_reason}")
+
+        async for db in get_db():
+            repo = ChannelAccountRepository(db)
+            await repo.update_connection_status(
+                line_id=uuid.UUID(line_id),
+                status=conn_status,
+                error=error_reason
             )
+            log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state}")
+            break
 
-            # Отправляем статус через WebSocket
-            await manager.send_message_status(line_id, {
-                "external_id": external_id,
-                "status": status
-            })
-    '''
 
     async def send_message(self, line_id: str, chat_id: str, text: str) -> dict:
         """Отправить сообщение (вызывается из chat_service)"""

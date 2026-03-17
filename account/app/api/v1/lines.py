@@ -13,7 +13,9 @@ from app.services.line_service import LineService
 from schemas.auth_schemas import UserContext
 import logging
 
+
 log = logging.getLogger("uvicorn.error")
+log.setLevel(logging.DEBUG)
 auth_scheme = HTTPBearer()
 
 line_router = APIRouter(
@@ -35,8 +37,11 @@ async def create_line(
     current_user: UserContext = Depends(get_current_user),
     line_service: LineService = Depends(get_line_service)
 ) -> LineResponse:
-    return await line_service.create_line(tenant_id, data)
-
+    try:
+        return await line_service.create_line(tenant_id, data)
+    except ValidationError as e:
+        log.debug(f"\n\n @line_router.post Validation error: {e.errors()} \n\n")
+        raise
 
 @line_router.get("/", response_model=list[LineListResponse])
 async def list_lines(

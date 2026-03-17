@@ -1,6 +1,7 @@
 from app.senders.telegram_user import TelegramUserSender
 from app.senders.telegram_bot import TelegramBotSender
 from app.senders.whatsapp_green import WhatsAppGreenSender
+from app.senders.waba import WabaSender
 
 class SenderFactory:
     @staticmethod
@@ -10,6 +11,8 @@ class SenderFactory:
         elif channel_type == "telegram_bot":
             return TelegramBotSender()
         elif channel_type == "whatsapp_green":
-            return WhatsAppGreenSender()  # новый класс
+            return WhatsAppGreenSender()
+        elif channel_type == "waba":
+            return WabaSender()
         else:
             raise ValueError(f"Unknown channel type: {channel_type}")

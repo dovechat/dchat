@@ -1,5 +1,7 @@
 import pytest
 import uuid
+
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock
 from fastapi import HTTPException
 
@@ -10,6 +12,7 @@ from app.schemas.channel_schemas import (
     VKCredentials,
     ChannelAccountResponse
 )
+from app.schemas.line_schemas import ChannelType
 from infra.crypto import encrypt
 
 
@@ -47,6 +50,20 @@ def channel_service():
     return ChannelAccountService(
         channel_repo=mock_channel_repo,
         line_repo=mock_line_repo
+    )
+
+
+@pytest.fixture
+def channel_service_waba():
+    """Base channel service with all repos mocked"""
+    mock_channel = AsyncMock()
+    mock_line = AsyncMock()
+    mock_instance = AsyncMock()
+
+    return ChannelAccountService(
+        channel_repo=mock_channel,
+        line_repo=mock_line,
+        instance_repo=mock_instance
     )
 
 
@@ -179,6 +196,51 @@ async def test_update_telegram_user_success(channel_service, mock_line, mock_cha
 
     channel_service.channel_repo.update_account.assert_called_once()
     assert isinstance(result, ChannelAccountResponse)
+
+
+@pytest.mark.asyncio
+async def test_update_waba_success(channel_service_waba, mock_line):
+    """Test successful WABA credentials update"""
+    line_id = mock_line.id
+    tenant_id = mock_line.tenant_id
+    api_key = "test-waba-key-123"
+
+
+    mock_line.channel_type = ChannelType.WABA
+    mock_updated = AsyncMock(
+        id=uuid.uuid4(),
+        line_id=line_id,
+        state_json={},
+        updated_at=datetime.now()
+    )
+
+    channel_service_waba.line_repo.get_line_by_id.return_value = mock_line
+    channel_service_waba.channel_repo.get_by_line.return_value = None
+    channel_service_waba._encrypt_credentials = lambda x: {"encrypted_data": "encrypted"}
+    channel_service_waba.channel_repo.create_account.return_value = mock_updated
+
+    result = await channel_service_waba.update_waba(line_id, tenant_id, api_key)
+
+    assert result.line_id == line_id
+
+
+@pytest.mark.asyncio
+async def test_update_waba_wrong_channel_type(channel_service, mock_line):
+    """Test 400 when line has wrong channel type"""
+    mock_line.channel_type = "telegram_bot"
+    line_id = mock_line.id
+    tenant_id = mock_line.tenant_id
+    api_key = "test-key"
+
+    channel_service.line_repo.get_line_by_id.return_value = mock_line
+
+    with pytest.raises(HTTPException) as exc:
+        await channel_service.update_waba(line_id, tenant_id, api_key)
+
+    assert exc.value.status_code == 400
+
+
+
 
 
 # === UPDATE VK TESTS ===

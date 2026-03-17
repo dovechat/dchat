@@ -1,7 +1,8 @@
 """Main FastAPI application entry point."""
 import signal
 import uvicorn
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 
 from core.config import settings
@@ -14,11 +15,15 @@ from app.api.v1.members import members_router
 from app.api.v1.notifications import router as notification_router
 from app.api.v1.webhooks import router as webhooks_router
 
+import logging
+logging.getLogger('uvicorn.error').setLevel(logging.DEBUG)
+log = logging.getLogger("uvicorn.error")
 
 app = FastAPI(
     title="DoveChat",
     description="DoveChat admin",
     version="0.1.0",
+    debug=True,
     swagger_ui_parameters={
         "defaultModelsExpandDepth": -1,
         "persistAuthorization": True
@@ -47,6 +52,18 @@ app.add_middleware(
     "http://194.247.186.84:3001"
 ],
 '''
+
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    log.error(f"422 Validation Error: {exc.errors()}")
+    log.error(f"Request body: {await request.body()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
 
 @app.get("/routes")
 def list_routes():

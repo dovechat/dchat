@@ -48,3 +48,12 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             limit=1
         )
         return existing[0] if existing else None
+
+    async def update_connection_status(self, line_id: uuid.UUID, status: str) -> None:
+        account = await self.get_by_line(line_id)
+        if account:
+            await self.update(
+                account,
+                connection_status=status,
+                last_checked_at=datetime.now()
+            )

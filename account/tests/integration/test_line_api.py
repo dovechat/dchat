@@ -190,7 +190,7 @@ async def test_unauthorized_access(client, test_tenant, test_line):
 
 @pytest.mark.parametrize("channel_type", [
     "whatsapp_green",
-    "whatsapp_business",
+    "waba",
     "telegram_user",
     "telegram_bot",
     "vk"

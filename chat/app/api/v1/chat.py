@@ -127,7 +127,6 @@ async def create_message_tgbot(
         current_user=current_user,
     )
 
-
 @router.post("/messages/whatsapp/green", response_model=MessageResponse)
 async def create_message_whatsapp_green(
     request: Request,
@@ -138,6 +137,23 @@ async def create_message_whatsapp_green(
 ):
     message_data = MessageCreate.parse_raw(data)
     return await chat_service.create_msg_whatsapp_green(
+        data=message_data,
+        file=file,
+        current_user=current_user,
+    )
+
+
+@router.post("/messages/waba", response_model=MessageResponse)
+async def create_message_waba(
+    request: Request,
+    data: str = Form(...),
+    file: UploadFile | None = File(None),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    message_data = MessageCreate.parse_raw(data)
+    return await chat_service.create_msg_waba(
+        request=request,
         data=message_data,
         file=file,
         current_user=current_user,

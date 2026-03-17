@@ -89,3 +89,11 @@ class MessageRepository(BaseRepository[Message]):
         message = await self.get_by_id(id)
         if message:
             return await self.update(message, status=status)
+
+    async def get_message_by_channel_msg_id(self, id: str):
+        msgs = await self.get_multi(
+            filters={"channel_msg_id": id},
+            limit=1
+        )
+        msg = msgs[0] if msgs else None
+        return msg

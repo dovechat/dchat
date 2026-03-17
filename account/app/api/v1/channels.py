@@ -9,6 +9,7 @@ from app.schemas.channel_schemas import (
     VKCredentials,
     ChannelAccountResponse,
     ChannelAccountUpdate,
+    CreateWabaSchema,
     CreateWhatsAppGreenSchema
 )
 from app.services.channel_service import ChannelAccountService
@@ -94,6 +95,22 @@ async def get_whatsapp_qr(
     """Получить QR-код от Green API"""
     qr_data = await service.get_qr_from_green(data.id_instance, data.api_token)
     return {"qr": qr_data}
+
+
+@channel_router.post("/waba")
+async def configure_waba(
+    line_id: uuid.UUID,
+    data: CreateWabaSchema,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    current_user: UserContext = Depends(get_current_user),
+    service: ChannelAccountService = Depends(get_channel_service)
+):
+    log.info(f"channel_router configure_waba data {data}")
+    res = await service.update_waba(line_id, tenant_id, data.api_key)
+    log.info(f"channel_router configure_waba res {res}")
+    return {"status": "ok", "line_id": res.line_id}
+
+
 
 '''
 Needs to move to connector service, it's shouldn't belong to account service 

@@ -282,6 +282,50 @@ class ChannelAccountService:
                 return data["message"]  # base64
             raise HTTPException(400, "Failed to get QR")
 
+    async def update_waba(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            api_key: str
+    ) -> ChannelAccountResponse:
+        """Update WABA (360dialog) API credentials"""
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+
+        if line.channel_type.value != ChannelType.WABA.value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Line channel type is {line.channel_type}, expected waba"
+            )
+
+        # Шифруем API key
+        credentials = {"api_key": api_key}
+        encrypted = self._encrypt_credentials(credentials)
+
+        # Сохраняем в channel_accounts
+        account = await self.channel_repo.get_by_line(line_id)
+        if account:
+            updated = await self.channel_repo.update_account(
+                account,
+                credentials_encrypted=encrypted
+            )
+        else:
+            updated = await self.channel_repo.create_account(
+                line_id=line_id,
+                credentials_encrypted=encrypted
+            )
+
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=line.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+
+
+
     async def update_vk(
             self,
             line_id: uuid.UUID,

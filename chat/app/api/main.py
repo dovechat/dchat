@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .v1.chat import router as chat_router
 from .v1.websocket import router as websocket_router
 from app.consumers.green_whatsapp import GreenWhatsAppListener
+from app.consumers.waba import WabaListener
 from app.consumers.telegram_listener import TelegramListener
 from app.core.kafka_producer import kafka_producer
 from contextlib import asynccontextmanager
@@ -29,8 +30,6 @@ app = FastAPI(
         "persistAuthorization": True
     }
 )
-
-from app.consumers.green_whatsapp import GreenWhatsAppListener
 
 app.state.green_listener = GreenWhatsAppListener()
 
@@ -70,6 +69,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def startup():
     app.state.listener = TelegramListener()
     app.state.green_listener = GreenWhatsAppListener()
+    app.state.waba_listener = WabaListener()
 
 app.include_router(public_router, prefix="/api/v1")
 app.include_router(private_router, prefix="/api/v1")
