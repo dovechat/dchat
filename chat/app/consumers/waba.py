@@ -218,7 +218,8 @@ class WabaListener:
                     await msg_repo.set_message_status(msg.id, status)
                     await manager.send_message_status(str(msg.conversation_id), {
                         "message_id": str(msg.id),
-                        "status": status
+                        "status": status,
+                        "mime_type": msg.raw_content["mime_type"]
                     })
                 break
 
