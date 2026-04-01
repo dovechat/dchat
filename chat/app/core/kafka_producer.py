@@ -23,20 +23,22 @@ class KafkaEventProducer:
         logger.info(f"Kafka producer initialized for {settings.kafka_bootstrap_servers}")
 
     async def send_event(self, topic: str, event: KafkaEvent):
-        """Асинхронная отправка события в Kafka"""
         if not self.producer:
             await self.start()
 
         try:
             event_data = event if isinstance(event, dict) else event.model_dump()
-
-            await self.producer.send_and_wait(
-                topic=topic,
-                value=event_data
-            )
+            await self.producer.send_and_wait(topic=topic, value=event_data)
             logger.debug(f"Event sent to {topic}: {event_data.get('event_id')}")
         except Exception as e:
-            logger.error(f"Failed to send event to {topic}: {e}")
+            logger.error(f"\n\n !!! ERROR --- Failed to send event to {topic}: {e} \n\n")
+            # сбрасываем продюсер чтобы при следующем вызове пересоздался
+            try:
+                await self.producer.stop()
+            except Exception:
+                pass
+            self.producer = None
+            raise
 
     async def close(self):
         """Корректное закрытие продюсера"""

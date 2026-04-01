@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +38,9 @@ class Settings(BaseSettings):
 
     app_host: str = "localhost"
     app_port: int =  8070
+    admin_port: int | str | None  = 8072
+    account_port: int | str | None  = 8071
+    chat_port: int | str | None  = 8001
 
     device_id: str = "69728ef652ef775390b32f83"
     phone: str = "+995511221503"
@@ -47,6 +51,8 @@ class Settings(BaseSettings):
     tg_api_id: str = ""
     tg_api_hash: str = ""
     tg_webhook_url: str = ""
+    notification_bot_token: str = ""
+    low_balance_warn_days: tuple[int, ...]  = (5, 3)
 
     s3_endpoint: str = "minio:9000"
     s3_access_key: str = "minioadmin"
@@ -63,6 +69,12 @@ class Settings(BaseSettings):
             return []
         return [origin.strip() for origin in self.backend_cors_origins.split(",")]
 
+    '''
+    @field_validator('app_port', mode='before')
+    @classmethod
+    def parse_port(cls, v):
+        return int(v)
+    '''
 
 settings: Settings = Settings()
 

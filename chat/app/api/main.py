@@ -36,6 +36,7 @@ app.state.green_listener = GreenWhatsAppListener()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://chat.127.0.0.1.nip.io",
         "http://localhost:3001",
         "http://0.0.0.0:3001",
         "http://127.0.0.1:3001",

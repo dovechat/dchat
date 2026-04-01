@@ -1,0 +1,30 @@
+services:
+  admin:
+    build:
+      context: ..          # корень монорепы — чтобы скопировать core/, models/ и т.д.
+      dockerfile: admin/Dockerfile
+    container_name: admin
+    restart: unless-stopped
+    volumes:
+      - ..:/mono
+      - ../infra:/mono/infra
+      - ../.env:/mono/.env
+    working_dir: /mono/admin
+    env_file:
+      - ../.env
+    ports:
+      - "8072:8072"
+    environment:
+      - SERVICE_NAME=admin
+    networks:
+      - account_dchat_net
+#    depends_on:
+#     db:
+#        condition: service_healthy
+#      rdb:
+#        condition: service_healthy
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8072"]
+
+networks:
+  account_dchat_net:
+    external: true

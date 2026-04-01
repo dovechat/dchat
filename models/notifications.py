@@ -72,5 +72,5 @@ class NotificationLog(Base):
                     index=True)
     error_message = Column(Text, nullable=True)
 
-    sent_at = Column(DateTime, nullable=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime, server_default=func.now(), index=True)

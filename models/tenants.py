@@ -37,7 +37,7 @@ class UserStatus(enum.Enum):
     suspended = "suspended"
 
 class PermissionAction(enum.Enum):
-    owner = "owner" 
+    owner = "owner"
     member = "member"
 
 class TenantPayment(enum.Enum):
@@ -166,3 +166,5 @@ class ResourcePermission(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'resource_type', 'resource_id', 'action', name='_user_resource_action_uc'),
     )
+
+

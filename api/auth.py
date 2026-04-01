@@ -44,6 +44,7 @@ async def login(
 ) -> TokenPair:
     """OAuth2 compatible token login."""
     log.info('---------- login in new monrepo common auth handler')
+    log.info(f'---------- db {db}')
 
     request = LoginRequest(email=form_data.username, password=form_data.password)
 
@@ -52,7 +53,8 @@ async def login(
         return tokens
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        log.error(f'!!! --- ERROR --- @public_router.post /login e {e}')
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

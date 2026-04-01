@@ -1,0 +1,21 @@
+services:
+  airflow-common: &airflow-common
+    image: apache/airflow:2.10.2  # Или твой билд 3.0
+    environment:
+      &airflow-common-env
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__CORE__DAGS_FOLDER: '/mono/airflow/dags'
+      # В 3.0 это отключает встроенные бандлы примеров
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'False'
+      PYTHONPATH: '/mono'
+    volumes:
+      - ./dags:/mono/airflow/dags
+      - .:/mono  # Чтобы импорты из корня проекта работали
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler

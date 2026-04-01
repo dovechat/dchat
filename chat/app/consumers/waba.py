@@ -5,6 +5,7 @@ import uuid
 from typing import Dict, Optional
 from fastapi import Request
 from core.database import get_db
+from core.redis import rdb
 from infra.crypto import decrypt
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
@@ -131,6 +132,12 @@ class WabaListener:
 
         for msg in value.get("messages", []):
             msg_id = msg["id"]
+
+            dedup_key = f"waba_msg:{msg_id}"
+            if await rdb.get(dedup_key):
+                continue
+            await rdb.set(dedup_key, "1", ex=300)
+
             from_number = msg["from"]
             msg_type = msg["type"]
 
@@ -206,10 +213,15 @@ class WabaListener:
         """Обработка статусов сообщений"""
         for status_update in value.get("statuses", []):
             msg_id = status_update["id"]
-            status = status_update["status"]  # sent, delivered, read, failed
+            status = status_update["status"]
             if status == "failed":
                 log.warning(f"Message {msg_id} failed, skipping status update")
                 continue
+
+            dedup_key = f"waba_status:{msg_id}:{status}"
+            if await rdb.get(dedup_key):
+                continue
+            await rdb.set(dedup_key, "1", ex=300)
 
             async for db in get_db():
                 msg_repo = MessageRepository(db)
@@ -219,13 +231,12 @@ class WabaListener:
                     await manager.send_message_status(str(msg.conversation_id), {
                         "message_id": str(msg.id),
                         "status": status,
-                        "mime_type": msg.raw_content["mime_type"]
+                        "mime_type": msg.raw_content.get("mime_type") if msg.raw_content else None
                     })
                 break
 
     async def send_message(self, line_id: str, to: str, text: str) -> dict:
         if line_id not in self.connections:
-            # Получить api_key из channel_accounts по line_id
             async for db in get_db():
                 repo = ChannelAccountRepository(db)
                 account = await repo.get_by_line(uuid.UUID(line_id))

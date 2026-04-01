@@ -1,7 +1,7 @@
 import uuid
 import enum
 from sqlalchemy import Column, Index, Integer, BigInteger, String, JSON, Enum as SQLEnum, ForeignKey, DateTime, Numeric, \
-    Boolean
+    Boolean, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from core.database import Base
@@ -13,6 +13,13 @@ class RobotJobStatus(enum.Enum):
     completed = "completed"
     failed = "failed"
 
+class LedgerOperationType(enum.Enum):
+    """Типы операций в журнале баланса для строгой типизации"""
+    deposit = "deposit"          # Пополнение (эквайринг/безнал)
+    charge = "charge"            # Списания за линии (автосписание)
+    adjustment = "adjustment"    # Ручная корректировка админом
+    bonus_grant = "bonus_grant"  # Начисление бонусов
+    refund = "refund"            # Возврат средств
 
 class Tariff(Base):
     __tablename__ = "tariffs"
@@ -54,6 +61,7 @@ class BalanceLedger(Base):
     amount = Column(Numeric(10, 2), nullable=False)  # Positive for deposit, negative for withdrawal
     # main or bonus (TZ 9.1)
     balance_type = Column(String, default="main", nullable=False)
+    operation_type = Column(SQLEnum(LedgerOperationType, native_enum=False), nullable=False, index=True)
     description = Column(String)
     # Link to payment or line_id that triggered withdrawal
     reference_id = Column(UUID(as_uuid=True), index=True)
@@ -61,6 +69,13 @@ class BalanceLedger(Base):
 
 __table_args__ = (
         Index("ix_ledger_tenant_created", "tenant_id", "created_at"),
+        Index(
+            "uq_ledger_charge_period",
+            "reference_id",
+            text("DATE(created_at)"),
+            unique=True,
+            postgresql_where=text("operation_type = 'charge' AND reference_id IS NOT NULL"),
+        ),
     )
 
 class RobotJob(Base):

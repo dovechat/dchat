@@ -28,6 +28,7 @@ from core.config import settings
 from core.dependencies import get_current_user
 from infra.crypto import decrypt
 from models.messages import Conversation, Message, MessageDirection
+from notification.notification_caller import notify_connection_error
 from schemas.auth_schemas import UserContext
 
 import logging
@@ -211,22 +212,30 @@ class ChatService:
                 "whatsapp_green": "whatsapp_green_retry",
             }
 
+            log.info(f"=============== !!! FAIL success {success} ChatServcie._finalize_message")
+
             topic = topic_map.get(channel_type, "default_retry")
 
-            await kafka_producer.send_event(
-                topic=topic,
-                event=KafkaEvent(
-                    event_id=str(uuid.uuid4()),
-                    event_type='message_retry',
-                    payload={
-                        'message_id': str(data.id),
-                        'conversation_id': str(conversation_id),
-                        'text': data.text,
-                        'media_id': data.media_id  # если есть
-                    },
-                    account_phone=data.phone
+            log.info(f"=============== !!! FAIL === success {success} ChatServcie._finalize_message topic {topic}")
+
+            try:
+                await kafka_producer.send_event(
+                    topic=topic,
+                    event=KafkaEvent(
+                        event_id=str(uuid.uuid4()),
+                        event_type='message_retry',
+                        payload={
+                            'message_id': str(data.id),
+                            'conversation_id': str(conversation_id),
+                            'text': data.text,
+                            'media_id': data.media_id  # если есть
+                        },
+                        account_phone=data.phone
+                    )
                 )
-            )
+                log.info(f"\n\n !!!  ------- KAFKA send_event  ---------- data.text {data.text} conversation_id {conversation_id} \n\n")
+            except Exception as e:
+                log.error(f"\n\n !!! ERROR ------- kafka send_event failed: {e} ---------- \n\n")
 
     async def _save_uploaded_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
         log.info(f"========== ChatService._save_uploaded_file media_id {media_id}")
@@ -312,8 +321,9 @@ class ChatService:
         try:
             # log.info(f"\n\n +++++++++++++ ChatService.create_msg_tguser  data {data} message {message}  \n\n")
             sent = await sender.send(data)
-            # log.info(f"\n\n +++++++++++++ ChatService.create_msg_tguser file sent {sent} file.filename {file.filename}  \n\n")
-            success = True
+            success = True if sent else False
+            log.info(f"\n\n !!! --- ChatService.create_msg_tguser file sent {sent} file {file} success {success} \n\n")
+
         except Exception as e:
             log.error(f"ERROR: create_msg_tguser sender.send {e} data {data}")
             success = False
@@ -388,9 +398,9 @@ class ChatService:
         try:
             # Отправка через сендер
             result = await sender.send(data)
-            success = True
             channel_msg_id = str(result.get("message_id")) if result else None
             raw_content = result if result else None
+            success = True if result else False
         except Exception as e:
             log.error(f"Send failed: {e}")
             success = False
@@ -454,7 +464,7 @@ class ChatService:
 
         try:
             result = await sender.send(data)
-            success = True
+            success = True if result else None
             channel_msg_id = result.get("idMessage")
         except Exception as e:
             log.error(f"WhatsApp Green send failed: {e}")
@@ -487,7 +497,6 @@ class ChatService:
         creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
 
         log.info(f"\n\n ***** ChatService.create_msg_waba creds {creds} \n\n")
-        log.info(f"\n\n ***** ChatService.create_msg_waba creds {creds} \n\n")
 
         # Сохраняем сообщение в БД
         conv, message = await self.conv_msg(data, current_user)
@@ -518,10 +527,12 @@ class ChatService:
                 data.raw_content["file_name"] =  file.filename
                 data.raw_content["mime_type"] = file_info['mime_type']
             result = await sender.send(data)
-            success = True
+            success = True if result else None
             channel_msg_id = result.get("messages", [{}])[0].get("id")
         except Exception as e:
             log.error(f"WABA send failed: {e}")
+            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
+                await notify_connection_error(uuid.UUID(str(conv.line_id)), self.db)
 
         # Финальное обновление
         await self._finalize_message(

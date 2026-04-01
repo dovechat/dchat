@@ -15,12 +15,7 @@ async def whatsapp_green_webhook(
     line_id: uuid.UUID,
     service: WebhookService = Depends(get_webhook_service)
 ):
-    # return {"status": "ok"}
     payload = await request.json()
-    import time
-    age = time.time() - payload.get('timestamp', 0)
-    log.info(f'@router.post age {age}')
-    log.info(f'@router.post("/whatsapp/green/{line_id}" payload {payload}')
     green_listener = request.app.state.green_listener
     await green_listener.handle_webhook(line_id, payload)
     return {"status": "ok"}

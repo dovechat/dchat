@@ -9,6 +9,7 @@ from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
+from notification.notification_caller import notify_connection_error
 
 log = logging.getLogger(__name__)
 
@@ -171,7 +172,6 @@ class GreenWhatsAppListener:
                     "message_id": str(msg.id),
                     "status": status
                 })
-                log.warning(f"_handle_message_status end")
             break
 
     async def _handle_instance_state(self, line_id: str, payload: dict):
@@ -179,8 +179,11 @@ class GreenWhatsAppListener:
         log.info("*** GreenWhatsAppListener._handle_instance_state")
         state = payload.get("stateInstance")
         log.info(f"*** GreenWhatsAppListener._handle_instance_state state {state}")
-        if state not in ["blocked", "sleepMode"]:
+        if state not in ["blocked", "sleepMode", "notAuthorized"]:
             return
+        else:
+            log.info(f"!!! --- ERROR --- GreenWhatsAppListener._handle_instance_state state {state}")
+            await notify_connection_error(line_id)
 
         conn_status = "error" if state == "blocked" else "disconnected"
         error_reason = "account_blocked" if state == "blocked" else "phone_offline"
@@ -189,11 +192,12 @@ class GreenWhatsAppListener:
         async for db in get_db():
             repo = ChannelAccountRepository(db)
             await repo.update_connection_status(
-                line_id=uuid.UUID(line_id),
+                line_id=line_id,
                 status=conn_status,
                 error=error_reason
             )
             log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state}")
+            await notify_connection_error(line_id, db)
             break
 
 
@@ -201,6 +205,7 @@ class GreenWhatsAppListener:
         """Отправить сообщение (вызывается из chat_service)"""
         connection = self.connections.get(line_id)
         if not connection:
+            log.error(f"\n\n /*/*/*/*/*/ No connection for line {line_id} \n\n")
             raise ValueError(f"No connection for line {line_id}")
 
         return await connection.send_message(chat_id, text)

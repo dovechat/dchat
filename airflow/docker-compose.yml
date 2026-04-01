@@ -1,0 +1,99 @@
+
+x-airflow-common: &airflow-common
+  build:
+    context: ..
+    dockerfile: airflow/Dockerfile
+  networks:
+    - account_dchat_net
+  env_file:
+    - ../.env
+  environment: &airflow-env
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://root:88ddbblala@db:5432/airflow
+    AIRFLOW__CORE__DAGS_FOLDER: /mono/airflow/dags
+    AIRFLOW__API__SECRET_KEY: 12ffe1b797d0de0fee92663b50f1db46786fd714b4f0b1eef94006439858f7bb
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__PROVIDERS__LOAD_EXAMPLE_DAGS: 'false'
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: /var/log/airflow
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__LOGGING__REMOTE_LOGGING: 'false'
+    AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: ''
+    AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: ''
+    AIRFLOW__SERVER__LOG_SERVER_HOST: ''
+    AIRFLOW__SERVER__LOG_SERVER_PORT: ''
+    AIRFLOW__LOGGING__ENABLE_REMOTE_LOGGING: 'false'
+    AIRFLOW__CORE__DAG_DISCOVERY_SAFE_MODE: 'false'
+    AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'true'
+    AIRFLOW__CORE__MIN_SERIALIZED_DAG_UPDATE_INTERVAL: 1
+    # Официальная JWT конфигурация Airflow 3.x
+    AIRFLOW__API_AUTH__JWT_SECRET: super-secret-jwt-key-123456789012345678901234567890
+    AIRFLOW__API_AUTH__JWT_ALGORITHM: HS256
+    AIRFLOW__API_AUTH__JWT_ISSUER: airflow-local
+    AIRFLOW__CORE__INTERNAL_API_URL: http://airflow-webserver:8080
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
+    AIRFLOW__TASK_EXECUTION__JWT_SECRET: super-secret-jwt-key-123456789012345678901234567890
+    AIRFLOW__WEBSERVER__SECRET_KEY: super-secret-flask-key-123456789012345678901234567890
+    AIRFLOW__CORE__FERNET_KEY: super-secret-fernet-key-123456789012345678901234567890  # если variables/connections
+  volumes:
+    - ..:/mono
+    - ../.env:/mono/.env
+    - /var/log/airflow:/var/log/airflow
+    # - ./airflow/empty_dags:/usr/local/lib/python3.12/site-packages/airflow/example_dags
+    # - ./airflow/empty_dags:/usr/local/lib/python3.12/site-packages/airflow/providers/standard/example_dags
+
+services:
+  airflow-scheduler:
+    container_name: airflow_scheduler
+    hostname: airflow-scheduler
+    <<: *airflow-common
+    environment:
+      <<: *airflow-env
+      AIRFLOW__LOGGING__REMOTE_LOGGING: 'false'
+    command: ["airflow", "scheduler"]
+
+  airflow-webserver:
+    container_name: airflow_webserver
+    hostname: airflow-webserver
+    <<: *airflow-common
+    environment:
+      <<: *airflow-env
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: 'true'
+      AIRFLOW__API__HOST: 0.0.0.0
+      AIRFLOW__SERVER__WORKER_LOG_SERVER_HOST: airflow-scheduler
+    ports:
+      - 8088:8080
+    volumes:
+      - ./auth_passwords.json:/app/auth_passwords.json
+    command: ["airflow", "api-server"]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - account_dchat_net
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  grafana_data:
+
+networks:
+  account_dchat_net:
+    external: true
+
+  # airflow-init:
+  #  build:
+  #    context: ..
+  #    dockerfile: airflow/Dockerfile
+  #  networks:
+  #    - account_dchat_net
+  #  env_file:
+  #    - ../.env
+  #  command: >
+  #    /bin/bash -c "
+  #    export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@$${POSTGRES_HOST}:$${POSTGRES_PORT}/airflow;
+  #    airflow db migrate"

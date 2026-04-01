@@ -1,6 +1,8 @@
 import uuid
+
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
+from models.lines import LineStatus
 from repo.line_repo import LineRepository
 from schemas.line_schemas import (
     LineResponse,
@@ -55,3 +57,21 @@ class LineService:
             raise HTTPException(status_code=404, detail="Line not found")
 
         return LineResponse.model_validate(line)
+
+    async def expire_lines(self, now: datetime) -> dict:
+        expired_lines = await self.line_repo.get_lines_to_expire(now)
+        results = {"expired": 0, "expired_lines": [], "errors": 0}
+
+        for line in expired_lines:
+            try:
+                await self.line_repo.update(line, status=LineStatus.expired)
+                log.info(f"Line {line.id} (tenant {line.tenant_id}) expired")
+                results["expired_lines"].append(line)
+                results["expired"] += 1
+            except Exception as e:
+                log.error(f"Error expiring line {line.id}: {e}")
+                results["errors"] += 1
+
+        log.info(f"Expire run at {now}: {results}")
+        return results
+

@@ -43,8 +43,14 @@ async def start_consumer():
         auto_offset_reset='earliest'
     )
 
-    await consumer.start()
-    log.info(f"Telegram retry consumer started for topic {topic}")
+    while True:
+        try:
+            await consumer.start()
+            log.info(f"Telegram retry consumer started for topic {topic}")
+            break
+        except Exception as e:
+            log.error(f"Failed to connect to Kafka, retrying in 5s: {e}")
+            await asyncio.sleep(5)
 
     try:
         async for message in consumer:
