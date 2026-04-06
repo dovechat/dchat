@@ -71,7 +71,7 @@ class ChannelAccountService:
         if not line:
             raise HTTPException(status_code=404, detail="Line not found")
 
-        if line.channel_type != expected_type:
+        if line.channel_type != expected_type and line.channel_type.value != expected_type:
             raise HTTPException(
                 status_code=400,
                 detail=f"Line channel type is {line.channel_type}, expected {expected_type}"

@@ -36,6 +36,7 @@ app.state.green_listener = GreenWhatsAppListener()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+	"https://tg.dove-chat.com:8443",
         "http://chat.127.0.0.1.nip.io",
         "http://localhost:3001",
         "http://0.0.0.0:3001",
@@ -71,6 +72,17 @@ async def startup():
     app.state.listener = TelegramListener()
     app.state.green_listener = GreenWhatsAppListener()
     app.state.waba_listener = WabaListener()
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    from fastapi.openapi.docs import get_swagger_ui_html
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json", # Явно говорим фронту: иди сюда
+        title=app.title + " - Swagger UI",
+    )
+
+
+
 
 app.include_router(public_router, prefix="/api/v1")
 app.include_router(private_router, prefix="/api/v1")
