@@ -3,10 +3,16 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from app.repositories.line_repo import (
     LineRepository,
-    InstanceRepository,
-    ChannelAccountRepository
+    InstanceRepository
 )
+from models.billing import LedgerOperationType 
+from repo.billing_repo import BalanceLedgerRepository, BalanceRepository
+from repo.line_repo import ChannelAccountRepository
+from app.schemas.channel_schemas import ChannelAccountResponse
+from schemas.line_schemas import  ChannelType
 from app.schemas.line_schemas import (
+    ChannelCreate,
+    ChannelRenew,
     LineCreate,
     LineUpdate,
     LineResponse,
@@ -21,13 +27,16 @@ log = logging.getLogger("uvicorn.error")
 
 
 class LineService:
-
     def __init__(
             self,
+            billing_repo: BalanceRepository,
+            ledger_repo: BalanceLedgerRepository,
             line_repo: LineRepository,
             instance_repo: InstanceRepository,
             channel_account_repo: ChannelAccountRepository
     ) -> None:
+        self.billing_repo = billing_repo
+        self.ledger_repo = ledger_repo
         self.line_repo = line_repo
         self.instance_repo = instance_repo
         self.channel_account_repo = channel_account_repo
@@ -70,57 +79,132 @@ class LineService:
 
         await self.instance_repo.allocate_instance(instance, line_id)
 
-        await self.channel_account_repo.create_account(
+        account = await self.channel_account_repo.get_by_line_and_type(line_id, ChannelType.WHATSAPP_GREEN)
+        if account:
+            await self.channel_account_repo.update_account(
+                account,
+                credentials_encrypted={"instance_id": instance.external_id},
+                state_json={"qr_status": "pending"}
+            )
+        else:
+            await self.channel_account_repo.create_account(
+                line_id=line_id,
+                channel_type=ChannelType.WHATSAPP_GREEN,
+                credentials_encrypted={"instance_id": instance.external_id},
+                state_json={"qr_status": "pending"}
+            )
+
+    async def add_channel(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            data: ChannelCreate,
+    ) -> ChannelAccountResponse:
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        log.info(f"\n\n LineService.add_channel line {line}")
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+
+        existing = await self.channel_account_repo.get_by_line_and_type(line_id, data.channel_type)
+        log.info(f"\n\n LineService.add_channel existing {existing}")
+        if existing:
+            raise HTTPException(status_code=400, detail="Channel already exists for this provider")
+
+        expires_at = self._calculate_expiry(data.subscription_period, data.is_demo)
+
+        account = await self.channel_account_repo.create_account(
             line_id=line_id,
-            credentials_encrypted={"instance_id": instance.external_id},
-            state_json={"qr_status": "pending"}
+            channel_type=data.channel_type,
+            credentials_encrypted={},
+            expires_at=expires_at,
         )
+
+        log.info(f"\n\n !!! ---- LineService.add_channel account {account} --- \n\n")
+
+        if data.channel_type == ChannelType.WHATSAPP_GREEN:
+            await self._allocate_whatsapp_instance(line_id)
+
+        return ChannelAccountResponse(
+            id=account.id,
+            line_id=account.line_id,
+            channel_type=account.channel_type,
+            expires_at=account.expires_at,
+        )
+
+    async def renew_channel(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            data: ChannelRenew,
+    ) -> ChannelAccountResponse:
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        if not line:
+            raise HTTPException(status_code=404, detail="Line not found")
+
+        account = await self.channel_account_repo.get_by_line_and_type(line_id, data.channel_type)
+        if not account:
+            raise HTTPException(status_code=404, detail="Channel not found")
+
+        if data.amount > 0:
+            balance = await self.billing_repo.get_by_tenant(tenant_id)
+            if balance.main_balance < data.amount:
+                raise HTTPException(status_code=402, detail="Insufficient balance")
+            log.info(f"\n\n self.billing_repo {type(self.billing_repo)} {dir(self.billing_repo)} \n\n")
+            await self.billing_repo.deduct(tenant_id, data.amount)
+            await self.ledger_repo.add_entry(
+                tenant_id=tenant_id,
+                amount=-data.amount,
+                operation_type=LedgerOperationType.charge,
+                reference_id=line_id,
+                description=f"Продление канала {data.channel_type} на {data.subscription_period}",
+            )
+
+        now = datetime.now(timezone.utc)
+        base = account.expires_at if account.expires_at and account.expires_at > now else now
+        delta = timedelta(days=30) if data.subscription_period == SubscriptionPeriod.MONTH else timedelta(days=365)
+
+        updated = await self.channel_account_repo.update_account(
+            account,
+            expires_at=base + delta,
+        )
+
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=updated.channel_type,
+            expires_at=updated.expires_at,
+        )
+
 
     async def create_line(
             self,
             tenant_id: uuid.UUID,
             data: LineCreate,
     ) -> LineResponse:
-
-        expires_at = self._calculate_expiry(data.subscription_period, data.is_demo)
-
         line = await self.line_repo.create_line(
             tenant_id=tenant_id,
             name=data.name,
-            channel_type=data.channel_type.value,
-            expires_at=expires_at,
-            is_demo=data.is_demo
         )
-
-        if data.channel_type.value == "whatsapp_green":
-            await self._allocate_whatsapp_instance(line.id)
-
         return LineResponse.model_validate(line)
 
-    async def get_lines(
-            self,
-            tenant_id: uuid.UUID,
-    ) -> list[LineListResponse]:
-        lines = await self.line_repo.get_lines_by_tenant(tenant_id)
-        log.info(f"******** service lines tenant_id {tenant_id}")
+    async def get_lines(self, tenant_id: uuid.UUID) -> list[LineListResponse]:
+        rows = await self.line_repo.get_lines_with_expires(tenant_id)
         result = []
-        for line in lines:
+        for line, max_expires_at in rows:
             days_until_expiry = None
-            if line.expires_at:
-                delta = line.expires_at - datetime.now(timezone.utc)
+            if max_expires_at:
+                delta = max_expires_at - datetime.now(timezone.utc)
                 days_until_expiry = max(0, delta.days)
 
             connection_status = "not_connected"
             if line.connection_state:
                 connection_status = line.connection_state.get("status", "not_connected")
 
-            line_dict = {
+            result.append(LineListResponse.model_validate({
                 **line.__dict__,
                 "days_until_expiry": days_until_expiry,
                 "connection_status": connection_status
-            }
-            result.append(LineListResponse.model_validate(line_dict))
-
+            }))
         return result
 
     async def get_line(
@@ -161,10 +245,12 @@ class LineService:
         if not line:
             raise HTTPException(status_code=404, detail="Line not found")
 
-        if line.channel_type == "whatsapp_green":
-            instance = await self.instance_repo.get_instance_by_line(line.id)
-            if instance:
-                await self.instance_repo.release_instance(instance)
-                log.info(f"Released instance {instance.external_id} from line {line.id}")
+        accounts = await self.channel_account_repo.get_by_line(line_id)
+        for account in accounts:
+            if account.channel_type == "whatsapp_green":
+                instance = await self.instance_repo.get_instance_by_line(line.id)
+                if instance:
+                    await self.instance_repo.release_instance(instance)
+                    log.info(f"Released instance {instance.external_id} from line {line.id}")
 
         await self.line_repo.delete_line(line)

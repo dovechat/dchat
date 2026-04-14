@@ -2,6 +2,7 @@ import logging
 import httpx
 import json
 import uuid
+from contextlib import asynccontextmanager
 from typing import Dict, Optional
 from fastapi import Request
 from core.database import get_db
@@ -14,6 +15,7 @@ from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 
 log = logging.getLogger(__name__)
+get_session = asynccontextmanager(get_db)
 
 # !!! --- change it on production --- !!!
 WABA_API_URL = "https://waba-sandbox.360dialog.io/v1"
@@ -90,10 +92,10 @@ class WabaListener:
         value = changes.get("value", {})
 
         if "messages" in value:
-            async for db in get_db():
+            async with get_session() as db:
                 chat_service = ChatService(db)
                 await self._handle_incoming_message(line_id, value, chat_service)
-                break
+
         elif "statuses" in value:
             await self._handle_message_status(line_id, value)
         else:
@@ -121,14 +123,13 @@ class WabaListener:
             resp.raise_for_status()
 
     async def _handle_incoming_message(self, line_id: str, value: dict, chat_service: "ChatService"):
-        async for db in get_db():
+        async with get_session() as db:
             repo = ChannelAccountRepository(db)
-            account = await repo.get_by_line(uuid.UUID(line_id))
+            account = await repo.get_by_line_and_type(uuid.UUID(line_id), "waba")
             if not account:
                 raise ValueError(f"No channel account for line {line_id}")
             creds = decrypt(account.credentials_encrypted["encrypted_data"])
             api_key = json.loads(creds)["api_key"]
-            break
 
         for msg in value.get("messages", []):
             msg_id = msg["id"]
@@ -223,7 +224,7 @@ class WabaListener:
                 continue
             await rdb.set(dedup_key, "1", ex=300)
 
-            async for db in get_db():
+            async with get_session() as db:
                 msg_repo = MessageRepository(db)
                 msg = await msg_repo.get_message_by_channel_msg_id(msg_id)
                 if msg:
@@ -233,11 +234,10 @@ class WabaListener:
                         "status": status,
                         "mime_type": msg.raw_content.get("mime_type") if msg.raw_content else None
                     })
-                break
 
     async def send_message(self, line_id: str, to: str, text: str) -> dict:
         if line_id not in self.connections:
-            async for db in get_db():
+            async with get_session() as db:
                 repo = ChannelAccountRepository(db)
                 account = await repo.get_by_line(uuid.UUID(line_id))
                 if not account:
@@ -245,7 +245,6 @@ class WabaListener:
                 creds = decrypt(account.credentials_encrypted["encrypted_data"])
                 api_key = json.loads(creds)["api_key"]
                 self.connections[line_id] = WabaConnection(api_key)
-                break
 
         connection = self.connections.get(line_id)
         return await connection.send_message(to, text)

@@ -54,6 +54,7 @@ class ConversationListResponse(BaseModel):
 
     id: uuid.UUID
     line_id: uuid.UUID
+    line_name: str | None = None
     crm_type: str
     crm_chat_id: str
     client_phone: str | None = None
@@ -82,7 +83,16 @@ class ConversationResponse(BaseModel):
 class LineResponse(BaseModel):
     id: uuid.UUID
     name: str
-    channel_type: str
+    channel_type: str | None = None
     status: str
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class ChannelAvailable(BaseModel):
+    channel_type: str
+
+class LineWithChannelsResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    channels: list[ChannelAvailable]

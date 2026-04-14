@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Dict, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -31,8 +32,17 @@ class SubscriptionPeriod(str, Enum):
     YEAR = "year"
 
 
+class ChannelRenew(BaseModel):
+    channel_type: ChannelType
+    subscription_period: SubscriptionPeriod = SubscriptionPeriod.MONTH
+    amount: Decimal = Decimal('0')
+    
+
 class LineCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
+
+
+class ChannelCreate(BaseModel):
     channel_type: ChannelType
     subscription_period: SubscriptionPeriod = SubscriptionPeriod.MONTH
     is_demo: bool = False
@@ -57,7 +67,7 @@ class LineResponse(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     name: str
-    channel_type: str
+    channel_type: str | None = None
     status: str
     is_demo: bool
     expires_at: Optional[datetime] = None
@@ -71,7 +81,7 @@ class LineListResponse(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     name: str
-    channel_type: str
+    channel_type: str | None = None
     status: str
     is_demo: bool
     expires_at: Optional[datetime] = None

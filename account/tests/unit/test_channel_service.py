@@ -12,7 +12,7 @@ from app.schemas.channel_schemas import (
     VKCredentials,
     ChannelAccountResponse
 )
-from app.schemas.line_schemas import ChannelType
+from schemas.line_schemas import ChannelType
 from infra.crypto import encrypt
 
 

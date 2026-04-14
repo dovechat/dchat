@@ -127,12 +127,33 @@ class TariffRepository(BaseRepository[Tariff]):
         )
         return result.scalar_one_or_none()
 
+    # стало
     async def get_daily_cost_by_tenant(self, tenant_id: uuid.UUID) -> Decimal:
         from models.lines import Line, LineStatus
+        from models.channel_accounts import ChannelAccount
 
         stmt = (
             select(func.coalesce(func.sum(Tariff.price / Tariff.period_days), Decimal("0")))
-            .join(Line, func.cast(Line.channel_type, String) == Tariff.channel_type)
+            .join(ChannelAccount, func.cast(ChannelAccount.channel_type, String) == Tariff.channel_type)
+            .join(Line, Line.id == ChannelAccount.line_id)
+            .where(
+                Tariff.is_active.is_(True),
+                Line.tenant_id == tenant_id,
+                Line.status.in_([LineStatus.active, LineStatus.expired]),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return Decimal(str(result.scalar() or "0"))
+
+    async def get_daily_cost_by_tenant_channels(self, tenant_id: uuid.UUID) -> Decimal:
+        from models.lines import Line, LineStatus
+        from models.channel_accounts import ChannelAccount
+        from sqlalchemy import String
+    
+        stmt = (
+            select(func.coalesce(func.sum(Tariff.price / Tariff.period_days), Decimal("0")))
+            .join(ChannelAccount, func.cast(ChannelAccount.channel_type, String) == Tariff.channel_type)
+            .join(Line, Line.id == ChannelAccount.line_id)
             .where(
                 Tariff.is_active.is_(True),
                 Line.tenant_id == tenant_id,

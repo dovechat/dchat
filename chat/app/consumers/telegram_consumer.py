@@ -3,6 +3,7 @@ import json
 import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 from aiokafka import AIOKafkaConsumer
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -11,6 +12,7 @@ from core.database import get_db
 from app.repositories.chat_repo import ChatRepository
 
 log = logging.getLogger(__name__)
+get_session = asynccontextmanager(get_db)
 
 _clients: dict = {}
 
@@ -69,11 +71,12 @@ async def start_consumer():
 
             log.info(f"\n\n ++++++++++ start_consumer payload {payload} \n\n")
 
-            async for db in get_db():
+            async with get_session() as db:
                 chat_repo = ChatRepository(db)
+                ch_acc_repo = ChannelAccountRepository(db)
                 if topic == 'telegram_user_retry':
                     session_string = await chat_repo.get_session_by_conversation(conversation_id)
-                    my_phone = await chat_repo.get_line_phone_by_conversation(conversation_id)
+                    my_phone =await self.chat_repo.get_line_phone_by_conversation(data.conversation_id)
                     # отправка через Telethon
                     if not session_string:
                         log.error(f"No session for conversation {conversation_id}")
@@ -105,8 +108,6 @@ async def start_consumer():
                         log.info(f"Bot retry sent to {phone}")
                     except Exception as e:
                         log.error(f"Bot retry failed: {e}")
-                break
-
 
     finally:
         await consumer.stop()

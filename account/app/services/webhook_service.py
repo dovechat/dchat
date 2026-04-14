@@ -2,7 +2,8 @@ import uuid
 import logging
 from fastapi import HTTPException
 
-from app.repositories.line_repo import LineRepository, ChannelAccountRepository
+from app.repositories.line_repo import LineRepository
+from repo.line_repo import ChannelAccountRepository
 
 log = logging.getLogger(__name__)
 

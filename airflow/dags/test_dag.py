@@ -4,13 +4,18 @@ import os
 from datetime import datetime
 from pathlib import Path
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 
 
 def get_postgres_config():
+    port = os.environ.get("POSTGRES_PORT") or 5432
+    if isinstance(port, str) and "tcp://" in port:
+        port = port.split(":")[-1]
+    port = int(port)
+    
     return {
         'host': os.getenv('POSTGRES_HOST', 'localhost'),
-        'port': int(os.getenv('DB_PORT', 5432)),
+        'port': port,
         'user': os.getenv('POSTGRES_USER'),
         'password': os.getenv('POSTGRES_PASSWORD'),
         'database': os.getenv('POSTGRES_DB'),
@@ -29,10 +34,11 @@ async def run_deactivate():
     conn = await asyncpg.connect(dsn)
 
     query = """
-    SELECT 
-        id as line_id
-    FROM lines
-    WHERE expires_at - NOW() < INTERVAL '1 day'
+    SELECT DISTINCT
+        l.id as line_id
+    FROM lines l
+    JOIN channel_accounts ca ON ca.line_id = l.id
+    WHERE ca.expires_at - NOW() < INTERVAL '1 day'
     """
     rows = await conn.fetch(query)
     print("rows \n\n")

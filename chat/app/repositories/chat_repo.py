@@ -77,24 +77,24 @@ class ChatRepository(BaseRepository[Conversation]):
         if res and len(res) > 0:
             return res[0]
 
-
-    async def get_conversations_with_stats(self, tenant_id: uuid.UUID, line_id: uuid.UUID, skip: int, limit: int):
+    async def get_conversations_with_stats(self, tenant_id: uuid.UUID, skip: int, limit: int):
         stmt = (
             select(
                 Conversation,
+                Line.name.label("line_name"),
                 func.count(Message.id).filter(Message.status == "sent").label("unread_count"),
                 func.max(Message.created_at).label("last_message_at")
             )
             .join(Line, Conversation.line_id == Line.id)
             .outerjoin(Message, Conversation.id == Message.conversation_id)
-            .where(Line.tenant_id == tenant_id, Line.id == line_id)
-            .group_by(Conversation.id)
+            .where(Line.tenant_id == tenant_id)
+            .group_by(Conversation.id, Line.name)
             .order_by(desc(func.max(Message.created_at)))
             .offset(skip)
             .limit(limit)
         )
         result = await self.session.execute(stmt)
-        return result.all()
+        return result.all() 
     
     async def get_conversation_with_messages(self, conversation_id: uuid.UUID):
         stmt = (
@@ -118,7 +118,10 @@ class ChatRepository(BaseRepository[Conversation]):
         stmt = (
             select(ChannelAccount)
             .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
-            .where(Conversation.id == conversation_id)
+            .where(
+                Conversation.id == conversation_id,
+                ChannelAccount.channel_type == Conversation.crm_type
+            )
         )
         result = await self.session.execute(stmt)
         log.info(f"get_channel_acc_by_conversation result {result}")
@@ -183,20 +186,19 @@ class ChatRepository(BaseRepository[Conversation]):
             return result.scalar_one_or_none()
         except Exception as e:
             log.error(f"get_channel_acc_by_phone {e}")
-            
-
 
     async def get_line_phone_by_conversation(
-        self,
-        conversation_id: uuid.UUID
+            self,
+            conversation_id: uuid.UUID,
     ) -> Optional[str]:
-        """Get owner phone from channel_account by conversation_id"""
-        log.info(f"get_line_phone_by_conversation  {conversation_id}")
         try:
             stmt = (
                 select(ChannelAccount.phone)
                 .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
-                .where(Conversation.id == conversation_id)
+                .where(
+                    Conversation.id == conversation_id,
+                    ChannelAccount.channel_type == Conversation.crm_type
+                )
             )
             result = await self.session.execute(stmt)
             return result.scalar_one_or_none()
@@ -209,23 +211,20 @@ class ChatRepository(BaseRepository[Conversation]):
             chat_id: str,
             tenant_id: uuid.UUID,
             client_phone: str = None
-    ) -> Conversation:
-        """Find conversation by Telegram chat_id or create new one"""
-        # Ищем существующий
+    ) -> tuple[Conversation, bool]:
         stmt = select(Conversation).where(
             Conversation.line_id == line_id,
-            Conversation.client_phone == chat_id  # chat_id храним как client_phone
+            Conversation.client_phone == chat_id
         )
         result = await self.session.execute(stmt)
         conversation = result.scalar_one_or_none()
 
         if conversation:
-            return conversation
+            return conversation, False
 
-        # Создаём новый
         new_conv = Conversation(
             line_id=line_id,
-            client_phone=chat_id,  # здесь храним chat_id из Telegram
+            client_phone=chat_id,
             crm_type="telegram_bot",
             crm_chat_id=chat_id,
             meta={"username": client_phone} if client_phone else {}
@@ -233,4 +232,25 @@ class ChatRepository(BaseRepository[Conversation]):
         self.session.add(new_conv)
         await self.session.commit()
         await self.session.refresh(new_conv)
-        return new_conv
+        return new_conv, True
+
+    async def get_lines_with_available_channels(self, tenant_id: uuid.UUID) -> list:
+        stmt = (
+            select(Line.id, Line.name, ChannelAccount.channel_type)
+            .join(ChannelAccount, ChannelAccount.line_id == Line.id)
+            .where(
+                Line.tenant_id == tenant_id,
+                Line.status == "active",
+                ~select(Conversation.id)
+                .where(
+                    Conversation.line_id == Line.id,
+                    Conversation.crm_type == ChannelAccount.channel_type,
+                    ChannelAccount.channel_type != "telegram_bot"
+                )
+                .correlate(Line, ChannelAccount)
+                .exists()
+            )
+            .order_by(Line.name, ChannelAccount.channel_type)
+        )
+        result = await self.session.execute(stmt)
+        return result.all()

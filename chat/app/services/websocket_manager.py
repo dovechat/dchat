@@ -1,35 +1,37 @@
+from contextlib import asynccontextmanager
 from fastapi import HTTPException, WebSocket
 from typing import Dict, List
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
 from core.database import get_db
+from models.lines import ChannelAccount
 from models.messages import Conversation
 from models.tenants import ResourcePermission
 
 import logging
 
 log = logging.getLogger(__name__)
+get_session = asynccontextmanager(get_db)
 
 
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, List[WebSocket]] = {}
+        self.tenant_connections: Dict[str, List[WebSocket]] = {}
 
     async def connect(
             self,
             websocket: WebSocket,
             conversation_id: str,
-            my_phone: str,
-            peer_phone: str,
             app,
             user_id: str,
             tenant_id: str,
             role: str,
     ) -> None:
         # Проверка доступа
-        async for db in get_db():
+        async with get_session() as db:
             # Загружаем conversation вместе с линией
             stmt = select(Conversation).where(Conversation.id == conversation_id).options(
                 selectinload(Conversation.line))
@@ -39,6 +41,19 @@ class ConnectionManager:
             if not conv:
                 await websocket.close(code=1008, reason="Conversation not found")
                 return
+
+            my_phone_stmt = (
+                select(ChannelAccount.phone)
+                .join(Conversation, and_(
+                    Conversation.line_id == ChannelAccount.line_id,
+                    Conversation.crm_type == ChannelAccount.channel_type
+                ))
+                .where(Conversation.id == conversation_id)
+            )
+            my_phone_result = await db.execute(my_phone_stmt)
+            my_phone = my_phone_result.scalar_one_or_none() or ''
+            peer_phone = conv.client_phone or ''
+
 
             if role == "owner":
                 if conv.line.tenant_id != uuid.UUID(tenant_id):
@@ -56,7 +71,6 @@ class ConnectionManager:
                 if not result.scalar_one_or_none():
                     await websocket.close(code=1008, reason="Access denied")
                     raise HTTPException(status_code=401, detail="Access denied")
-            break
 
         # Добавляем соединение в список
         if conversation_id not in self.active_connections:
@@ -120,6 +134,32 @@ class ConnectionManager:
                 })
             except Exception as e:
                 log.error(f"send_message_status error: {e}")
+
+
+    async def connect_tenant(self, websocket: WebSocket, tenant_id: str):
+        if tenant_id not in self.tenant_connections:
+            self.tenant_connections[tenant_id] = []
+        self.tenant_connections[tenant_id].append(websocket)
+    
+    async def disconnect_tenant(self, tenant_id: str, websocket: WebSocket):
+        if tenant_id in self.tenant_connections:
+            self.tenant_connections[tenant_id].remove(websocket)
+            if not self.tenant_connections[tenant_id]:
+                del self.tenant_connections[tenant_id]
+    
+    async def send_new_conversation(self, tenant_id: str, conversation_data: dict):
+        tenant_id = str(tenant_id)
+        if tenant_id in self.tenant_connections:
+            for ws in self.tenant_connections[tenant_id][:]:
+                try:
+                    await ws.send_json({
+                        'type': 'new_conversation',
+                        'data': conversation_data
+                    })
+                except Exception as e:
+                    log.error(f"send_new_conversation error: {e}")
+
+
 
 
 manager = ConnectionManager()

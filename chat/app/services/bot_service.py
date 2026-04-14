@@ -27,9 +27,8 @@ class BotService:
         """Handle incoming update from Telegram Bot API"""
         # Get line and bot token
         line = await self.db.get(Line, line_id)
-        log.info(f"line {line} {line.channel_type}")
-        if not line or line.channel_type.value != "telegram_bot":
-            log.error(f"Line {line_id} not found or not a bot")
+        if not line:
+            log.error(f"Line {line_id} not found")
             return {"ok": False}
 
         # Extract message data
@@ -49,7 +48,7 @@ class BotService:
             return {"ok": True}
 
         # Find or create conversation
-        conversation = await self.conv_repo.get_or_create_by_chat_id(
+        conversation, is_new = await self.conv_repo.get_or_create_by_chat_id(
             line_id=line_id,
             chat_id=str(chat_id),
             tenant_id=line.tenant_id,
@@ -58,7 +57,8 @@ class BotService:
 
         # Get bot token from line credentials
         log.info(f"\n\n *-**-*-*-*-*-*-*-*    self.channel_repo {dir(self.channel_repo)}   \n\n ")
-        channel_acc = await self.channel_repo.get_by_line(line_id)
+        channel_acc = await self.channel_repo.get_by_line_and_type(line_id, "telegram_bot")
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*   BotService.handle_webhook channel_acc {dir(channel_acc)}   \n\n ")
         creds = decrypt_credentials(channel_acc.credentials_encrypted)
         bot_token = creds["bot_token"]
         raw_content = update_data
@@ -81,6 +81,16 @@ class BotService:
         )
         log.info(f"db_message {db_message.id}")
 
+        from app.services.websocket_manager import manager
+
+        if not is_new:
+            await manager.send_new_conversation(
+                str(line.tenant_id),
+                {"id": str(conversation.id), "line_id": str(line_id), "crm_type": "telegram_bot",
+                 "client_phone": str(chat_id)}
+            )
+
+
         # 8. Send to WebSocket
         ws_message = {
             "id": str(db_message.id),
@@ -97,6 +107,18 @@ class BotService:
 
         await manager.send_new_message(str(conversation.id), ws_message)
         log.info(f"send_new_message done")
+
+        if is_new:
+            await manager.send_new_conversation(
+                str(line.tenant_id),
+                {
+                    "id": str(conversation.id),
+                    "line_id": str(line_id),
+                    "crm_type": "telegram_bot",
+                    "client_phone": str(chat_id),
+                    "crm_chat_id": str(chat_id),
+                }
+            )
 
         return {"ok": True}
 

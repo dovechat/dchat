@@ -2,10 +2,9 @@ import json
 import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.lines import ChannelAccount, Line, Instance, InstanceStatus, Provider
-
 from repo.base import BaseRepository
 import logging
 
@@ -21,15 +20,11 @@ class LineRepository(BaseRepository[Line]):
             self,
             tenant_id: uuid.UUID,
             name: str,
-            channel_type: str,
-            expires_at: Optional[datetime] = None,
             is_demo: bool = False,
     ) -> Line:
         return await self.create(
             tenant_id=tenant_id,
             name=name,
-            channel_type=channel_type,
-            expires_at=expires_at,
             is_demo=is_demo,
             connection_state={"status": "not_connected"}
         )
@@ -70,6 +65,23 @@ class LineRepository(BaseRepository[Line]):
         line = await self.get_by_id(line_id)
         if line:
             await self.update(line, connection_state=state)
+
+    async def get_lines_with_expires(
+            self,
+            tenant_id: uuid.UUID,
+            skip: int = 0,
+            limit: int = 100
+    ) -> list[tuple[Line, datetime | None]]:
+        query = (
+            select(Line, func.max(ChannelAccount.expires_at).label("max_expires_at"))
+            .outerjoin(ChannelAccount, ChannelAccount.line_id == Line.id)
+            .where(Line.tenant_id == tenant_id)
+            .group_by(Line.id)
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        return result.all()
 
 
 class InstanceRepository(BaseRepository[Instance]):
@@ -160,55 +172,3 @@ class InstanceRepository(BaseRepository[Instance]):
             instance,
             external_id=external_id
         )
-
-class ChannelAccountRepository(BaseRepository[ChannelAccount]):
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(ChannelAccount, session)
-
-    async def create_account(
-            self,
-            line_id: uuid.UUID,
-            credentials_encrypted: dict,
-            phone: str | None = None,
-            session_string: str | None = None,
-            bot_token: str | None = None,
-            state_json: Optional[dict] = None
-    ) -> ChannelAccount:
-
-        log.info(f"credentials_encrypted {type(credentials_encrypted)} {credentials_encrypted}")
-
-        return await self.create(
-            line_id=line_id,
-            credentials_encrypted=credentials_encrypted,
-            state_json=state_json or {},
-            phone=phone,
-            session_string=session_string,
-            bot_token=bot_token,
-        )
-
-    async def get_by_line(
-            self,
-            line_id: uuid.UUID
-    ) -> ChannelAccount | None:
-        existing = await self.get_multi(
-            filters={"line_id": line_id},
-            limit=1
-        )
-        return existing[0] if existing else None
-
-    async def update_account(
-        self,
-        account: ChannelAccount,
-        **data,
-    ) -> ChannelAccount:
-        return await self.update(account, **data)
-
-    async def update_connection_status(self, line_id: uuid.UUID, status: str) -> None:
-        account = await self.get_by_line(line_id)
-        if account:
-            await self.update(
-                account,
-                connection_status=status,
-                last_checked_at=datetime.now()
-            )

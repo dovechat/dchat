@@ -10,12 +10,13 @@ from app.services.bot_service import BotService
 from app.services.chat_service import ChatService
 from app.services.line_service import LineService
 from app.schemas.chat_schemas import (
-    ConversationResponse,
-    MessageResponse,
-    ConversationListResponse,
     ConversationCreate,
-    MessageCreate,
+    ConversationListResponse,
+    ConversationResponse,
     LineResponse,
+    LineWithChannelsResponse,
+    MessageResponse,
+    MessageCreate,
 )
 from models.tenants import User
 
@@ -29,6 +30,9 @@ def get_chat_service(db: AsyncSession = Depends(get_db)) -> ChatService:
 
 def get_bot_service(db: AsyncSession = Depends(get_db)) -> ChatService:
     return BotService(db)
+
+def get_line_service(db: AsyncSession = Depends(get_db)) -> LineService:
+    return LineService(db)
 
 @router.get("/conversations", response_model=List[ConversationListResponse])
 async def list_conversations(
@@ -175,12 +179,31 @@ async def telegram_bot_webhook(
 @router.get("/lines", response_model=List[LineResponse])
 async def get_my_lines(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    line_service: LineService = Depends(get_line_service)
 ):
-    service = LineService(db)
-    return await service.get_user_lines(
+    return await line_service.get_user_lines(
         user_id=current_user.id,
         role=current_user.role,
+        tenant_id=current_user.tenant_id
+    )
+
+
+@router.get("/lines/{line_id}/channels", response_model=List[LineResponse])
+async def get_line_channels(
+    line_id: uuid.UUID,
+    current_user: UserContext = Depends(get_current_user),
+    line_service: LineService = Depends(get_line_service)
+):
+    return await line_service.get_line_channels(line_id)
+
+
+@router.get("/lines-with-channels", response_model=List[LineWithChannelsResponse])
+async def get_lines_with_channels(
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    return await chat_service.get_lines_with_available_channels(
         tenant_id=current_user.tenant_id
     )
 

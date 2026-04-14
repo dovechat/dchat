@@ -19,7 +19,7 @@ async def test_update_telegram_bot_credentials(client, test_tenant, token_with_t
     """Test updating Telegram Bot credentials"""
     from tests.conftest import get_test_db
     from models.lines import Line
-    from app.schemas.line_schemas import ChannelType
+    from schemas.line_schemas import ChannelType
 
     # Create telegram_bot line
     async with get_test_db() as session:

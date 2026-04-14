@@ -1,6 +1,19 @@
 import uuid
 import enum
-from sqlalchemy import Column, Index, Integer, BigInteger, String, Text, JSON, Enum, ForeignKey, DateTime, Boolean
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    JSON,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from core.database import Base
@@ -37,24 +50,27 @@ class Provider(enum.Enum):
     green = "green"
     waba = "waba"
 
+from sqlalchemy import Column, Index, Integer, BigInteger, String, Text, JSON, Enum, ForeignKey, DateTime, Boolean, UniqueConstraint
+
 class Line(Base):
     __tablename__ = "lines"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False)
-    channel_type = Column(Enum(ChannelType, native_enum=False), default=ChannelType.telegram_user, nullable=False, index=True)
     status = Column(Enum(LineStatus, native_enum=False), default=LineStatus.active, nullable=False, index=True)
     is_demo = Column(Boolean, default=False, index=True)
-    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
     connection_state = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
+
 
 class ChannelAccount(Base):
     __tablename__ = "channel_accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_type = Column(Enum(ChannelType, native_enum=False), nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
     phone = Column(String, nullable=True, index=True)
     credentials_encrypted = Column(JSON, nullable=False)
     encryption_metadata = Column(JSON, server_default='{"v": 1}')
@@ -62,7 +78,7 @@ class ChannelAccount(Base):
     updated_at = Column(DateTime, onupdate=func.now())
     connection_status = Column(
         Enum(ConnectionStatus, native_enum=False),
-        server_default='disconnected',  # ⬅️ добавить
+        server_default='disconnected',
         default=ConnectionStatus.disconnected,
         nullable=False,
         index=True
@@ -71,6 +87,10 @@ class ChannelAccount(Base):
     last_checked_at = Column(DateTime, nullable=True)
     session_string = Column(Text)
     bot_token = Column(String, nullable=True, index=True)
+
+    __table_args__ = (
+        UniqueConstraint('line_id', 'channel_type', name='uq_channel_account_line_channel'),
+    )
 
 class Instance(Base):
     __tablename__ = "instances"

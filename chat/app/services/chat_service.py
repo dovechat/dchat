@@ -12,9 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from minio import Minio
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
+from repo.line_repo import ChannelAccountRepository
 from app.schemas.chat_schemas import (
+    ChannelAvailable,
     ConversationCreate,
     ConversationResponse,
+    LineWithChannelsResponse,
     MessageCreate,
     MessageResponse,
     ConversationListResponse
@@ -37,6 +40,7 @@ log = logging.getLogger("uvicorn.error")
 class ChatService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.ch_acc_repo = ChannelAccountRepository(db)
         self.conv_repo = ChatRepository(db)
         self.msg_repo = MessageRepository(db)
         self.s3_client = Minio(
@@ -49,15 +53,14 @@ class ChatService:
     async def get_conversations(
             self,
             tenant_id: uuid.UUID,
-            line_id: uuid.UUID,
+            line_id: uuid.UUID | None = None,
             skip: int = 0,
             limit: int = 100
     ) -> List[ConversationListResponse]:
-        """Get conversations list with last message for tenant"""
-        rows = await self.conv_repo.get_conversations_with_stats(tenant_id, line_id, skip, limit)
+        rows = await self.conv_repo.get_conversations_with_stats(tenant_id, skip, limit)
 
         conversations = []
-        for conv, unread_count, last_msg_at in rows:
+        for conv, line_name, unread_count, last_msg_at in rows:
             last_msg = None
             if last_msg_at:
                 last_msg_obj = await self.msg_repo.get_last_message(conv.id)
@@ -66,11 +69,24 @@ class ChatService:
 
             conversations.append(ConversationListResponse(
                 **conv.__dict__,
+                line_name=line_name,
                 unread_count=unread_count,
                 last_message=last_msg
             ))
 
         return conversations
+
+    async def get_lines_with_available_channels(self, tenant_id: uuid.UUID) -> list[LineWithChannelsResponse]:
+        rows = await self.conv_repo.get_lines_with_available_channels(tenant_id)
+
+        lines: dict[uuid.UUID, LineWithChannelsResponse] = {}
+        for row in rows:
+            if row.id not in lines:
+                lines[row.id] = LineWithChannelsResponse(id=row.id, name=row.name, channels=[])
+            lines[row.id].channels.append(ChannelAvailable(channel_type=row.channel_type))
+
+        return list(lines.values())
+
 
     async def get_conversation(
             self,
@@ -87,7 +103,11 @@ class ChatService:
             conversation_id, skip=0, limit=1000
         )
 
+        # my_phone = None
+        # if conversation.crm_type != "telegram_bot":
         my_phone = await self.conv_repo.get_line_phone_by_conversation(conversation_id)
+
+        log.info(f"\n\n --- ChatService.get_conversation my_phone {my_phone} conversation.__dict__ {conversation.__dict__}--- \n\n ")
 
         return ConversationResponse(
             **conversation.__dict__,
@@ -386,8 +406,14 @@ class ChatService:
             "mime_type": data.raw_content.get("mime_type") if data.raw_content else None
         })
 
+        log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc before con_id {data.conversation_id} --- \n\n")
         channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
-        creds_enc = channel_acc.credentials_encrypted["encrypted_data"]
+        if channel_acc:
+            log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc {channel_acc.__dict__} --- \n\n")
+            log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc.credentials_encrypted {channel_acc.credentials_encrypted} --- \n\n")
+        else:
+            return
+        creds_enc = channel_acc.credentials_encrypted.get("encrypted_data")
         creds_str = decrypt(creds_enc)
         bot_token = json.loads(creds_str)["bot_token"]
 
@@ -430,6 +456,7 @@ class ChatService:
         """Create new WhatsApp Green message"""
         # Получаем креды линии
         channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
+        log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green channel_acc {channel_acc} \n\n")
         creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
 
         log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green creds {creds} \n\n")
@@ -532,7 +559,7 @@ class ChatService:
         except Exception as e:
             log.error(f"WABA send failed: {e}")
             if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
-                await notify_connection_error(uuid.UUID(str(conv.line_id)), self.db)
+                await notify_connection_error(uuid.UUID(str(conv.line_id)), "waba", self.db)
 
         # Финальное обновление
         await self._finalize_message(

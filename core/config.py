@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # API
+    host_url: str = "http://localhost"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
 

@@ -4,9 +4,10 @@ import json
 import logging
 import os
 import uuid
-from typing import Callable, Dict
 
+from contextlib import asynccontextmanager
 from datetime import timedelta
+from typing import Callable, Dict
 from io import BytesIO
 from minio import Minio
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from core.database import get_db
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.line_repo import LineRepository
 from app.repositories.message_repo import MessageRepository
+from repo.line_repo import ChannelAccountRepository
 from app.schemas.chat_schemas import MessageCreate
 from app.services.websocket_manager import manager
 from app.services.chat_service import ChatService
@@ -25,7 +27,7 @@ from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
 
 log = logging.getLogger(__name__)
-
+get_session = asynccontextmanager(get_db)
 
 class TelegramConnection:
     def __init__(self, conversation_id: str, my_phone: str, peer_phone: str, message_callback: Callable):
@@ -50,13 +52,13 @@ class TelegramConnection:
     async def get_session(self) -> str:
         from infra.crypto import decrypt
         log.info(f"Getting session for {self.my_phone}")
-        async for db in get_db():
+        async with get_session() as db:
             chat_repo = ChatRepository(db)
 
             log.info(f"-----*--- get_session phone {self.my_phone} conv_id {self.conversation_id}")
             channes_acc = await chat_repo.get_channel_acc_by_conversation(self.conversation_id)
 
-            # log.info(f"-------- get_session {self.my_phone} channes_acc  {type(channes_acc.credentials_encrypted)} {channes_acc.credentials_encrypted}")
+            log.info(f"-------- get_session {self.my_phone} channes_acc  {type(channes_acc.credentials_encrypted)} {channes_acc.credentials_encrypted}")
 
             creds_enc = json.loads(decrypt(channes_acc.credentials_encrypted["encrypted_data"]))
             log.info(f"-------- session decrypted creds_enc {type(creds_enc)}  {creds_enc}")
@@ -66,10 +68,7 @@ class TelegramConnection:
             log.info(f"------ session {session}")
             log.info(f"-------- Session retrieved for {self.my_phone}: {'found' if session else 'not found'}")
 
-            break
-
         return session
-
 
 
     async def connect(self):
@@ -99,7 +98,7 @@ class TelegramConnection:
         self._running = True
         log.info(f"+++++++++ Connected: {self.conversation_id} (client: {self.client is not None})")
 
-        async for db in get_db():
+        async with get_session() as db:
             line_repo = LineRepository(db)
             chat_repo = ChatRepository(db)
             conv = await chat_repo.get_conv_by_id(self.conversation_id)
@@ -110,7 +109,6 @@ class TelegramConnection:
             self.line_id = conv.line_id
             self.line_name = line.name
             log.info(f"+++++++++ Update connection status in db: after)")
-            break
 
 
     async def disconnect(self):
@@ -132,7 +130,7 @@ class TelegramConnection:
                 await self.client.run_until_disconnected()
                 if not self.client.is_connected():
                     log.error("!!! ERROR --- listener.run Client disconnected unexpectedly")
-                    await notify_connection_error(self.line_id)
+                    await notify_connection_error(self.line_id, "telegram_user")
                     self._connection_error_notified = True
                     log.error("!!! ERROR --- /end  listener.run Client disconnected unexpectedly")
             except asyncio.CancelledError:
@@ -191,9 +189,8 @@ class TelegramConnection:
         log.info(f"Message handler triggered for {self.conversation_id} event {event}")
 
         log.info(f"Calling message_callback for {self.conversation_id}")
-        async for db in get_db():
+        async with get_session() as db:
             await self.message_callback(db, self.conversation_id, self.peer_phone, event)
-            break
         
 
     async def wait_for_client(self, timeout=30):
@@ -274,12 +271,11 @@ class TelegramListener:
             my_phone = None
            
             conv = None
-            
-            async for db in get_db():
+
+            async with get_session() as db:
                 repo = ChatRepository(db)
                 my_phone = await repo.get_line_phone_by_conversation(conv_id_str)
                 conv = await repo.get_conv_by_id(conv_id_str)
-                break
             '''
             if my_phone:
                 await self.start_listening(conv_id_str, my_phone, data.phone)
@@ -298,7 +294,7 @@ class TelegramListener:
             else:
                 log.error(f"No client for {data.conversation_id} after waiting")
                 try:
-                    await notify_connection_error(conv.line_id)
+                    await notify_connection_error(conv.line_id, "telegram_user")
                     self._connection_error_notified = True
                 except Exception as e:
                     log.error(f" \n\n !!! --- ERROR --- cant sent notify_connection_error line_id {conv.line_id} {e}")
@@ -375,7 +371,7 @@ class TelegramListener:
             self.clients[conversation_id] = connection.client
             log.info(f"----**---- Connected successfully self.clients {self.clients}")
         except Exception as e:
-            log.error(f"---- **----  Failed to connect for {conversation_id}: {e}")
+            log.error(f"----**----  Failed to connect for {conversation_id}: {e}")
             return
 
         log.info(f"------ TelegramListener._listen_task start sync")

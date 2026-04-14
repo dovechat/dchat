@@ -114,12 +114,18 @@ class NotificationService:
             notification_type=NotificationType.line_blocked,
             context={"line_name": line_name},
         )
-    
-    async def notify_line_expired(self, tenant_id: uuid.UUID, line_name: str, expires_at: datetime) -> None:
+
+    async def notify_line_expired(
+            self,
+            tenant_id: uuid.UUID,
+            line_name: str,
+            expires_at: datetime,
+            channel_type: str | None = None,
+    ) -> None:
         await self.send(
             tenant_id=tenant_id,
             notification_type=NotificationType.line_expiration,
-            context={"line_name": line_name, "expires_at": expires_at},
+            context={"line_name": line_name, "expires_at": expires_at, "channel_type": channel_type},
         )
 
     async def notify_low_balance(

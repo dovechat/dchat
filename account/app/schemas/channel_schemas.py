@@ -1,4 +1,6 @@
 import uuid
+
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,7 +35,9 @@ class ChannelAccountResponse(BaseModel):
     phone: str | None = None
     state_json: Optional[dict] = None
     # !!! credentials_encrypted not exposed for security
-    updated_at: Optional[str] = None
+    expires_at: datetime | None = None
+    updated_at: datetime | None = None
+    connection_status: str | None = None
 
 
 class ChannelAccountUpdate(BaseModel):

@@ -1,6 +1,7 @@
 import logging
 import httpx
 import uuid
+from contextlib import asynccontextmanager
 from typing import Dict, Optional
 from fastapi import Request
 from core.database import get_db
@@ -11,8 +12,9 @@ from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
 
-log = logging.getLogger(__name__)
 
+log = logging.getLogger(__name__)
+get_session = asynccontextmanager(get_db)
 
 class GreenWhatsAppConnection:
     """Соединение с Green API для одной линии"""
@@ -80,10 +82,10 @@ class GreenWhatsAppListener:
         #    return
 
         if event_type == "incomingMessageReceived":
-            async for db in get_db():
+            async with get_session() as db:
+                log.info(f"--- get session db {db}")
                 chat_service = ChatService(db)
                 await self._handle_incoming_message(line_id, payload, chat_service)
-                break
         elif event_type == "outgoingMessageStatus":
             await self._handle_message_status(line_id, payload)
         elif event_type == "stateInstanceChanged":
@@ -93,7 +95,7 @@ class GreenWhatsAppListener:
 
     async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService"):
         """Обработка входящего сообщения"""
-        # log.info(f"\n\n --------- _handle_incoming_message payload {payload}")
+        log.info(f"\n\n --------- _handle_incoming_message payload {payload}")
         message_data = payload.get("messageData", {})
         sender_data = payload.get("senderData", {})
 
@@ -123,20 +125,23 @@ class GreenWhatsAppListener:
             file_name = f"{media_id}.{ext}"
 
         conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
-        # log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
+        log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} line_id {line_id} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
         if conv is None:
             return
 
         # Сохраняем в БД
-        message = await chat_service.save_incoming_green(
-            conversation_id=conv.id,
-            payload=payload,
-            media_id=media_id,
-            file_name=file_name,
-            file_url=file_url,
-            mime_type=mime_type,
-            text=text,
-        )
+        try:
+            message = await chat_service.save_incoming_green(
+                conversation_id=conv.id,
+                payload=payload,
+                media_id=media_id,
+                file_name=file_name,
+                file_url=file_url,
+                mime_type=mime_type,
+                text=text,
+            )
+        except Exception as e:
+            log.error(f"\n\n !!! --- ERROR chat_service.save_incoming_green {e}---  \n\n")
 
         ws_message = {
             "id": str(message.id),
@@ -162,7 +167,7 @@ class GreenWhatsAppListener:
             log.warning(f"Missing fields in message status: {payload}")
             return
 
-        async for db in get_db():
+        async with get_session() as db:
             chat_repo = MessageRepository(db)
             msg = await chat_repo.get_message_by_channel_msg_id(external_id)
             log.warning(f"_handle_message_status msg {msg}")
@@ -172,7 +177,6 @@ class GreenWhatsAppListener:
                     "message_id": str(msg.id),
                     "status": status
                 })
-            break
 
     async def _handle_instance_state(self, line_id: str, payload: dict):
         """Обработка изменения статуса инстанса"""
@@ -183,23 +187,22 @@ class GreenWhatsAppListener:
             return
         else:
             log.info(f"!!! --- ERROR --- GreenWhatsAppListener._handle_instance_state state {state}")
-            await notify_connection_error(line_id)
+            await notify_connection_error(line_id, "whatsapp_green")
 
         conn_status = "error" if state == "blocked" else "disconnected"
         error_reason = "account_blocked" if state == "blocked" else "phone_offline"
         log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state} error_reason {error_reason}")
 
-        async for db in get_db():
+        async with get_session() as db:
             repo = ChannelAccountRepository(db)
             await repo.update_connection_status(
                 line_id=line_id,
                 status=conn_status,
-                error=error_reason
+                channel_type="whatsapp_green",
+                connection_error=error_reason
             )
             log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state}")
-            await notify_connection_error(line_id, db)
-            break
-
+            await notify_connection_error(line_id, "whatsapp_green",db)
 
     async def send_message(self, line_id: str, chat_id: str, text: str) -> dict:
         """Отправить сообщение (вызывается из chat_service)"""

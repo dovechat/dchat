@@ -4,18 +4,18 @@ from core.database import get_db
 from fastapi import Depends
 from core.dependencies import get_current_user
 from schemas.auth_schemas import UserContext
+
 from app.repositories.billing_repo import (
-    BalanceRepository,
-    BalanceLedgerRepository,
     PaymentRepository,
     TariffRepository
 )
 from app.repositories.tenant_repo import RequisitsRepository, TenantRepository
 from app.repositories.line_repo import (
     LineRepository,
-    InstanceRepository,
-    ChannelAccountRepository
+    InstanceRepository
 )
+from repo.billing_repo import BalanceLedgerRepository, BalanceRepository
+from repo.line_repo import ChannelAccountRepository
 from app.services.channel_service import ChannelAccountService
 from app.services.line_service import LineService
 from app.core.uow import TenantMembershipUoW
@@ -91,6 +91,12 @@ async def get_requisits_repo(db: AsyncSession = Depends(get_db)) -> RequisitsRep
 
 
 # ------- lines
+async def get_billing_repo(db: AsyncSession = Depends(get_db)) -> BalanceRepository:
+    return BalanceRepository(db)
+
+async def ledger_repo(db: AsyncSession = Depends(get_db)) -> BalanceLedgerRepository:
+    return BalanceLedgerRepository(db)
+
 async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:
     return LineRepository(db)
 
@@ -98,11 +104,13 @@ async def get_channel_account_repo(db: AsyncSession = Depends(get_db)) -> Channe
     return ChannelAccountRepository(db)
 
 async def get_line_service(
+    billing_repo: BalanceRepository = Depends(get_billing_repo),
+    ledger_repo: BalanceRepository = Depends(get_ledger_repo),
     line_repo: LineRepository = Depends(get_line_repo),
     instance_repo: InstanceRepository = Depends(get_instance_repo),
     channel_account_repo: ChannelAccountRepository = Depends(get_channel_account_repo)
 ) -> LineService:
-    return LineService(line_repo, instance_repo, channel_account_repo)
+    return LineService(billing_repo, ledger_repo, line_repo, instance_repo, channel_account_repo)
 
 async def get_webhook_service():
     async for session in get_db():

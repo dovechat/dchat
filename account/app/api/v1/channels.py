@@ -12,6 +12,7 @@ from app.schemas.channel_schemas import (
     CreateWabaSchema,
     CreateWhatsAppGreenSchema
 )
+from app.schemas.line_schemas import ChannelType
 from app.services.channel_service import ChannelAccountService
 from schemas.auth_schemas import UserContext
 import logging
@@ -25,16 +26,37 @@ channel_router = APIRouter(
     dependencies=[Depends(auth_scheme)]
 )
 
-
+'''
 @channel_router.get("/", response_model=ChannelAccountResponse)
 async def get_channel_account(
         line_id: uuid.UUID,
+        channel_type: ChannelType,
         current_user: UserContext = Depends(get_current_user),
         tenant_id: uuid.UUID = Depends(check_tenant_access),
         channel_service: ChannelAccountService = Depends(get_channel_service)
 ) -> ChannelAccountResponse:
     """Get channel account info (without decrypted credentials)"""
-    return await channel_service.get_account(line_id, tenant_id)
+    return await channel_service.get_account(line_id, tenant_id, channel_type)
+'''
+
+@channel_router.get("/", response_model=list[ChannelAccountResponse])
+async def get_channel_accounts(
+        line_id: uuid.UUID,
+        current_user: UserContext = Depends(get_current_user),
+        tenant_id: uuid.UUID = Depends(check_tenant_access),
+        channel_service: ChannelAccountService = Depends(get_channel_service)
+) -> list[ChannelAccountResponse]:
+    return await channel_service.get_accounts(line_id, tenant_id)
+
+
+@channel_router.patch("/toggle/{channel_type}")
+async def update_account(
+    line_id: uuid.UUID,
+    channel_type: ChannelType,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    channel_service: ChannelAccountService = Depends(get_channel_service)
+):
+    return await channel_service.update_account(line_id, tenant_id, channel_type)
 
 
 @channel_router.patch("/telegram-bot", response_model=ChannelAccountResponse)

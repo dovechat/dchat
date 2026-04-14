@@ -96,25 +96,22 @@ class CleanupService:
             await self.conversation_repo.delete(conversation)
             result["conversations"] += 1
 
-        channel_account = await self.channel_account_repo.get_by_line(line_id)
+            # стало
+            channel_account = await self.channel_account_repo.get_by_line_and_type(line_id, channel_type)
 
-        if channel_type == "whatsapp_green":
-            await self._cleanup_green_instance(line_id, channel_account)
-            if channel_account:
-                await self.channel_account_repo.delete(channel_account)
-                log.info(f"\n\n ------- channel_account deleted for green line {line_id} ---------- \n\n")
-        # elif channel_type == "waba":
-        #     if channel_account:
-        #         await self.channel_account_repo.delete(channel_account)
-        #         log.info(f"\n\n ------- channel_account deleted for waba line {line_id} ---------- \n\n")
-        elif channel_account:
-            await self.channel_account_repo.update(
-                channel_account,
-                session_string=None,
-                credentials_encrypted=None,
-                bot_token=None,
-                connection_status="disconnected",
-            )
+            if channel_type == "whatsapp_green":
+                await self._cleanup_green_instance(line_id, channel_account)
+                if channel_account:
+                    await self.channel_account_repo.delete(channel_account)
+                    log.info(f"\n\n ------- channel_account deleted for green line {line_id} ---------- \n\n")
+            elif channel_account:
+                await self.channel_account_repo.update(
+                    channel_account,
+                    session_string=None,
+                    credentials_encrypted=None,
+                    bot_token=None,
+                    connection_status="disconnected",
+                )
 
         log.info(f"\n\n ------- cleanup_line finished: {result} ---------- \n\n")
         return result

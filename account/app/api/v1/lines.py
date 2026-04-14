@@ -1,9 +1,12 @@
 import uuid
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPBearer
+from pydantic import ValidationError
 from core.dependencies import get_current_user
 from app.core.dependencies import get_line_service
 from app.schemas.line_schemas import (
+    ChannelCreate,
+    ChannelRenew,
     LineCreate,
     LineUpdate,
     LineResponse,
@@ -84,3 +87,23 @@ async def delete_line(
     await line_service.delete_line(line_id, tenant_id)
 
 
+@line_router.post("/{line_id}/channels", status_code=status.HTTP_201_CREATED)
+async def add_channel(
+    line_id: uuid.UUID,
+    data: ChannelCreate,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    current_user: UserContext = Depends(get_current_user),
+    line_service: LineService = Depends(get_line_service)
+):
+    return await line_service.add_channel(line_id, tenant_id, data)
+
+
+@line_router.post("/{line_id}/channels/renew", status_code=status.HTTP_200_OK)
+async def renew_channel(
+    line_id: uuid.UUID,
+    data: ChannelRenew,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    current_user: UserContext = Depends(get_current_user),
+    line_service: LineService = Depends(get_line_service)
+):
+    return await line_service.renew_channel(line_id, tenant_id, data)

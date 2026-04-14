@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import signal
+from contextlib import asynccontextmanager
 from typing import Dict
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from telethon import TelegramClient, events
@@ -11,6 +12,7 @@ from core.database import get_db
 from app.repositories.chat_repo import ChatRepository
 
 log = logging.getLogger(__name__)
+get_session = asynccontextmanager(get_db)
 
 class TelegramListenerService:
     def __init__(self):
@@ -45,7 +47,7 @@ class TelegramListenerService:
     async def _listen_chat_task(self, conversation_id: str, phone: str):
         """Задача прослушивания одного диалога"""
         session_string = None
-        async for db in get_db():
+        async with get_session() as db:
             chat_repo = ChatRepository(db)
             session_string = await chat_repo.get_session_by_conversation(conversation_id)
 

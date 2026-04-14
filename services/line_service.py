@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from models.lines import LineStatus
-from repo.line_repo import LineRepository
+from repo.line_repo import ChannelAccountRepository, LineRepository
 from schemas.line_schemas import (
     LineResponse,
     LineListResponse,
@@ -17,8 +17,10 @@ class LineService:
 
     def __init__(
             self,
+            channel_account_repo: ChannelAccountRepository,
             line_repo: LineRepository,
     ) -> None:
+        self.channel_account_repo = channel_account_repo
         self.line_repo = line_repo
 
     async def get_lines(
@@ -75,3 +77,40 @@ class LineService:
         log.info(f"Expire run at {now}: {results}")
         return results
 
+    async def expire_channels(self, now: datetime) -> dict:
+        expired_channels = await self.channel_account_repo.get_expired(now)
+        results = {"expired": 0, "expired_channels": [], "errors": 0}
+
+        for channel in expired_channels:
+            try:
+                line = await self.line_repo.get_by_id(channel.line_id)
+                if not line:
+                    continue
+
+                all_channels = await self.channel_account_repo.get_by_line(channel.line_id)
+                now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+                all_expired = all(
+                    (ch.expires_at is None or ch.expires_at.replace(tzinfo=None) <= now_naive)
+                    for ch in all_channels
+                )
+
+                line_expired = False
+                if all_expired and line.status != LineStatus.expired:
+                    await self.line_repo.update(line, status=LineStatus.expired)
+                    line_expired = True
+                    log.info(f"Line {line.id} expired (all channels expired)")
+
+                log.info(f"Channel {channel.id} (line {line.id}) expired")
+                results["expired_channels"].append({
+                    "channel": channel,
+                    "line": line,
+                    "line_expired": line_expired,
+                    "all_channels": all_channels,
+                })
+                results["expired"] += 1
+            except Exception as e:
+                log.error(f"Error expiring channel {channel.id}: {e}")
+                results["errors"] += 1
+
+        log.info(f"Channel expire run at {now}: {results}")
+        return results
