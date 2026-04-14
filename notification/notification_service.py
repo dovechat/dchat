@@ -137,7 +137,7 @@ class NotificationService:
             {"balance": balance, "days_left": days_left},
         )
 
-    async def notify_line_connection_error(self, tenant_id: uuid.UUID, line_name: str) -> None:
-        await self.send(tenant_id, NotificationType.line_connection_error, {"line_name": line_name})
+    async def notify_line_connection_error(self, tenant_id: uuid.UUID, line_name: str, channel_type: str) -> None:
+        await self.send(tenant_id, NotificationType.line_connection_error, {"line_name": line_name, "channel_type": channel_type})
 
 

@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import desc, func, and_, select
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.lines import ChannelAccount, Line
 from models.messages import Conversation, Message
@@ -237,18 +238,20 @@ class ChatRepository(BaseRepository[Conversation]):
     async def get_lines_with_available_channels(self, tenant_id: uuid.UUID) -> list:
         stmt = (
             select(Line.id, Line.name, ChannelAccount.channel_type)
-            .join(ChannelAccount, ChannelAccount.line_id == Line.id)
+            .join(
+                ChannelAccount,
+                ChannelAccount.line_id == Line.id
+            )
             .where(
                 Line.tenant_id == tenant_id,
                 Line.status == "active",
-                ~select(Conversation.id)
-                .where(
-                    Conversation.line_id == Line.id,
-                    Conversation.crm_type == ChannelAccount.channel_type,
-                    ChannelAccount.channel_type != "telegram_bot"
+                ChannelAccount.channel_type != "telegram_bot",
+                ~sa.exists().where(
+                    and_(
+                        Conversation.line_id == Line.id,
+                        Conversation.crm_type == ChannelAccount.channel_type,
+                    )
                 )
-                .correlate(Line, ChannelAccount)
-                .exists()
             )
             .order_by(Line.name, ChannelAccount.channel_type)
         )

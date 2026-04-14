@@ -63,6 +63,10 @@ class Line(Base):
     connection_state = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
 
+    __table_args__ = (
+        Index("ix_lines_tenant_id_status", "tenant_id", "status"),
+    )
+
 
 class ChannelAccount(Base):
     __tablename__ = "channel_accounts"
@@ -70,12 +74,14 @@ class ChannelAccount(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), nullable=False, index=True)
     channel_type = Column(Enum(ChannelType, native_enum=False), nullable=False, index=True)
+
     expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
     phone = Column(String, nullable=True, index=True)
     credentials_encrypted = Column(JSON, nullable=False)
     encryption_metadata = Column(JSON, server_default='{"v": 1}')
     state_json = Column(JSON)
     updated_at = Column(DateTime, onupdate=func.now())
+
     connection_status = Column(
         Enum(ConnectionStatus, native_enum=False),
         server_default='disconnected',
@@ -83,6 +89,7 @@ class ChannelAccount(Base):
         nullable=False,
         index=True
     )
+
     connection_error = Column(String, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
     session_string = Column(Text)
@@ -90,6 +97,7 @@ class ChannelAccount(Base):
 
     __table_args__ = (
         UniqueConstraint('line_id', 'channel_type', name='uq_channel_account_line_channel'),
+        Index("ix_channel_account_line_id_channel_type", "line_id", "channel_type"),
     )
 
 class Instance(Base):

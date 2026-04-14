@@ -30,6 +30,10 @@ class Conversation(Base):
     created_at = Column(DateTime, server_default=func.now(), index=True)
     updated_at = Column(DateTime, onupdate=func.now())
 
+    __table_args__ = (
+        Index("ix_conversations_line_id_crm_type", "line_id", "crm_type"),
+    )
+
 class Message(Base):
     __tablename__ = "messages"
 
