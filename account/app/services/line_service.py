@@ -145,6 +145,7 @@ class LineService:
         if not account:
             raise HTTPException(status_code=404, detail="Channel not found")
 
+        '''
         if data.amount > 0:
             balance = await self.billing_repo.get_by_tenant(tenant_id)
             if balance.main_balance < data.amount:
@@ -158,6 +159,7 @@ class LineService:
                 reference_id=line_id,
                 description=f"Продление канала {data.channel_type} на {data.subscription_period}",
             )
+        '''
 
         now = datetime.now(timezone.utc)
         base = account.expires_at if account.expires_at and account.expires_at > now else now

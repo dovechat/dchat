@@ -46,6 +46,7 @@ class ChannelCreate(BaseModel):
     channel_type: ChannelType
     subscription_period: SubscriptionPeriod = SubscriptionPeriod.MONTH
     is_demo: bool = False
+    amount: float = 0.0
 
 
 class LineUpdate(BaseModel):
