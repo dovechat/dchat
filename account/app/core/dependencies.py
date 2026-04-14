@@ -14,7 +14,7 @@ from app.repositories.line_repo import (
     LineRepository,
     InstanceRepository
 )
-from repo.billing_repo import BalanceLedgerRepository, BalanceRepository
+from app.repositories.billing_repo import BalanceLedgerRepository, BalanceRepository
 from repo.line_repo import ChannelAccountRepository
 from app.services.channel_service import ChannelAccountService
 from app.services.line_service import LineService
@@ -105,7 +105,7 @@ async def get_channel_account_repo(db: AsyncSession = Depends(get_db)) -> Channe
 
 async def get_line_service(
     billing_repo: BalanceRepository = Depends(get_billing_repo),
-    ledger_repo: BalanceRepository = Depends(get_ledger_repo),
+    ledger_repo: BalanceLedgerRepository = Depends(get_ledger_repo),
     line_repo: LineRepository = Depends(get_line_repo),
     instance_repo: InstanceRepository = Depends(get_instance_repo),
     channel_account_repo: ChannelAccountRepository = Depends(get_channel_account_repo)
