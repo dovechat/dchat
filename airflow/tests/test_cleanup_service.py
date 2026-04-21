@@ -20,7 +20,7 @@ def make_service():
         instance_repo = AsyncMock()
 
         conversation_repo.get_by_line.return_value = conversations or []
-        channel_account_repo.get_by_line.return_value = channel_account
+        channel_account_repo.get_by_line_and_type.return_value = channel_account
         instance_repo.get_by_line.return_value = instance
 
         service = CleanupService(
@@ -100,7 +100,7 @@ async def test_green_instance_freed(line_id, make_service, green_instance, chann
         green_instance,
         external_id=None,
         allocated_to_line_id=None,
-        status="free",
+        status="idle",
     )
 
 

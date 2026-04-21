@@ -34,7 +34,7 @@ class CleanupService:
         )
 
     async def _cleanup_green_instance(self, line_id: uuid.UUID, channel_account) -> None:
-        instance = await self.instance_repo.get_by_line(line_id)
+        instance = await self.instance_repo.get_instance_by_line(line_id)
         if not instance or not instance.external_id:
             log.info(f"\n\n ------- no green instance found for line {line_id} ---------- \n\n")
             return
@@ -48,24 +48,39 @@ class CleanupService:
                 log.error(f"\n\n ------- green credentials decrypt failed {e} ---------- \n\n")
 
         if token:
+            log.info(f"\n\n ---- +++ ---- Send remove webhook greenapi external_id: {instance.external_id} ---+++---  \n\n")
             async with httpx.AsyncClient(timeout=10.0) as client:
                 try:
-                    resp = await client.post(f"{GREEN_API_BASE}/waInstance{instance.external_id}/clearMessagesQueue/{token}")
+                    resp = await client.get(f"{GREEN_API_BASE}/waInstance{instance.external_id}/clearMessagesQueue/{token}")
                     log.info(f"\n\n ------- clearMessagesQueue instance={instance.external_id} status={resp.status_code} ---------- \n\n")
                 except Exception as e:
                     log.error(f"\n\n ------- clearMessagesQueue failed instance={instance.external_id} {e} ---------- \n\n")
 
                 try:
-                    resp = await client.post(f"{GREEN_API_BASE}/waInstance{instance.external_id}/logout/{token}")
-                    log.info(f"\n\n ------- logout instance={instance.external_id} status={resp.status_code} ---------- \n\n")
+                    green_set_settiings_url = f"{GREEN_API_BASE}/waInstance{instance.external_id}/setSettings/{token}"
+                    resp = await client.post(
+                        green_set_settiings_url,
+                        json={
+                            "webhookUrl": "",
+                        }
+                    )
+                    if not str(resp.status_code).startswith("2"):
+                        log.error(f"Send remove webhook returned wrong status code: {resp.status_code} {resp.json()}")
+                except httpx.ReadTimeout:
+                    msg = f"!!! --- ERROR: Send green remove webhook  {green_set_settiings_url} request returns timeout "
+                    log.error(msg)
+
+                try:
+                    green_set_settiings_url = f"{GREEN_API_BASE}/waInstance{instance.external_id}/logout/{token}"
+                    resp = await client.get(green_set_settiings_url)
+                    log.info(f"\n\n ------- logout green_set_settiings_url instance={instance.external_id} status={resp.status_code} {resp.json()} ---------- \n\n")
                 except Exception as e:
-                    log.error(f"\n\n ------- logout failed instance={instance.external_id} {e} ---------- \n\n")
+                    log.error(f"\n\n ------- logout green_set_settiings_url failed instance={instance.external_id} {e} ---------- \n\n")
         else:
             log.info(f"\n\n ------- skipping green API calls: no token for line {line_id} ---------- \n\n")
 
         await self.instance_repo.update(
             instance,
-            external_id=None,
             allocated_to_line_id=None,
             status="idle",
         )
@@ -79,7 +94,10 @@ class CleanupService:
             "media_errors": 0,
         }
 
-        conversations = await self.conversation_repo.get_by_line(line_id)
+        channel_account = await self.channel_account_repo.get_by_line_and_type(line_id, channel_type)
+        log.info(f"\n\n ------- cleanup_line channel_account: {channel_account} ---------- \n\n")
+
+        conversations = await self.conversation_repo.get_by_line(line_id, crm_type=channel_type)
         log.info(f"\n\n ------- cleanup_line conversations: {len(conversations)} ---------- \n\n")
 
         for conversation in conversations:
@@ -96,22 +114,18 @@ class CleanupService:
             await self.conversation_repo.delete(conversation)
             result["conversations"] += 1
 
-            # стало
-            channel_account = await self.channel_account_repo.get_by_line_and_type(line_id, channel_type)
 
-            if channel_type == "whatsapp_green":
-                await self._cleanup_green_instance(line_id, channel_account)
-                if channel_account:
-                    await self.channel_account_repo.delete(channel_account)
-                    log.info(f"\n\n ------- channel_account deleted for green line {line_id} ---------- \n\n")
-            elif channel_account:
-                await self.channel_account_repo.update(
-                    channel_account,
-                    session_string=None,
-                    credentials_encrypted=None,
-                    bot_token=None,
-                    connection_status="disconnected",
-                )
+        if channel_type == "whatsapp_green":
+            await self._cleanup_green_instance(line_id, channel_account)
+
+        await self.channel_account_repo.update(
+            channel_account,
+            session_string=None,
+            credentials_encrypted=None,
+            bot_token=None,
+            connection_status="disconnected",
+        )
+
 
         log.info(f"\n\n ------- cleanup_line finished: {result} ---------- \n\n")
         return result

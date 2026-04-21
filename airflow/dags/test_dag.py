@@ -57,7 +57,7 @@ def etl_wrapper(**context):
 with DAG(
     dag_id="deactivate",
     start_date=datetime(2026, 3, 20),
-    schedule="@hourly",
+    schedule="@daily",
     catchup=False,
     tags=["test", "hello"],
     max_active_runs=1

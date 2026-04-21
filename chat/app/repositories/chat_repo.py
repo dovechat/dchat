@@ -64,17 +64,19 @@ class ChatRepository(BaseRepository[Conversation]):
     async def get_conversations_by_phone(
         self,
         line_id: uuid.UUID,
-        client_phone: uuid.UUID,
+        client_phone: str,
         crm_type: str,
         skip: int = 0,
         limit: int = 1
     ) -> Conversation:
         """Get conversations for specific line"""
+        log.info(f"ChatRepository.get_conversations_by_phone line_id {line_id} client_phone {client_phone} crm_type {crm_type}")
         res = await self.get_multi(
             skip=skip,
             limit=limit,
             filters={"line_id": line_id, "client_phone": client_phone, "crm_type": crm_type}
         )
+        log.info(f"ChatRepository.get_conversations_by_phone res {res}")
         if res and len(res) > 0:
             return res[0]
 

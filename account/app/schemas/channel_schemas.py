@@ -46,8 +46,8 @@ class ChannelAccountUpdate(BaseModel):
 
 
 class CreateWhatsAppGreenSchema(BaseModel):
-    id_instance: str
-    api_token: str
+    id_instance: str | None = None
+    api_token: str | None = None
 
 
 class CreateWabaSchema(BaseModel):

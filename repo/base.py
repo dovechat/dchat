@@ -38,6 +38,7 @@ class BaseRepository(Generic[ModelType]):
             limit: int = 100,
             filters: dict[str, Any] | None = None,
             join_model: Any | None = None,
+            order_by: list[tuple[str, str]] | None = None,
     ) -> list[ModelType]:
         query = select(self.model)
 
@@ -58,6 +59,12 @@ class BaseRepository(Generic[ModelType]):
                         query = query.where(column.in_(value))
                     else:
                         query = query.where(column == value)
+
+        if order_by:
+            query = query.order_by(*[
+                getattr(self.model, f).desc() if d == 'desc' else getattr(self.model, f).asc()
+                for f, d in order_by
+            ])
 
         result = await self.session.execute(query.offset(skip).limit(limit))
         items = list(result.scalars().all())

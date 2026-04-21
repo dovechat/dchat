@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.tenant_repo import AdminTenantRepository
-from app.repositories.line_repo import AdminLineRepository
+from app.repositories.line_repo import AdminChannelAccountRepository, AdminLineRepository
 from app.repositories.instance_repo import AdminInstanceRepository
 from app.repositories.billing_repo import AdminBillingRepository
 from app.repositories.audit_repo import AdminAuditRepository
@@ -19,6 +19,7 @@ class AdminUnitOfWork:
 
         self.tenants = AdminTenantRepository(session)
         self.lines = AdminLineRepository(session)
+        self.channels = AdminChannelAccountRepository(session)
         self.instances = AdminInstanceRepository(session)
         self.billing = AdminBillingRepository(session)
         self.audit = AdminAuditRepository(session)

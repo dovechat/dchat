@@ -72,15 +72,22 @@ class LineStatus(str, Enum):
     disabled = "disabled"
     expired = "expired"
 
+class ChannelOut(BaseModel):
+    id: UUID
+    channel_type: str
+    expires_at: datetime | None = None
+    connection_status: str | None = None
+
+    model_config = {"from_attributes": True}
+
 class LineOut(BaseModel):
     id: UUID
     tenant_id: UUID
     name: str
-    channel_type: str
     status: LineStatus
     is_demo: bool
-    expires_at: datetime | None = None
     created_at: datetime | None = None
+    channels: list[ChannelOut] = []
 
     model_config = {"from_attributes": True}
 

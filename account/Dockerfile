@@ -18,7 +18,7 @@ WORKDIR /mono/account
 RUN apt update && apt-get install -y postgresql-client
 RUN pip install --no-cache-dir poetry==1.7.1
 
-COPY pyproject.toml poetry.lock ./
+COPY account/pyproject.toml account/poetry.lock ./
 
 RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi --no-root

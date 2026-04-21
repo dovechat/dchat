@@ -6,7 +6,7 @@ from app.services.chat_service import ChatService
 
 from app.repositories.chat_repo import ChatRepository
 from repo.line_repo import ChannelAccountRepository
-from app.repositories.line_repo import InstanceRepository
+from repo.line_repo import InstanceRepository
 
 log = logging.getLogger(__name__)
 

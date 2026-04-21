@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 
 from app.core.uow import AdminUnitOfWork
 from app.schemas.admin_schemas import (
+    ChannelOut,
     ExtendLineRequest,
     LineListResponse,
     LineOut,
@@ -48,8 +49,21 @@ class AdminLineService:
         )
         await self._uow.commit()
 
+        items = []
+        for l in lines:
+            channels = await self._uow.channels.get_multi(filters={"line_id": l.id})
+            items.append(LineOut(
+                id=l.id,
+                tenant_id=l.tenant_id,
+                name=l.name,
+                status=l.status,
+                is_demo=l.is_demo,
+                created_at=l.created_at,
+                channels=[ChannelOut.model_validate(ch) for ch in channels],
+            ))
+
         return LineListResponse(
-            items=[LineOut.model_validate(l) for l in lines],
+            items=items,
             total=total,
         )
 
@@ -65,7 +79,16 @@ class AdminLineService:
             resource_id=line_id,
         )
         await self._uow.commit()
-        return LineOut.model_validate(line)
+        channels = await self._uow.channels.get_multi(filters={"line_id": line_id})
+        return LineOut(
+            id=line.id,
+            tenant_id=line.tenant_id,
+            name=line.name,
+            status=line.status,
+            is_demo=line.is_demo,
+            created_at=line.created_at,
+            channels=[ChannelOut.model_validate(ch) for ch in channels],
+        )
 
     async def set_line_status(
         self,
@@ -93,20 +116,26 @@ class AdminLineService:
         return MessageResponse(message=f"Line status updated to {request.status.value}")
 
     async def extend_line(
-        self,
-        line_id: UUID,
-        request: ExtendLineRequest,
-        actor_id: UUID,
+            self,
+            line_id: UUID,
+            request: ExtendLineRequest,
+            actor_id: UUID,
     ) -> MessageResponse:
         line = await self._uow.lines.get_line(line_id)
         if not line:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Line not found")
 
-        # Если срок уже истёк — продлеваем от текущего момента
-        base = line.expires_at if line.expires_at and line.expires_at > datetime.now(timezone.utc) else datetime.now(timezone.utc)
+        channels = await self._uow.channels.get_multi(filters={"line_id": line_id})
+        max_expires = max(
+            (ch.expires_at for ch in channels if ch.expires_at),
+            default=None
+        )
+        base = max_expires if max_expires and max_expires > datetime.now(timezone.utc) else datetime.now(timezone.utc)
         new_expires = base + timedelta(days=request.days)
 
         await self._uow.lines.extend_line(line, new_expires)
+        for ch in channels:
+            await self._uow.channels.update(ch, expires_at=new_expires)
 
         await self._uow.audit.log(
             actor_id=actor_id,

@@ -16,11 +16,11 @@ class ConversationRepository(BaseRepository[Conversation]):
         self,
         line_id: uuid.UUID,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        crm_type: str | None = None,
     ) -> List[Conversation]:
         """Get conversations for specific line"""
-        return await self.get_multi(
-            skip=skip,
-            limit=limit,
-            filters={"line_id": line_id}
-        )
+        filters = {"line_id": line_id}
+        if crm_type is not None:
+            filters["crm_type"] = crm_type
+        return await self.get_multi(skip=skip, limit=limit, filters=filters)

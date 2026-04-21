@@ -2,6 +2,8 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPBearer
 from core.dependencies import get_current_user
+from app.core.dependencies import check_tenant_access, get_channel_service, get_cleanup_service
+from services.cleanup_service import CleanupService
 from app.core.dependencies import check_tenant_access, get_channel_service
 from app.schemas.channel_schemas import (
     TelegramBotCredentials,
@@ -119,6 +121,17 @@ async def get_whatsapp_qr(
     return {"qr": qr_data}
 
 
+@channel_router.post("/whatsapp-green/connect")
+async def connect_whatsapp_green(
+    line_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    current_user: UserContext = Depends(get_current_user),
+    service: ChannelAccountService = Depends(get_channel_service)
+):
+    qr_data = await service.connect_whatsapp_green(line_id, tenant_id)
+    return {"qr": qr_data}
+
+
 @channel_router.post("/waba")
 async def configure_waba(
     line_id: uuid.UUID,
@@ -132,6 +145,19 @@ async def configure_waba(
     log.info(f"channel_router configure_waba res {res}")
     return {"status": "ok", "line_id": res.line_id}
 
+
+@channel_router.post("/cleanup")
+async def cleanup_line(
+    line_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    current_user: UserContext = Depends(get_current_user),
+    cleanup_service: CleanupService = Depends(get_cleanup_service),
+    channel_service: ChannelAccountService = Depends(get_channel_service),
+):
+    accounts = await channel_service.get_accounts(line_id, tenant_id)
+    for account in accounts:
+        await cleanup_service.cleanup_line(line_id, channel_type=account.channel_type)
+    return {"status": "ok"}
 
 
 '''

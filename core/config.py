@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     app_host: str = "localhost"
     app_port: int =  8070
-    admin_port: int | str | None  = 8072
+    adm_app_port: int | str | None  = 8072
     account_port: int | str | None  = 8071
     chat_port: int | str | None  = 8001
 

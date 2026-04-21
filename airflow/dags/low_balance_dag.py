@@ -66,7 +66,7 @@ def check_low_balance(**context):
 
 with DAG(
     dag_id="low_balance_check",
-    schedule="0 * * * *",
+    schedule="0 0 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=["billing", "notifications"],

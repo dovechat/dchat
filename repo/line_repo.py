@@ -51,6 +51,9 @@ class LineRepository(BaseRepository[Line]):
             limit=10000,
         )
 
+    async def get_lines_with_channels_by_tenant(self, tenant_id: uuid.UUID):
+        return await self.get_multi(0, 20, {"tenant_id": tenant_id}, ChannelAccount)
+
 
 class ChannelAccountRepository(BaseRepository[ChannelAccount]):
 

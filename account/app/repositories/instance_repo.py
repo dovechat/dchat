@@ -9,6 +9,27 @@ class InstanceRepository(BaseRepository[Instance]):
     def __init__(self, session: AsyncSession):
         super().__init__(Instance, session)
 
+    async def release_instance(
+            self,
+            instance: Instance
+    ) -> Instance:
+        return await self.update(
+            instance,
+            status=InstanceStatus.idle,
+            allocated_to_line_id=None,
+            last_cleanup_at=datetime.utcnow()
+        )
+
+    async def get_instance_by_line(
+            self,
+            line_id: uuid.UUID
+    ) -> Instance | None:
+        query = select(Instance).where(
+            Instance.allocated_to_line_id == line_id
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
     async def get_by_external_id(self, external_id: str) -> Instance | None:
         stmt = select(Instance).where(Instance.external_id == external_id)
         result = await self.session.execute(stmt)
@@ -40,3 +61,12 @@ class InstanceRepository(BaseRepository[Instance]):
             instance,
             external_id=external_id
         )
+
+async def get_free_instance(self, provider: Provider = Provider.green) -> Instance | None:
+    query = select(Instance).where(
+        Instance.provider == provider,
+        Instance.status == InstanceStatus.idle,
+        Instance.allocated_to_line_id.is_(None)
+    ).limit(1)
+    result = await self.session.execute(query)
+    return result.scalar_one_or_none()

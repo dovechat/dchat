@@ -2,7 +2,7 @@ import pytest
 import uuid
 from httpx import AsyncClient
 
-from app.repositories.line_repo import ChannelAccountRepository
+from repo.line_repo import ChannelAccountRepository
 from models.lines import Line
 
 

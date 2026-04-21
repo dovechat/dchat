@@ -10,7 +10,7 @@ from app.services.line_service import AdminLineService
 from app.schemas.admin_schemas import SetLineStatusRequest, ExtendLineRequest, LineStatus
 
 
-def make_uow(*, line=None, lines=None, total=0):
+def make_uow(*, line=None, lines=None, total=0, channel_expires_at=None):
     uow = MagicMock()
     uow.commit = AsyncMock()
 
@@ -18,7 +18,12 @@ def make_uow(*, line=None, lines=None, total=0):
     uow.lines.get_all_lines = AsyncMock(return_value=lines or [])
     uow.lines.count_lines = AsyncMock(return_value=total)
     uow.lines.set_line_status = AsyncMock(side_effect=lambda l, s: setattr(l, "status", s) or l)
-    uow.lines.extend_line = AsyncMock(side_effect=lambda l, dt: setattr(l, "expires_at", dt) or l)
+    uow.lines.extend_line = AsyncMock()
+
+    mock_channel = MagicMock()
+    mock_channel.expires_at = channel_expires_at
+    uow.channels.get_multi = AsyncMock(return_value=[mock_channel] if channel_expires_at else [])
+    uow.channels.update = AsyncMock()
 
     uow.audit.log = AsyncMock()
 
@@ -144,7 +149,7 @@ class TestExtendLine:
     async def test_extends_from_current_expiry(self):
         future = datetime.now(timezone.utc) + timedelta(days=10)
         line = make_line(expires_at=future)
-        uow = make_uow(line=line)
+        uow = make_uow(line=line, channel_expires_at=future)
         service = AdminLineService(uow)
 
         await service.extend_line(

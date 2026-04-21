@@ -114,11 +114,24 @@ class TariffRepository(BaseRepository[Tariff]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(Tariff, session)
 
+    '''
     async def get_all_active(self) -> list[Tariff]:
         """Get all active tariffs"""
         query = select(Tariff).where(Tariff.is_active == True)
         result = await self.session.execute(query)
         return list(result.scalars().all())
+    '''
+
+    async def get_all_active(self) -> list[Tariff]:
+        """Get all active tariffs"""
+        res = await self.get_multi(
+            skip=0,
+            limit=100,
+            filters={"is_active": True},
+            order_by=[('name', 'asc')]
+        )
+        # res = sorted(res, key = lambda x: x.name)
+        return res
 
     async def get_by_channel_and_period(
             self,

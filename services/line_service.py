@@ -37,7 +37,9 @@ class LineService:
                 days_until_expiry = max(0, delta.days)
 
             connection_status = "not_connected"
-            if line.connection_state:
+            if line.connection_status:
+                connection_status = line.connection_status
+            elif line.connection_state:
                 connection_status = line.connection_state.get("status", "not_connected")
 
             line_dict = {
@@ -45,8 +47,9 @@ class LineService:
                 "days_until_expiry": days_until_expiry,
                 "connection_status": connection_status
             }
+            
             result.append(LineListResponse.model_validate(line_dict))
-
+        log.info(result)
         return result
 
     async def get_line(

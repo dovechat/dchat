@@ -73,8 +73,11 @@ class TariffCreate(BaseModel):
 
 class TariffUpdate(BaseModel):
     """Update tariff"""
-    price: Optional[Decimal] = Field(None, ge=0)
-    is_active: Optional[bool] = None
+    name: str | None = None
+    channel_type: str | None = None
+    period_days: int | None = Field(None, ge=1)
+    price: Decimal | None = Field(None, ge=0)
+    is_active: bool | None = None
 
 
 class TariffResponse(BaseModel):

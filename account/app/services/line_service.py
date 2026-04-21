@@ -1,10 +1,8 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
-from app.repositories.line_repo import (
-    LineRepository,
-    InstanceRepository
-)
+from app.repositories.line_repo import LineRepository
+from repo.instance_repo import InstanceRepository
 from models.billing import LedgerOperationType 
 from repo.billing_repo import BalanceLedgerRepository, BalanceRepository
 from repo.line_repo import ChannelAccountRepository
@@ -68,12 +66,16 @@ class LineService:
         instance = await self.instance_repo.get_free_instance()
 
         if not instance:
+            return "No free instances, it needs to buy new one"
+            # raise HTTPException(status_code=400, detail="No free instances, it needs to buy new one")
+            '''
             external_id = f"wa_instance_{uuid.uuid4().hex[:8]}"
             instance = await self.instance_repo.create_instance(
                 provider="green",
                 external_id=external_id
             )
             log.info(f"Created new WhatsApp instance: {external_id}")
+            '''
 
         log.info(f"Allocating instance {instance.external_id} to line {line_id}")
 

@@ -182,16 +182,17 @@ class GreenWhatsAppListener:
         """Обработка изменения статуса инстанса"""
         log.info("*** GreenWhatsAppListener._handle_instance_state")
         state = payload.get("stateInstance")
+        conn_status = state
+        error_reason = ''
         log.info(f"*** GreenWhatsAppListener._handle_instance_state state {state}")
-        if state not in ["blocked", "sleepMode", "notAuthorized"]:
-            return
-        else:
+        if state in ["blocked", "sleepMode", "notAuthorized"]:
             log.info(f"!!! --- ERROR --- GreenWhatsAppListener._handle_instance_state state {state}")
             await notify_connection_error(line_id, "whatsapp_green")
-
-        conn_status = "error" if state == "blocked" else "disconnected"
-        error_reason = "account_blocked" if state == "blocked" else "phone_offline"
-        log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state} error_reason {error_reason}")
+            conn_status = "error" if state == "blocked" else "disconnected"
+            error_reason = "account_blocked" if state == "blocked" else "phone_offline"
+            log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state} error_reason {error_reason}")
+        if state == "authorized":
+            conn_status = "connected"
 
         async with get_session() as db:
             repo = ChannelAccountRepository(db)

@@ -76,7 +76,7 @@ def expire_channels_task(**context):
 with DAG(
     dag_id="channel_expire_check",
     description="Hourly check and expiration of channel_accounts past their expires_at",
-    schedule="0 * * * *",
+    schedule="0 0 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     default_args=DEFAULT_ARGS,

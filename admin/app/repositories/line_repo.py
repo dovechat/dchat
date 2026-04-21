@@ -1,4 +1,5 @@
 """Admin repository for lines."""
+from datetime import datetime
 from uuid import UUID
 from typing import Any
 
@@ -15,13 +16,13 @@ class AdminLineRepository(BaseRepository[Line]):
         super().__init__(Line, session)
 
     async def get_all_lines(
-        self,
-        *,
-        skip: int = 0,
-        limit: int = 100,
-        tenant_id: UUID | None = None,
-        channel_type: str | None = None,
-        status: str | None = None,
+            self,
+            *,
+            skip: int = 0,
+            limit: int = 100,
+            tenant_id: UUID | None = None,
+            channel_type: str | None = None,
+            status: str | None = None,
     ) -> list[Line]:
         filters: dict[str, Any] = {}
         if tenant_id:
@@ -30,7 +31,12 @@ class AdminLineRepository(BaseRepository[Line]):
             filters["channel_type"] = channel_type
         if status:
             filters["status"] = status
-        return await self.get_multi(skip=skip, limit=limit, filters=filters)
+        return await self.get_multi(
+            skip=skip,
+            limit=limit,
+            filters=filters,
+            join_model=ChannelAccount if channel_type else None,
+        )
 
     async def get_line(self, line_id: UUID) -> Line | None:
         return await self.get_by_id(line_id)
@@ -38,8 +44,8 @@ class AdminLineRepository(BaseRepository[Line]):
     async def set_line_status(self, line: Line, new_status: str) -> Line:
         return await self.update(line, status=new_status)
 
-    async def extend_line(self, line: Line, new_expires_at) -> Line:
-        return await self.update(line, expires_at=new_expires_at)
+    async def extend_line(self, line: Line, new_expires_at: datetime) -> Line:
+        return await self.update(line, status="active")
 
     async def count_lines(
         self,

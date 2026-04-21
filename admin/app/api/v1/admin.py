@@ -8,12 +8,14 @@ from core.database import get_db
 from core.dependencies import get_current_user
 from schemas.auth_schemas import UserContext as User
 
-from app.services.admin_service import AdminService
+from  app.core.uow import AdminUnitOfWork
+from app.services.admin_service import AdminLineService, AdminService
 from app.schemas.admin_schemas import (
-    TenantAdminResponse, TenantBlockRequest,
-    LineAdminResponse, LineUpdateRequest,
-    InstanceAdminResponse, InstanceCleanRequest,
-    LedgerEntryResponse, BalanceAdjustmentRequest
+    BalanceAdjustmentRequest, ExtendLineRequest,
+    InstanceCleanRequest, InstanceAdminResponse,
+    LedgerEntryResponse, LineAdminResponse,
+    LineUpdateRequest, TenantAdminResponse,
+    TenantBlockRequest,    
 )
 from core.config import settings
 
@@ -89,14 +91,12 @@ async def search_lines(
 @router.post("/lines/{line_id}/extend")
 async def extend_line(
         line_id: UUID,
-        days: int = Query(..., ge=1),
+        request: ExtendLineRequest,
         db: AsyncSession = Depends(get_db),
-        user: User = Depends(require_superadmin)
+        admin: dict = Depends(require_superadmin)
 ):
-    service = AdminService(db)
-    await service.extend_line(line_id, days)
-    await db.commit()
-    return {"status": "extended", "line_id": str(line_id)}
+    service = AdminLineService(AdminUnitOfWork(db))
+    return await service.extend_line(line_id, request, actor_id=UUID(admin["sub"]))
 
 
 # --- Instances ---

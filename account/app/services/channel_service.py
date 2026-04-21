@@ -3,10 +3,8 @@ import uuid
 import json
 from typing import Optional
 from fastapi import HTTPException
-from app.repositories.line_repo import (
-    InstanceRepository,
-    LineRepository,
-)
+from app.repositories.line_repo import LineRepository
+from repo.instance_repo import InstanceRepository
 from repo.line_repo import ChannelAccountRepository
 from app.schemas.channel_schemas import (
     TelegramBotCredentials,
@@ -15,12 +13,12 @@ from app.schemas.channel_schemas import (
     ChannelAccountResponse,
 )
 from schemas.line_schemas import ChannelType 
+from services.cleanup_service import CleanupService
 from core.config import settings
 from infra.crypto import decrypt, encrypt
 from models.lines import ChannelAccount, Line
 
 import logging
-
 log = logging.getLogger("uvicorn.error")
 
 
@@ -53,7 +51,7 @@ class ChannelAccountService:
         # !!! Placeholder - implement actual decryption
         """
         # TODO: Use cryptography library
-        if "encrypted_data" in encrypted:
+        if encrypted and "encrypted_data" in encrypted:
             log.info(f"************* _decrypt_credentials encrypted {encrypted} {type(encrypted['encrypted_data'])}")
             creds_js = decrypt(encrypted["encrypted_data"])
             creds = json.loads(creds_js)
@@ -184,32 +182,6 @@ class ChannelAccountService:
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
 
-    async def update_telegram_bot(
-            self,
-            line_id: uuid.UUID,
-            tenant_id: uuid.UUID,
-            credentials: TelegramBotCredentials
-    ) -> ChannelAccountResponse:
-        await self._verify_line_exists(line_id, tenant_id)
-        encrypted = self._encrypt_credentials(credentials.model_dump())
-        account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.TELEGRAM_BOT)
-        if account:
-            updated = await self.channel_repo.update_account(account, credentials_encrypted=encrypted)
-        else:
-            updated = await self.channel_repo.create_account(
-                line_id=line_id,
-                channel_type=ChannelType.TELEGRAM_BOT,
-                credentials_encrypted=encrypted
-            )
-        await self.set_webhook(line_id, credentials.bot_token)
-        return ChannelAccountResponse(
-            id=updated.id,
-            line_id=updated.line_id,
-            channel_type=updated.channel_type,
-            state_json=updated.state_json,
-            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
-        )
-
     async def update_telegram_user(
             self,
             line_id: uuid.UUID,
@@ -244,6 +216,7 @@ class ChannelAccountService:
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
 
+    '''
     async def update_whatsapp_green(
             self,
             line_id: uuid.UUID,
@@ -272,15 +245,150 @@ class ChannelAccountService:
             state_json=updated.state_json,
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
+        '''
+
+    async def update_whatsapp_green(
+            self,
+            line_id: uuid.UUID,
+            tenant_id: uuid.UUID,
+            id_instance: str | None = None,
+            api_token: str | None = None
+    ) -> ChannelAccountResponse:
+        log.info(
+            f"=== update_whatsapp_green START: line={line_id}, tenant={tenant_id}, id_instance={id_instance}, api_token={'***' if api_token else None}")
+
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        log.info(f"Line from DB: {line.id if line else None}")
+        if not line:
+            raise HTTPException(404, "Line not found")
+
+        account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.WHATSAPP_GREEN)
+        log.info(
+            f"Account from DB: {account.id if account else None}, state_json={account.state_json if account else None}")
+
+        if not account:
+            log.info("Account not found, creating new...")
+            account = await self.channel_repo.create_account(
+                line_id=line_id,
+                channel_type=ChannelType.WHATSAPP_GREEN,
+                credentials_encrypted={}
+            )
+            log.info(f"Account created: {account.id}")
+
+        # Если креды не переданы, пытаемся взять из pending
+        if not id_instance or not api_token:
+            log.info("No credentials in request, checking pending...")
+            pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
+            log.info(f"Pending instance id: {pending_id}")
+            if not pending_id:
+                log.error("No pending instance, raising 400")
+                raise HTTPException(400, "No pending instance. Please connect instance first.")
+            instance = await self.instance_repo.get_by_id(pending_id)
+            log.info(
+                f"Instance: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
+            if not instance or instance.provider.value != "green":
+                raise HTTPException(400, "Invalid instance")
+            id_instance = instance.external_id
+            api_token = instance.token
+            instance.status =  "busy"
+            instance.allocated_to_line_id = line_id
+            await self.instance_repo.update(instance)
+            log.info(f"Using instance credentials: id_instance={id_instance}, token={'***' if api_token else None}")
+            # Очищаем pending
+            await self.channel_repo.update_account(account, state_json={})
+            log.info("Cleared pending from state_json")
+
+        token = decrypt(instance.token)
+
+        # Сохраняем credentials
+        credentials = {"id_instance": id_instance, "api_token": token}
+        encrypted = self._encrypt_credentials(credentials)
+        log.info("Credentials encrypted")
+
+        updated = await self.channel_repo.update_account(account, credentials_encrypted=encrypted)
+        log.info(f"Account updated: {updated.id}")
+
+        # Привязываем инстанс, если он был взят из pending
+        if 'instance' in locals() and instance and not instance.allocated_to_line_id:
+            await self.instance_repo.allocate_instance(instance, line_id)
+            log.info(f"Instance {instance.id} allocated to line {line_id}")
+
+        # Устанавливаем вебхук
+        await self._set_green_webhook(line_id, id_instance, token)
+        log.info("Webhook set")
+
+        log.info("=== update_whatsapp_green END")
+        return ChannelAccountResponse(
+            id=updated.id,
+            line_id=updated.line_id,
+            channel_type=updated.channel_type,
+            state_json=updated.state_json,
+            updated_at=updated.updated_at.isoformat() if updated.updated_at else None
+        )
+
+    async def connect_whatsapp_green(self, line_id: uuid.UUID, tenant_id: uuid.UUID) -> dict:
+        log.info(f"******** channel_service connect_whatsapp_green line_id {line_id} tenant_id {tenant_id}")
+        # 1. Проверяем линию
+        line = await self.line_repo.get_line_by_id(line_id, tenant_id)
+        if not line:
+            raise HTTPException(404, "Line not found")
+
+        log.info(f"******** channel_service connect_whatsapp_green line {line}")
+
+        '''
+        # 2. Проверяем, нет ли уже аккаунта WhatsApp Green для этой линии
+        existing_account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.WHATSAPP_GREEN)
+        log.info(f"******** channel_service connect_whatsapp_green existing_account {existing_account} line_id {line_id}")
+        if existing_account:
+            raise HTTPException(400, "WhatsApp Green account already exists for this line")
+        '''
+        account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.WHATSAPP_GREEN)
+        # 3. Берём свободный инстанс
+        log.info(f"******** channel_service connect_whatsapp_green account {account}")
+        instance = await self.instance_repo.get_free_green_instance()
+        log.info(f"******** channel_service connect_whatsapp_green instance {instance}")
+        if not instance:
+            raise HTTPException(404, "No free WhatsApp Green instance available")
+
+        state = {}
+        state["pending_instance_id"] = str(instance.id)
+        await self.channel_repo.update_account(account, state_json=state)
+
+        '''
+        if instance.external_id == "7103535015" and not instance.token:
+            token = encrypt("a3a408bf27c84275b3c87c7358cfc2a5511b5f1854294b8b87")
+            instance.token = token
+            log.debug(f"channel_service connect_whatsapp_green token {token}")
+            await self.instance_repo.update(instance)
+        '''
+
+        token = decrypt(instance.token)
+
+        log.info(f"******** channel_service connect_whatsapp_green instance {instance}")
+
+        # 4. Получаем QR от Green API
+        qr = await self.get_qr_from_green(instance.external_id, token)
+
+        log.info(f"******** channel_service connect_whatsapp_green qr {qr}")
+
+        # 5. Сохраняем временные данные (например, в state_json линии)
+        await self.line_repo.update(line, state_json={"pending_instance_id": str(instance.id), "qr": qr})
+
+        log.info(f"******** channel_service connect_whatsapp_green return qr")
+
+        return {"qr": qr}
+
 
     async def _set_green_webhook(self, line_id, id_instance, api_token):
         green_wh_url = f"https://api.green-api.com/waInstance{id_instance}/setSettings/{api_token}"
+        our_wh_url = f"{settings.host_url}/api/v1/webhooks/whatsapp/green/{line_id}"
+        log.info(f"our_wh_url {our_wh_url}")
         try:
             async with httpx.AsyncClient() as client:
                 res = await client.post(
                     green_wh_url,
                     json={
-                        "webhookUrl": f"{settings.host_url}/api/v1/webhooks/whatsapp/green/{line_id}",
+                        "webhookUrl": our_wh_url,
                         "outgoingWebhook": "yes",
                         "stateInstanceWebhook": "yes",
                         "incomingWebhook": "yes"
@@ -288,6 +396,8 @@ class ChannelAccountService:
                 )
             if not str(res.status_code).startswith("2"):
                 log.error(f"Send green set_webhook returned wrong status code: {res.status_code}")
+            else:
+                log.info(f"Webhook set our_wh_url {our_wh_url}")
         except httpx.ReadTimeout:
             msg = f"!!! --- ERROR: Send green set_webhook  {green_wh_url} request returns timeout "
             log.error(msg)
@@ -299,16 +409,23 @@ class ChannelAccountService:
             raise HTTPException(status_code=status, detail=msg)
 
     async def get_qr_from_green(self, id_instance: str, api_token: str) -> str:
+        log.info(f"----------------- id_instance {id_instance} api_token {api_token} ")
+        green_wh_url =  f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
-            )
-            response.raise_for_status()
-            data = response.json()
-            log.info(f"----------------- data {data} ")
-            if data.get("type") == "qrCode":
-                return data["message"]  # base64
-            raise HTTPException(400, "Failed to get QR")
+            try:
+                    response = await client.get(
+                        green_wh_url
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    log.info(f"----------------- data {data} ")
+                    if data.get("type") == "qrCode":
+                        return data["message"]  # base64
+                    raise HTTPException(400, "Failed to get QR")
+            except httpx.ReadTimeout:
+                log.error(f"!!! --- ERROR: Send green QR request timeout  {green_wh_url} request returns timeout ")
+            except Exception as e:
+                log.error(f"!!! --- ERROR: Send green QR request {e} status_code {res.status_code} {res.json()}")
 
     async def update_waba(
             self,
@@ -395,6 +512,12 @@ class ChannelAccountService:
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
 
+
+    async def line_cleanup(self, line_id: uuid.UUID, tenant_id: uuid.UUID):
+        accounts = await self.get_accounts(line_id, tenant_id)
+        for account in accounts:
+            await cleanup_service.cleanup_line(line_id, channel_type=account.channel_type)
+        return {"status": "ok"}
 
 
 

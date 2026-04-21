@@ -10,10 +10,11 @@ from app.repositories.billing_repo import (
     TariffRepository
 )
 from app.repositories.tenant_repo import RequisitsRepository, TenantRepository
-from app.repositories.line_repo import (
-    LineRepository,
-    InstanceRepository
-)
+from app.repositories.line_repo import  LineRepository
+from repo.instance_repo import InstanceRepository
+from repo.conversation_repo import ConversationRepository
+from repo.message_repo import MessageRepository
+from services.cleanup_service import CleanupService
 from app.repositories.billing_repo import BalanceLedgerRepository, BalanceRepository
 from repo.line_repo import ChannelAccountRepository
 from app.services.channel_service import ChannelAccountService
@@ -54,6 +55,7 @@ async def get_billing_service(
     return BillingService(balance_repo, ledger_repo, payment_repo, tariff_repo)
 
 # ------- channels
+
 async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:
     return LineRepository(db)
 
@@ -69,6 +71,20 @@ async def get_channel_service(
     instance_repo: InstanceRepository = Depends(get_instance_repo)
 ) -> ChannelAccountService:
     return ChannelAccountService(channel_repo, line_repo, instance_repo)
+
+async def get_conversation_repo(db: AsyncSession = Depends(get_db)) -> ConversationRepository:
+    return ConversationRepository(db)
+
+async def get_message_repo(db: AsyncSession = Depends(get_db)) -> MessageRepository:
+    return MessageRepository(db)
+
+async def get_cleanup_service(
+    conversation_repo: ConversationRepository = Depends(get_conversation_repo),
+    message_repo: MessageRepository = Depends(get_message_repo),
+    channel_account_repo: ChannelAccountRepository = Depends(get_channel_account_repo),
+    instance_repo: InstanceRepository = Depends(get_instance_repo),
+) -> CleanupService:
+    return CleanupService(conversation_repo, message_repo, channel_account_repo, instance_repo)
 
 async def get_tenant_uow(session: AsyncSession = Depends(get_db)) -> TenantMembershipUoW:
     return TenantMembershipUoW(session)
@@ -96,12 +112,6 @@ async def get_billing_repo(db: AsyncSession = Depends(get_db)) -> BalanceReposit
 
 async def ledger_repo(db: AsyncSession = Depends(get_db)) -> BalanceLedgerRepository:
     return BalanceLedgerRepository(db)
-
-async def get_line_repo(db: AsyncSession = Depends(get_db)) -> LineRepository:
-    return LineRepository(db)
-
-async def get_channel_account_repo(db: AsyncSession = Depends(get_db)) -> ChannelAccountRepository:
-    return ChannelAccountRepository(db)
 
 async def get_line_service(
     billing_repo: BalanceRepository = Depends(get_billing_repo),

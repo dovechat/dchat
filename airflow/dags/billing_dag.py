@@ -54,7 +54,7 @@ def charge_lines_task(**context) -> None:
 with DAG(
     dag_id="billing_daily_charge",
     description="Daily charge for active lines according to tariff",
-    schedule="0 * * * *",
+    schedule="0 0 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     default_args=DEFAULT_ARGS,

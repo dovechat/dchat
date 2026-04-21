@@ -16,6 +16,7 @@ async def whatsapp_green_webhook(
     service: WebhookService = Depends(get_webhook_service)
 ):
     payload = await request.json()
+    log.info(f'@router.post(/whatsapp/green/{line_id} payload {payload}')
     green_listener = request.app.state.green_listener
     await green_listener.handle_webhook(line_id, payload)
     return {"status": "ok"}

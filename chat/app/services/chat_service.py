@@ -457,6 +457,7 @@ class ChatService:
         # Получаем креды линии
         channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
         log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green channel_acc {channel_acc} \n\n")
+        log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green channel_acc.credentials_encrypted {channel_acc.credentials_encrypted['encrypted_data']} \n\n")
         creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
 
         log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green creds {creds} \n\n")

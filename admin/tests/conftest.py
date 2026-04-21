@@ -13,7 +13,7 @@ from core.config import settings
 from core.database import engine
 from core.security import create_access_token
 from models.tenants import AuditLog, Membership, UserRole, Tenant, TenantPayment, TenantStatus, User
-from models.lines import Line, Instance, InstanceStatus
+from models.lines import ChannelAccount, Line, Instance, InstanceStatus
 from models.billing import BalanceLedger, LedgerOperationType
 
 test_engine = create_async_engine(
@@ -61,7 +61,7 @@ def event_loop_policy():
 @pytest_asyncio.fixture(scope="function")
 async def client():
     async with AsyncClient(
-        base_url=f"http://{settings.app_host}:{settings.admin_port}",
+        base_url=f"http://{settings.app_host}:{settings.adm_app_port}",
         timeout=10.0,
     ) as ac:
         yield ac
@@ -195,13 +195,20 @@ async def test_line(test_tenant):
         line = Line(
             tenant_id=test_tenant.id,
             name="Test WhatsApp Line",
-            channel_type="whatsapp_green",
             status="active",
             is_demo=False,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             connection_state={"status": "not_connected"},
         )
         session.add(line)
+        await session.flush()
+
+        channel = ChannelAccount(
+            line_id=line.id,
+            channel_type="whatsapp_green",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            credentials_encrypted={},
+        )
+        session.add(channel)
         await session.commit()
         await session.refresh(line)
         yield line
@@ -219,13 +226,20 @@ async def expired_line(test_tenant):
         line = Line(
             tenant_id=test_tenant.id,
             name="Expired Line",
-            channel_type="telegram_bot",
             status="expired",
             is_demo=False,
-            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
             connection_state={},
         )
         session.add(line)
+        await session.flush()
+
+        channel = ChannelAccount(
+            line_id=line.id,
+            channel_type="telegram_bot",
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+            credentials_encrypted={},
+        )
+        session.add(channel)
         await session.commit()
         await session.refresh(line)
         yield line

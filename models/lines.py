@@ -106,6 +106,7 @@ class Instance(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     provider = Column(Enum(Provider, native_enum=False), default=Provider.green, nullable=False, index=True)
     external_id = Column(String, unique=True, index=True)
+    token = Column(String, nullable=True, index=False)
     status = Column(Enum(InstanceStatus, native_enum=False), default=InstanceStatus.idle, nullable=False, index=True)
     last_cleanup_at = Column(DateTime)
     allocated_to_line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="SET NULL"), unique=True, index=True)

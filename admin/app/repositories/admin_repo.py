@@ -47,10 +47,11 @@ class AdminLineRepository(BaseRepository[Line]):
         return result.all()  # Возвращает кортежи (Line, tenant_name)
 
     async def extend_line(self, line_id: UUID, new_expires_at: datetime) -> None:
-        stmt = update(Line).where(Line.id == line_id).values(
+        stmt = update(ChannelAccount).where(ChannelAccount.line_id == line_id).values(
             expires_at=new_expires_at,
-            status="active"
         )
+        await self.session.execute(stmt)
+        stmt = update(Line).where(Line.id == line_id).values(status="active")
         await self.session.execute(stmt)
 
 
