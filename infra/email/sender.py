@@ -22,6 +22,7 @@ class BaseEmailSender:
         msg['Subject'] = subject
         msg['From'] = settings.smtp_from
         msg['To'] = to_email
+        log.info(f"\n\n user {settings.smtp_user} password {settings.smtp_password} \n\n")
         print(f"\n\n ++++++++++++++ to_email {to_email} ++++++++++++++ \n\n")
         msg.attach(MIMEText(html, 'html'))
         return msg
@@ -32,7 +33,6 @@ class BaseEmailSender:
                 server.starttls()
                 server.ehlo()
                 server.login(settings.smtp_user, settings.smtp_password)
-                log.info(f"\n\n user {settings.smtp_user} password {settings.smtp_password} \n\n")
                 print(f"\n\n ------------- msg {msg} ------------ \n\n")
                 server.send_message(msg)
             return True
