@@ -86,7 +86,7 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True, nullable=False)
-    phone = Column(String, unique=True, nullable=True, index=True)
+    phone = Column(String, nullable=True, index=True)
     password_hash = Column(String, nullable=False)
     role = Column(Enum(UserRole, name="userrole"), default=UserRole.user, nullable=False, index=True)
     status = Column(Enum(UserStatus, name="userstatus"), default=UserStatus.inactive, nullable=False, index=True)
