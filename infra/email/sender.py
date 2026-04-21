@@ -32,6 +32,7 @@ class BaseEmailSender:
                 server.starttls()
                 server.ehlo()
                 server.login(settings.smtp_user, settings.smtp_password)
+                log.info(f"\n\n user {settings.smtp_user} password {settings.smtp_password} \n\n")
                 print(f"\n\n ------------- msg {msg} ------------ \n\n")
                 server.send_message(msg)
             return True
