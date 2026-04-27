@@ -11,6 +11,8 @@ from core.database import get_db
 from infra.crypto import decrypt
 from models.lines import Line
 from repo.line_repo import ChannelAccountRepository
+from repo.membership_repo import MembershipRepository
+from repo.message_repo import MediaRepository
 from app.utils import decrypt_credentials
 
 import logging
@@ -22,6 +24,8 @@ class BotService:
         self.channel_repo = ChannelAccountRepository(db)
         self.conv_repo = ChatRepository(db)
         self.msg_repo = MessageRepository(db)
+        self.media_repo = MediaRepository(db)
+        self.membership_repo = MembershipRepository(db)
 
     async def handle_webhook(self, line_id: uuid.UUID, update_data: dict):
         """Handle incoming update from Telegram Bot API"""
@@ -55,6 +59,8 @@ class BotService:
             client_phone=chat.get("username") or str(chat_id)
         )
 
+        log.info(f"is_new={is_new} conversation_id={conversation.id} chat_id={chat_id} line_id={line_id}")
+
         # Get bot token from line credentials
         log.info(f"\n\n *-**-*-*-*-*-*-*-*    self.channel_repo {dir(self.channel_repo)}   \n\n ")
         channel_acc = await self.channel_repo.get_by_line_and_type(line_id, "telegram_bot")
@@ -76,20 +82,15 @@ class BotService:
             text=text,
             channel_msg_id=str(message_id),
             raw_content=raw_content,
-            media_id=media_id,
             user_id=None
         )
+        if media_id:
+            await self.media_repo.create(message_id=db_message.id, id=media_id, file_name=file_name,
+                                         mime_type=mime_type)
+            await self.db.flush()
         log.info(f"db_message {db_message.id}")
 
         from app.services.websocket_manager import manager
-
-        if not is_new:
-            await manager.send_new_conversation(
-                str(line.tenant_id),
-                {"id": str(conversation.id), "line_id": str(line_id), "crm_type": "telegram_bot",
-                 "client_phone": str(chat_id)}
-            )
-
 
         # 8. Send to WebSocket
         ws_message = {
@@ -101,24 +102,24 @@ class BotService:
         }
 
         if media_id:
-            ws_message["media_id"] = media_id
-            ws_message["file_name"] = file_name
-            ws_message["mime_type"] = mime_type
+            ws_message["media"] = [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}]
+
+        if is_new:
+            members = await self.membership_repo.get_by_tenant(line.tenant_id)
+            for m in members:
+                await manager.send_new_conversation(
+                    str(m.user_id),
+                    {
+                        "id": str(conversation.id),
+                        "line_id": str(line_id),
+                        "crm_type": "telegram_bot",
+                        "client_phone": str(chat_id),
+                        "crm_chat_id": str(chat_id),
+                    }
+                )
 
         await manager.send_new_message(str(conversation.id), ws_message)
         log.info(f"send_new_message done")
-
-        if is_new:
-            await manager.send_new_conversation(
-                str(line.tenant_id),
-                {
-                    "id": str(conversation.id),
-                    "line_id": str(line_id),
-                    "crm_type": "telegram_bot",
-                    "client_phone": str(chat_id),
-                    "crm_chat_id": str(chat_id),
-                }
-            )
 
         return {"ok": True}
 
@@ -193,8 +194,6 @@ class BotService:
             return None, None, None, None
 
         if media_id:
-            # Save message with media info
-            raw_content["media_id"] = media_id
             raw_content["file_name"] = file_name
             raw_content["mime_type"] = mime_type
 

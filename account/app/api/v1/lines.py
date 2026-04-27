@@ -95,7 +95,7 @@ async def add_channel(
     current_user: UserContext = Depends(get_current_user),
     line_service: LineService = Depends(get_line_service)
 ):
-    return await line_service.add_channel(line_id, tenant_id, data)
+    return await line_service.add_channel(line_id, tenant_id, data, current_user)
 
 
 @line_router.post("/{line_id}/channels/renew", status_code=status.HTTP_200_OK)

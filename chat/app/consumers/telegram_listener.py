@@ -124,8 +124,9 @@ class TelegramConnection:
 
         while self._running:
             try:
-                log.info(f"Attempting to connect for {self.conversation_id}")
-                await self.connect()
+                if not self.client or not self.client.is_connected():
+                    log.info(f"Attempting to connect for {self.conversation_id}")
+                    await self.connect()
                 log.info(f"Running until disconnected for {self.conversation_id}")
                 await self.client.run_until_disconnected()
                 if not self.client.is_connected():
@@ -212,6 +213,8 @@ class TelegramListener:
         self.tasks: Dict[str, asyncio.Task] = {}
         self.clients: Dict[str, TelegramClient] = {}
         self.bots: Dict[str, TelegramClient] = {}
+        self._album_buffer: dict[str, list] = {}  # media_group_id -> list of media items
+        self._album_tasks: dict[str, asyncio.Task] = {}  # media_group_id -> flush task
         self.s3_client = Minio(
             settings.s3_endpoint,
             access_key=settings.s3_access_key,
@@ -335,14 +338,24 @@ class TelegramListener:
                 log.error(f"No client for {conversation_id} after waiting")
                 return
 
-        file_bytes, _ = await get_file_from_s3(data.media_id)
-        log.info(f"------------------- TelegramListener send_file_user client {client}")
-        file_stream = BytesIO(file_bytes)
-        file_stream.name = filename
-
-        log.info(f"------------------- TelegramListener send_file_user: filename {filename}")
-        # Отправляем через Telethon
-        return await client.send_file(data.phone, file_stream, caption=data.text)
+        sent = None
+        if len(data.media) == 1:
+            m = data.media[0]
+            file_bytes, _ = await get_file_from_s3(m["id"])
+            file_stream = BytesIO(file_bytes)
+            file_stream.name = m.get("file_name")
+            sent = await client.send_file(data.phone, file_stream, caption=data.text)
+        else:
+            streams = []
+            for m in data.media:
+                file_bytes, _ = await get_file_from_s3(m["id"])
+                file_stream = BytesIO(file_bytes)
+                file_stream.name = m.get("file_name")
+                streams.append(file_stream)
+            sent = await client.send_file(data.phone, streams, caption=data.text)
+            if isinstance(sent, list):
+                sent = sent[-1]
+        return sent
 
 
     async def send_message_bot(bot_token: str, conversation_id: str, text: str):
@@ -359,7 +372,7 @@ class TelegramListener:
             conversation_id=conversation_id,
             my_phone=my_phone,
             peer_phone=peer_phone,
-            message_callback=_save_and_notify
+            message_callback=self._save_and_notify
         )
 
         log.info(f"------ TelegramListener._listen_task connection {connection}")
@@ -377,7 +390,7 @@ class TelegramListener:
         log.info(f"------ TelegramListener._listen_task start sync")
 
         # Потом запускаем ран в фоне
-        task = asyncio.create_task(connection.run())
+        task = asyncio.create_task(connection.client.run_until_disconnected())
 
         log.info(f"------ TelegramListener._listen_task start background {task}")
 
@@ -389,61 +402,107 @@ class TelegramListener:
             await connection.disconnect()
 
 
-async def _save_and_notify(db: AsyncSession, conversation_id: str, peer_phone: str, event):
-    """Сохраняет сообщение в БД и уведомляет фронт."""
-    service = ChatService(db)
+    async def _save_and_notify(self, db: AsyncSession, conversation_id: str, peer_phone: str, event):
+        """Сохраняет сообщение в БД и уведомляет фронт."""
+        service = ChatService(db)
+    
+        media_id = None
+        file_name = None
+        mime_type = None
+    
+        if event.media:
+            file_bytes = await event.download_media(bytes)
+            media_id = uuid.uuid4()
+    
+            if hasattr(event.media, 'document') and event.media.document:
+                mime_type = event.media.document.mime_type
+                file_name = None
+                if hasattr(event.media.document, 'attributes'):
+                    for attr in event.media.document.attributes:
+                        if hasattr(attr, 'file_name'):
+                            file_name = attr.file_name
+                            break
+                if not file_name:
+                    file_name = f"file_{media_id}"
+            else:
+                mime_type = "image/jpeg"
+                file_name = f"photo_{media_id}.jpg"
+    
+            await service._save_file(file_bytes, media_id, file_name, mime_type)
+    
+            media_group_id = getattr(event.message, 'grouped_id', None)
+            if media_group_id:
+                media_group_id = str(media_group_id)
+                self._album_buffer.setdefault(media_group_id, []).append({
+                    "id": str(media_id),
+                    "file_name": file_name,
+                    "mime_type": mime_type,
+                    "text": event.message.text or "",
+                    "channel_msg_id": str(event.message.id),
+                    "conversation_id": conversation_id,
+                    "peer_phone": peer_phone,
+                })
+    
+                if media_group_id in self._album_tasks:
+                    self._album_tasks[media_group_id].cancel()
 
-    media_id = None
-    file_name = None
-    mime_type = None
+                self._album_tasks[media_group_id] = asyncio.create_task(
+                    self._flush_album(media_group_id, event)
+                )
+                return
+    
+        try:
+            message = await service.save_incoming_message(
+                conversation_id=conversation_id,
+                peer_phone=peer_phone,
+                event=event,
+                media_id=media_id,
+                file_name=file_name,
+                mime_type=mime_type,
+            )
+            await manager.send_new_message(conversation_id, {
+                "id": str(message.id),
+                "text": message.text,
+                "direction": "inbound",
+                "created_at": message.created_at.isoformat(),
+                "phone": peer_phone,
+                "media": [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}] if media_id else [],
+                "is_new": True,
+            })
+        except Exception as e:
+            log.error(f"Failed: {e}", exc_info=True)
+            raise
 
-    log.info(f"\n\n - * -+- * -+- * -+ event {event}  \n\n")
 
-    if event.media:
-        file_bytes = await event.download_media(bytes)
-        media_id = uuid.uuid4()
-
-        # Определяем тип
-        if hasattr(event.media, 'document') and event.media.document:
-            mime_type = event.media.document.mime_type
-            # имя файла можно взять из атрибутов документа
-            file_name = None
-            if hasattr(event.media.document, 'attributes'):
-                for attr in event.media.document.attributes:
-                    if hasattr(attr, 'file_name'):
-                        file_name = attr.file_name
-                        break
-            if not file_name:
-                file_name = f"file_{media_id}"
-        else:
-            # фото
-            mime_type = "image/jpeg"
-            file_name = f"photo_{media_id}.jpg"
-
-        await service._save_file(file_bytes, media_id, file_name, mime_type)
-
-    log.info(f"\n\n - * -+- * -+- * -+ file_name {file_name}  mime_type {mime_type} \n\n")
-    try:
-        message = await service.save_incoming_message(
-            conversation_id=conversation_id,
-            peer_phone=peer_phone,
-            event=event,
-            media_id=media_id,
-            file_name=file_name,
-            mime_type=mime_type
-        )
-
-        await manager.send_new_message(conversation_id, {
-            "id": str(message.id),
-            "text": message.text,
-            "direction": "inbound",
-            "created_at": message.created_at.isoformat(),
-            "phone": peer_phone,
-            "media_id": str(media_id),
-            "file_name": file_name,
-            "mime_type": mime_type,
-            "is_new": True,
-        })
-    except Exception as e:
-        log.error(f"Failed: {e}", exc_info=True)
-        raise
+    async def _flush_album(self, mgid: str, event):
+        await asyncio.sleep(1)
+        items = self._album_buffer.pop(mgid, [])
+        self._album_tasks.pop(mgid, None)
+        if not items:
+            return
+        first = items[0]
+        try:
+            async with get_session() as db:
+                service = ChatService(db)
+                message = await service.save_incoming_message(
+                    conversation_id=first["conversation_id"],
+                    peer_phone=first["peer_phone"],
+                    event=event,
+                    media_id=None,
+                    file_name=None,
+                    mime_type=None,
+                    media_items=[{"id": m["id"], "file_name": m["file_name"], "mime_type": m["mime_type"]} for m in items],
+                    text=first["text"],
+                    channel_msg_id=first["channel_msg_id"],
+                )
+                await manager.send_new_message(first["conversation_id"], {
+                    "id": str(message.id),
+                    "text": message.text,
+                    "direction": "inbound",
+                    "created_at": message.created_at.isoformat(),
+                    "phone": first["peer_phone"],
+                    "media": [{"id": m["id"], "file_name": m["file_name"], "mime_type": m["mime_type"]} for m in items],
+                    "is_new": True,
+                })
+        except Exception as e:
+            log.error(f"Album flush failed: {e}", exc_info=True)

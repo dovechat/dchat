@@ -40,6 +40,10 @@ class BalanceLedgerResponse(BaseModel):
 
 
 # === PAYMENT SCHEMAS ===
+class PaymentCreate(BaseModel):
+    amount: Decimal
+    payment_method: str = "invoice"
+
 
 class PaymentResponse(BaseModel):
     """Payment history entry"""

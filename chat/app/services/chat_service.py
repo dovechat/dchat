@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from minio import Minio
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
-from repo.line_repo import ChannelAccountRepository
+from repo.line_repo import ChannelAccountRepository, LineRepository
+from repo.message_repo import MediaRepository
+from repo.tenant_repo import TenantRepository
 from app.schemas.chat_schemas import (
     ChannelAvailable,
     ConversationCreate,
@@ -43,6 +45,9 @@ class ChatService:
         self.ch_acc_repo = ChannelAccountRepository(db)
         self.conv_repo = ChatRepository(db)
         self.msg_repo = MessageRepository(db)
+        self.tenant_repo = TenantRepository(db)
+        self.media_repo = MediaRepository(db)
+        self.line_repo = LineRepository(db)
         self.s3_client = Minio(
             settings.s3_endpoint,
             access_key=settings.s3_access_key,
@@ -52,15 +57,26 @@ class ChatService:
 
     async def get_conversations(
             self,
-            tenant_id: uuid.UUID,
+            user_id: uuid.UUID,
             line_id: uuid.UUID | None = None,
             skip: int = 0,
             limit: int = 100
     ) -> List[ConversationListResponse]:
-        rows = await self.conv_repo.get_conversations_with_stats(tenant_id, skip, limit)
+        tenants = await self.tenant_repo.get_all_tenants(user_id=user_id)
+        log.info(f"DEBUG tenants: {tenants}")
+        tenant_ids = [t.id for t in tenants]
+        log.info(f"DEBUG tenant_ids: {tenant_ids}")
+        tenant_map = {t.id: t.name for t in tenants}
+
+        if not tenant_ids:
+            return []
+
+        rows = await self.conv_repo.get_conversations_with_stats(tenant_ids, skip, limit)
+
+        log.info(f"DEBUG rows: {rows}")
 
         conversations = []
-        for conv, line_name, unread_count, last_msg_at in rows:
+        for conv, line_name, tenant_id, unread_count, last_msg_at in rows:
             last_msg = None
             if last_msg_at:
                 last_msg_obj = await self.msg_repo.get_last_message(conv.id)
@@ -70,20 +86,69 @@ class ChatService:
             conversations.append(ConversationListResponse(
                 **conv.__dict__,
                 line_name=line_name,
+                tenant_id=tenant_id,
                 unread_count=unread_count,
                 last_message=last_msg
             ))
 
+        log.info(f"DEBUG conversations: {conversations}")
+
         return conversations
 
-    async def get_lines_with_available_channels(self, tenant_id: uuid.UUID) -> list[LineWithChannelsResponse]:
-        rows = await self.conv_repo.get_lines_with_available_channels(tenant_id)
+    async def get_conversations_filtered(
+            self,
+            user_id: uuid.UUID,
+            line_id: uuid.UUID | None = None,
+            crm_type: str | None = None,
+            is_closed: bool = False,
+    ) -> list[ConversationListResponse]:
+        tenants = await self.tenant_repo.get_all_tenants(user_id=user_id)
+        tenant_ids = [t.id for t in tenants]
+        if not tenant_ids:
+            return []
+
+        rows = await self.conv_repo.get_conversations_with_filters(
+            tenant_ids=tenant_ids,
+            line_id=line_id,
+            crm_type=crm_type,
+            is_closed=is_closed,
+        )
+
+        conversations = []
+        for conv, line_name, tenant_id, unread_count, last_msg_at in rows:
+            last_msg = None
+            if last_msg_at:
+                last_msg_obj = await self.msg_repo.get_last_message(conv.id)
+                if last_msg_obj:
+                    last_msg = MessageResponse.model_validate(last_msg_obj)
+            conversations.append(ConversationListResponse(
+                **conv.__dict__,
+                line_name=line_name,
+                tenant_id=tenant_id,
+                unread_count=unread_count,
+                last_message=last_msg
+            ))
+        return conversations
+
+
+
+    async def get_lines_with_available_channels(self, user_id: uuid.UUID) -> list[LineWithChannelsResponse]:
+        tenants = await self.tenant_repo.get_all_tenants(user_id=user_id)
+        tenant_map = {t.id: t.name for t in tenants}
 
         lines: dict[uuid.UUID, LineWithChannelsResponse] = {}
-        for row in rows:
-            if row.id not in lines:
-                lines[row.id] = LineWithChannelsResponse(id=row.id, name=row.name, channels=[])
-            lines[row.id].channels.append(ChannelAvailable(channel_type=row.channel_type))
+        for tenant in tenants:
+            rows = await self.conv_repo.get_lines_with_available_channels(tenant.id)
+            for row in rows:
+                if row.id not in lines:
+                    lines[row.id] = LineWithChannelsResponse(
+                        id=row.id,
+                        name=row.name,
+                        tenant_id=tenant.id,
+                        tenant_name=tenant_map[tenant.id],
+                        channels=[]
+                    )
+                lines[row.id].channels.append(ChannelAvailable(channel_type=row.channel_type))
 
         return list(lines.values())
 
@@ -136,12 +201,26 @@ class ChatService:
         for msg in messages:
             msg_dict = msg.__dict__
             log.info(f"========  msg.raw_content {msg.raw_content}")
-            if msg.raw_content and msg.raw_content.get("file_name") is not None:
-                msg_dict['file_name'] = msg.raw_content.get("file_name")
+            log.info(f"========  msg.user {msg.user}")
+            filename = None
+            if msg.raw_content:
+                if msg.raw_content.get("file_name") is not None:
+                    filename = msg.raw_content.get("file_name")
+                if filename is None and msg.raw_content is not None:
+                    raw = msg.raw_content or {}
+                    filename = (
+                        raw.get("messageData", {})
+                        .get("fileMessageData", {})
+                        .get("fileName")
+                    )
+
             if msg.user:
                 msg_dict['user_email'] = msg.user.email
                 msg_dict['user_full_name'] = msg.user.full_name
-                log.info(f"========  msg_dict['file_name'] {msg_dict.get("file_name") }")
+                log.info(f"========  filename {filename}")
+            
+            log.info(f"========  filename {filename}")
+            msg_dict['file_name'] = filename
             result.append(MessageResponse.model_validate(msg_dict))
         return result
 
@@ -179,18 +258,24 @@ class ChatService:
             raise ValueError("Conversation not found")
         # log.info(f"chat_service ChatService.create_message conv {conv}")
 
-        
+        # Автооткрытие закрытого чата при новом сообщении
+        if conv.is_closed:
+            await self.conv_repo.set_conversation_closed(conv.id, False)
+
         message = await self.msg_repo.create_message(
             user_id=current_user.id if data.direction == MessageDirection.outbound else None,
             conversation_id=data.conversation_id,
             channel_msg_id=data.channel_msg_id,
             direction=data.direction,
             text=data.text,
-            media_id=data.media_id,
             raw_content=data.raw_content
         )
+
+        if data.media:
+            for m in data.media:
+                await self.media_repo.create(message_id=message.id, **m)
+
         await self.db.commit()
-        # log.info(f"******* message {message}")
         return conv, message
 
     async def _finalize_message(
@@ -206,7 +291,6 @@ class ChatService:
             error: Exception = None,
     ):
         """Общая обработка результата отправки"""
-
         # 1. Вебсокет о новом сообщении (всегда)
         if success:
             # 2. Обновляем message (channel_msg_id, raw_content)
@@ -248,7 +332,7 @@ class ChatService:
                             'message_id': str(data.id),
                             'conversation_id': str(conversation_id),
                             'text': data.text,
-                            'media_id': data.media_id  # если есть
+                            # edia_id': data.media_id  # если есть
                         },
                         account_phone=data.phone
                     )
@@ -304,18 +388,23 @@ class ChatService:
         self,
         request: Request,
         data: MessageCreate,
-        file: UploadFile | None = None,
+        files: list[UploadFile] = [],
         current_user: UserContext = Depends(get_current_user),
     ) -> MessageResponse:
         """Create new message in conversation"""
         listener = request.app.state.listener
 
-        if file:
-            # Сохраняем файл
-            file_info = await self._save_uploaded_file(file, data.media_id)
-            # log.info(f"File saved: file {file}")
-            # log.info(f"File saved: file_info {file_info}")
-            data.raw_content["file_name"] = file.filename
+        if files:
+            media_items = []
+            for file in files:
+                media_id = uuid.uuid4()
+                await self._save_uploaded_file(file, media_id)
+                media_items.append({
+                    "id": str(media_id),
+                    "file_name": file.filename,
+                    "mime_type": file.content_type,
+                })
+            data.media = media_items
 
         conv, message = await self.conv_msg(data, current_user)
 
@@ -327,9 +416,7 @@ class ChatService:
             "user_id": str(current_user.id),
             "user_email": current_user.email,
             "status": "sent",
-            "media_id": data.media_id,
-            "file_name": data.raw_content.get('file_name') if file else None,
-            "mime_type": data.raw_content.get('mime_type') if file else None,
+            "media": data.media or [],
         })
 
         sender = SenderFactory.get_sender("telegram_user")
@@ -352,8 +439,6 @@ class ChatService:
             if sent:
                 raw_content = sent.to_dict()
                 raw_content = self.clean_raw_content(raw_content)
-                if file:
-                    raw_content['file_name'] = file.filename
 
             await self._finalize_message(
                 message=message,
@@ -377,17 +462,22 @@ class ChatService:
             self,
             request: Request,
             data: MessageCreate,
-            file: UploadFile | None = None,
+            files: list[UploadFile] = [],
             current_user: UserContext = Depends(get_current_user),
     ) -> MessageResponse:
         log.info(f"\n\n *********** create_msg_tgbot  data {data} \n\n")
 
-        if file:
-            # Сохраняем файл
-            file_info = await self._save_uploaded_file(file, data.media_id)
-            # log.info(f"File saved: file {file}")
-            # log.info(f"File saved: file_info {file_info}")
-            data.raw_content["file_name"] = file.filename
+        if files:
+            media_items = []
+            for file in files:
+                media_id = uuid.uuid4()
+                await self._save_uploaded_file(file, media_id)
+                media_items.append({
+                    "id": str(media_id),
+                    "file_name": file.filename,
+                    "mime_type": file.content_type,
+                })
+            data.media = media_items
 
         # Сохраняем сообщение в БД
         _, message = await self.conv_msg(data, current_user)
@@ -401,9 +491,7 @@ class ChatService:
             "user_id": str(current_user.id),
             "user_email": current_user.email,
             "status": "sent",
-            "media_id": data.media_id,
-            "file_name": data.raw_content.get("file_name") if data.raw_content else None,
-            "mime_type": data.raw_content.get("mime_type") if data.raw_content else None
+            "media": data.media or [],
         })
 
         log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc before con_id {data.conversation_id} --- \n\n")
@@ -450,7 +538,7 @@ class ChatService:
     async def create_msg_whatsapp_green(
             self,
             data: MessageCreate,
-            file: UploadFile | None = None,
+            files: list[UploadFile] | None = None,
             current_user: UserContext = Depends(get_current_user),
     ) -> MessageResponse:
         """Create new WhatsApp Green message"""
@@ -474,7 +562,7 @@ class ChatService:
             "user_id": str(current_user.id),
             "user_email": current_user.email,
             "status": "sent",
-            "media_id": data.media_id,
+            "media": data.media or [],
         })
 
         # Отправка через Green API
@@ -483,12 +571,21 @@ class ChatService:
         success = False
 
         channel_msg_id = None
-
+        file_info = None
+        log.info(f"\n\n --- MEDIA save start \n\n")
+        log.info(f"\n\n --- MEDIA save start files length {len(files)} \n\n")
+        log.info(f"\n\n --- MEDIA save start files data.media {data.media} \n\n")
         try:
-            if file:
-                file_info = await self._save_uploaded_file(file, data.media_id)
+            for i, f in enumerate(files):
+                log.info(f"\n\n --- MEDIA save i {i} f {f} \n\n")
+                media_id = data.media[i]["id"] if data.media and i < len(data.media) else None
+                log.info(f"\n\n --- MEDIA save media_id {media_id} \n\n")
+                await self._save_uploaded_file(f, media_id)
+                log.info(f"\n\n --- MEDIA save media_id {media_id} _save_uploaded_file passed \n\n")
         except Exception as e:
             log.error(f"WhatsApp Green _save_uploaded_file failed: {e}")
+
+        log.info(f"\n\n --- MEDIA save finish \n\n")
 
         try:
             result = await sender.send(data)
@@ -497,7 +594,6 @@ class ChatService:
         except Exception as e:
             log.error(f"WhatsApp Green send failed: {e}")
             
-
         # Финальное обновление
         await self._finalize_message(
             message=message,
@@ -507,7 +603,7 @@ class ChatService:
             current_user=current_user,
             success=success,
             channel_msg_id=channel_msg_id,
-            raw_content={"file_name": file.filename, "mime_type": file_info['mime_type']} if file else None
+            raw_content=None,  # {"file_name": file.filename, "mime_type": file_info['mime_type']} if file and file_info else None
         )
 
         return MessageResponse.model_validate(message)
@@ -516,7 +612,7 @@ class ChatService:
             self,
             request: Request,
             data: MessageCreate,
-            file: UploadFile | None = None,
+            files: list[UploadFile] | None = None,
             current_user: UserContext = Depends(get_current_user),
     ) -> MessageResponse:
         """Create new WABA message"""
@@ -533,12 +629,12 @@ class ChatService:
         await manager.send_new_message(str(data.conversation_id), {
             "id": str(message.id),
             "text": message.text,
-            "direction": "outbound",
+            "direction": "outbound",    
             "created_at": message.created_at.isoformat(),
             "user_id": str(current_user.id),
             "user_email": current_user.email,
             "status": "sent",
-            "media_id": data.media_id,
+            "media": data.media or [],
         })
 
         # Отправка через WABA
@@ -549,11 +645,18 @@ class ChatService:
         channel_msg_id = None
 
         try:
-            if file:
-                file_info = await self._save_uploaded_file(file, data.media_id)
-                data.media_id = file_info["media_id"]  # сохраняем media_id в data
-                data.raw_content["file_name"] =  file.filename
-                data.raw_content["mime_type"] = file_info['mime_type']
+            if files:
+                media_items = []
+                for file in files:
+                    media_id = uuid.uuid4()
+                    await self._save_uploaded_file(file, media_id)
+                    media_items.append({
+                        "id": str(media_id),
+                        "file_name": file.filename,
+                        "mime_type": file.content_type,
+                    })
+                data.media = media_items
+
             result = await sender.send(data)
             success = True if result else None
             channel_msg_id = result.get("messages", [{}])[0].get("id")
@@ -571,11 +674,10 @@ class ChatService:
             current_user=current_user,
             success=success,
             channel_msg_id=channel_msg_id,
-            raw_content={"file_name": file.filename, "mime_type": file_info['mime_type']} if file else None
+            raw_content=None
         )
 
         return MessageResponse.model_validate(message)
-
 
     async def save_incoming_message(
             self,
@@ -584,73 +686,26 @@ class ChatService:
             event,
             media_id: uuid.UUID = None,
             file_name: str = None,
-            mime_type: str = None
+            mime_type: str = None,
+            media_items: list | None = None,
+            text: str | None = None,
+            channel_msg_id: str | None = None,
     ) -> MessageResponse:
         data = MessageCreate(
             conversation_id=conversation_id,
             direction=MessageDirection.inbound,
-            text=event.message.text if event.message.text else None,
-            channel_msg_id=str(event.message.id),
-            media_id=str(media_id),
-            file_name=file_name,
-            mime_type=mime_type,
+            text=text if text is not None else (event.message.text if event.message.text else None),
+            channel_msg_id=channel_msg_id or str(event.message.id),
+            media=media_items if media_items else (
+                [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}] if media_id else None),
             raw_content={
                 "phone": peer_phone,
                 "date": event.message.date.isoformat(),
-                "file_name": file_name,
-                "mime_type": mime_type
             }
         )
-
-        try:
-            _, message = await self.conv_msg(data)
-        except Exception as e:
-            log.error(f"save_incoming_message error: {e}", exc_info=True)
-            raise
-        res = MessageResponse.model_validate(message)
-        log.error(f"\n\n -*-+-*-+-*-+  MessageResponse res {res} res")
-        return res
-
-    async def save_incoming_green(
-            self,
-            conversation_id: uuid.UUID,
-            payload: dict,
-            media_id: uuid.UUID | None = None,
-            file_name: str | None = None,
-            file_url: str | None = None,
-            mime_type: str | None = None,
-            text: str | None = None,
-    ) -> MessageResponse:
-        """Сохранить входящее сообщение из WhatsApp Green"""
-
-        # log.info(f"\n\n --------- ChatService.save_incoming_green conversation_id {conversation_id}  media_id {media_id}  file_name {file_name} file_url {file_url} mime_type {mime_type}  \n\n")
-        # log.info(f"\n\n --------- ChatService.save_incoming_green text {text}")
-
-        if file_url:
-            async with httpx.AsyncClient() as client:
-                res = await client.get(file_url)
-                if res:
-                    file_bytes = res.content
-                    if file_bytes:
-                        await self._save_file(file_bytes, media_id, file_name, mime_type)
-
-        raw_content = payload
-        if mime_type:
-            raw_content["mime_type"] = mime_type
-
-        data = MessageCreate(
-            conversation_id=conversation_id,
-            direction=MessageDirection.inbound,
-            text=text,
-            channel_msg_id=payload.get("idMessage"),
-            media_id=str(media_id) if media_id else None,
-            file_name=file_name,
-            mime_type=mime_type,
-            raw_content=raw_content
-        )
-
         _, message = await self.conv_msg(data)
         return MessageResponse.model_validate(message)
+
 
     async def save_incoming_waba(
             self,
@@ -658,10 +713,7 @@ class ChatService:
             external_id: str,
             text: str | None,
             msg_type: str,
-            media_id: uuid.UUID | None = None,
-            file_name: str | None = None,
-            file_url: str | None = None,
-            mime_type: str | None = None,
+            media_items: list | None = None,
             raw_data: dict | None = None
     ) -> MessageResponse:
         """Сохранить входящее сообщение из WABA"""
@@ -671,9 +723,9 @@ class ChatService:
             direction=MessageDirection.inbound,
             text=text or "",
             channel_msg_id=external_id,
-            media_id=str(media_id) if media_id else None,
-            file_name=file_name,
-            mime_type=mime_type,
+            media=[
+                {"id": str(media_id), "file_name": file_name, "mime_type": mime_type}
+            ] if media_id else None,
             raw_content=raw_data
         )
 
@@ -710,3 +762,24 @@ class ChatService:
             "mime_type": file.content_type,
             "size": len(content)
         }
+
+    async def close_or_open_conversation(
+        self,
+        conversation_id: uuid.UUID,
+        is_closed: bool,
+        user_id: uuid.UUID,
+    ) -> Conversation:
+        tenants = await self.tenant_repo.get_all_tenants(user_id=user_id)
+        tenant_ids = [t.id for t in tenants]
+    
+        conv = await self.conv_repo.get_by_id(conversation_id)
+        if conv is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    
+        line = await self.line_repo.get_by_id(conv.line_id)
+        if line.tenant_id not in tenant_ids:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    
+        updated = await self.conv_repo.set_conversation_closed(conversation_id, is_closed)
+        await self.db.commit()
+        return updated

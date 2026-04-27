@@ -61,26 +61,22 @@ class MessageRepository(BaseRepository[Message]):
         )
         result = await self.session.execute(stmt)
         return result.scalar() or 0
-    
-    
+
     async def create_message(
-        self,
-        user_id: uuid.UUID,
-        conversation_id: uuid.UUID,
-        direction: str,
-        text: Optional[str] = None,
-        channel_msg_id: Optional[str] = None,
-        media_id: Optional[str] = None,
-        raw_content: Optional[dict] = None
+            self,
+            user_id: uuid.UUID,
+            conversation_id: uuid.UUID,
+            direction: str,
+            text: Optional[str] = None,
+            channel_msg_id: Optional[str] = None,
+            raw_content: Optional[dict] = None
     ) -> Message:
-        """Create new message"""
         return await self.create(
             user_id=user_id,
             conversation_id=conversation_id,
             channel_msg_id=channel_msg_id,
             direction=direction,
             text=text,
-            media_id=media_id,
             raw_content=raw_content or {}
         )
     

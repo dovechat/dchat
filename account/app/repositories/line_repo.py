@@ -71,9 +71,13 @@ class LineRepository(BaseRepository[Line]):
             tenant_id: uuid.UUID,
             skip: int = 0,
             limit: int = 100
-    ) -> list[tuple[Line, datetime | None]]:
+    ) -> list[tuple[Line, datetime | None, list[str]]]:
         query = (
-            select(Line, func.max(ChannelAccount.expires_at).label("max_expires_at"))
+            select(
+                Line,
+                func.max(ChannelAccount.expires_at).label("max_expires_at"),
+                func.array_agg(ChannelAccount.channel_type).label("channel_types")
+            )
             .outerjoin(ChannelAccount, ChannelAccount.line_id == Line.id)
             .where(Line.tenant_id == tenant_id)
             .group_by(Line.id)

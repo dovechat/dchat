@@ -6,6 +6,7 @@ from repo.instance_repo import InstanceRepository
 from models.billing import LedgerOperationType 
 from repo.billing_repo import BalanceLedgerRepository, BalanceRepository
 from repo.line_repo import ChannelAccountRepository
+from repo.user import UserRepository
 from app.schemas.channel_schemas import ChannelAccountResponse
 from schemas.line_schemas import  ChannelType
 from app.schemas.line_schemas import (
@@ -31,22 +32,24 @@ class LineService:
             ledger_repo: BalanceLedgerRepository,
             line_repo: LineRepository,
             instance_repo: InstanceRepository,
-            channel_account_repo: ChannelAccountRepository
+            channel_account_repo: ChannelAccountRepository,
+            user_repo: UserRepository
     ) -> None:
         self.billing_repo = billing_repo
         self.ledger_repo = ledger_repo
         self.line_repo = line_repo
         self.instance_repo = instance_repo
         self.channel_account_repo = channel_account_repo
+        self.user_repo = user_repo
 
     def _calculate_expiry(
             self,
             period: SubscriptionPeriod,
-            is_demo: bool
+            is_demo: bool,
+            user_created_at: datetime,
     ) -> datetime:
         if is_demo:
-            return datetime.now(timezone.utc) + timedelta(days=7)
-
+            return user_created_at + timedelta(days=2)
         if period == SubscriptionPeriod.MONTH:
             return datetime.now(timezone.utc) + timedelta(days=30)
         else:
@@ -101,6 +104,7 @@ class LineService:
             line_id: uuid.UUID,
             tenant_id: uuid.UUID,
             data: ChannelCreate,
+            user: UserContext,
     ) -> ChannelAccountResponse:
         line = await self.line_repo.get_line_by_id(line_id, tenant_id)
         log.info(f"\n\n LineService.add_channel line {line}")
@@ -112,7 +116,12 @@ class LineService:
         if existing:
             raise HTTPException(status_code=400, detail="Channel already exists for this provider")
 
-        expires_at = self._calculate_expiry(data.subscription_period, data.is_demo)
+        user_db = await self.user_repo.get_by_id(user.id)
+        user_created_at = user_db.created_at.replace(tzinfo=timezone.utc)
+        is_demo = datetime.now(timezone.utc) < user_created_at + timedelta(days=2)
+        expires_at = self._calculate_expiry(
+            data.subscription_period, is_demo, user_db.created_at
+        )
 
         account = await self.channel_account_repo.create_account(
             line_id=line_id,
@@ -194,7 +203,7 @@ class LineService:
     async def get_lines(self, tenant_id: uuid.UUID) -> list[LineListResponse]:
         rows = await self.line_repo.get_lines_with_expires(tenant_id)
         result = []
-        for line, max_expires_at in rows:
+        for line, max_expires_at, channel_types in rows:
             days_until_expiry = None
             if max_expires_at:
                 delta = max_expires_at - datetime.now(timezone.utc)
@@ -207,8 +216,10 @@ class LineService:
             result.append(LineListResponse.model_validate({
                 **line.__dict__,
                 "days_until_expiry": days_until_expiry,
-                "connection_status": connection_status
+                "connection_status": connection_status,
+                "channel_types": [ct for ct in (channel_types or []) if ct is not None],
             }))
+        log.info(f"LinesService.get_lines result {result}")
         return result
 
     async def get_line(

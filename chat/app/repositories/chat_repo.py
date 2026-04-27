@@ -80,25 +80,58 @@ class ChatRepository(BaseRepository[Conversation]):
         if res and len(res) > 0:
             return res[0]
 
-    async def get_conversations_with_stats(self, tenant_id: uuid.UUID, skip: int, limit: int):
+    # было: async def get_conversations_with_stats(self, tenant_id: uuid.UUID, skip: int, limit: int):
+    async def get_conversations_with_stats(self, tenant_ids: list[uuid.UUID], skip: int, limit: int):
         stmt = (
             select(
                 Conversation,
                 Line.name.label("line_name"),
+                Line.tenant_id.label("tenant_id"),
                 func.count(Message.id).filter(Message.status == "sent").label("unread_count"),
                 func.max(Message.created_at).label("last_message_at")
             )
             .join(Line, Conversation.line_id == Line.id)
             .outerjoin(Message, Conversation.id == Message.conversation_id)
-            .where(Line.tenant_id == tenant_id)
-            .group_by(Conversation.id, Line.name)
+            .where(Line.tenant_id.in_(tenant_ids))
+            .group_by(Conversation.id, Line.name, Line.tenant_id)
             .order_by(desc(func.max(Message.created_at)))
             .offset(skip)
             .limit(limit)
         )
         result = await self.session.execute(stmt)
-        return result.all() 
-    
+        return result.all()
+
+    async def get_conversations_with_filters(
+            self,
+            tenant_ids: list[uuid.UUID],
+            line_id: uuid.UUID | None = None,
+            crm_type: str | None = None,
+            is_closed: bool | None = None,
+    ) -> list:
+        stmt = (
+            select(
+                Conversation,
+                Line.name.label("line_name"),
+                Line.tenant_id.label("tenant_id"),
+                func.count(Message.id).filter(Message.status == "sent").label("unread_count"),
+                func.max(Message.created_at).label("last_message_at")
+            )
+            .join(Line, Conversation.line_id == Line.id)
+            .outerjoin(Message, Conversation.id == Message.conversation_id)
+            .where(Line.tenant_id.in_(tenant_ids))
+            .group_by(Conversation.id, Line.name, Line.tenant_id)
+            .order_by(desc(func.max(Message.created_at)))
+        )
+        if line_id is not None:
+            stmt = stmt.where(Conversation.line_id == line_id)
+        if crm_type is not None:
+            stmt = stmt.where(Conversation.crm_type == crm_type)
+        if is_closed is not None:
+            stmt = stmt.where(Conversation.is_closed == is_closed)
+        result = await self.session.execute(stmt)
+        return result.all()
+
+
     async def get_conversation_with_messages(self, conversation_id: uuid.UUID):
         stmt = (
             select(Conversation)
@@ -259,3 +292,14 @@ class ChatRepository(BaseRepository[Conversation]):
         )
         result = await self.session.execute(stmt)
         return result.all()
+
+    async def set_conversation_closed(self, conversation_id: uuid.UUID, is_closed: bool) -> Conversation | None:
+        result = await self.session.execute(
+            select(Conversation).where(Conversation.id == conversation_id)
+        )
+        conv = result.scalar_one_or_none()
+        if conv is None:
+            return None
+        conv.is_closed = is_closed
+        await self.session.flush()
+        return conv

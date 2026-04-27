@@ -22,8 +22,12 @@ class WabaSender(BaseSender):
 
         clean_phone = data.phone.lstrip('+')
 
-        if data.media_id:
-            file_url = f"{settings.s3_external_url}{data.media_id}"
-            return await conn.send_file(clean_phone, file_url,  data.raw_content.get("mime_type") , data.text)
+        if data.media:
+            results = []
+            for m in data.media:
+                file_url = f"{settings.s3_external_url}{m['id']}"
+                result = await conn.send_file(clean_phone, file_url, m.get("mime_type"), data.text)
+                results.append(result)
+            return results[-1] if results else None
         else:
             return await conn.send_message(clean_phone, data.text)

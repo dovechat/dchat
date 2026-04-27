@@ -25,11 +25,9 @@ class TelegramBotSender(BaseSender):
 
         url = f"https://api.telegram.org/bot{self.bot_token}/"
 
-        if data.media_id:
-            # Отправка файла
+        if data.media:
             return await self._send_file(data)
         else:
-            # Отправка текста
             return await self._send_text(data)
 
     async def _send_text(self, data: MessageCreate) -> dict:
@@ -48,32 +46,29 @@ class TelegramBotSender(BaseSender):
             raise Exception(f"Telegram API error: {result}")
 
     async def _send_file(self, data: MessageCreate) -> dict:
-        """Отправить файл через Bot API"""
-        # Получаем файл из S3
-        file_bytes, filename = await get_file_from_s3(data.media_id)
+        result = None
+        for m in data.media:
+            file_bytes, filename = await get_file_from_s3(m["id"])
+            mime_type = m.get("mime_type")
+            if mime_type and mime_type.startswith('image/'):
+                url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+                files = {'photo': (filename, file_bytes, mime_type)}
+            else:
+                url = f"https://api.telegram.org/bot{self.bot_token}/sendDocument"
+                files = {'document': (filename, file_bytes, mime_type or 'application/octet-stream')}
 
-        # Определяем тип файла по mime_type
-        mime_type = data.raw_content.get("mime_type")
+            payload = {
+                'chat_id': data.phone,
+                'caption': data.text
+            }
 
-        # Выбираем метод в зависимости от типа
-        if mime_type and mime_type.startswith('image/'):
-            url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
-            files = {'photo': (filename, file_bytes, mime_type)}
-        else:
-            url = f"https://api.telegram.org/bot{self.bot_token}/sendDocument"
-            files = {'document': (filename, file_bytes, mime_type or 'application/octet-stream')}
-
-        data = {
-            'chat_id': data.phone,
-            'caption': data.text
-        }
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, data=data, files=files)
-            result = response.json()
-            if result.get("ok"):
-                return result["result"]
-            raise Exception(f"Telegram API error: {result}")
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, data=payload, files=files)
+                result = response.json()
+                if not result.get("ok"):
+                    raise Exception(f"Telegram API error: {result}")
+                result = result["result"]
+        return result
 
 
 

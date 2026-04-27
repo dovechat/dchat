@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from core.database import get_db
 from models.lines import ChannelAccount
 from models.messages import Conversation
-from models.tenants import ResourcePermission
+from repo.user import UserRepository
 
 import logging
 
@@ -54,23 +54,16 @@ class ConnectionManager:
             my_phone = my_phone_result.scalar_one_or_none() or ''
             peer_phone = conv.client_phone or ''
 
-
-            if role == "owner":
-                if conv.line.tenant_id != uuid.UUID(tenant_id):
-                    await websocket.close(code=1008, reason="Access denied")
-                    log.info("\n\n ************** connect: start conv.line.tenant_id != uuid.UUID(tenant_id)")
-                    raise HTTPException(status_code=401, detail="Access denied! Please login again!")
-            else:
-                perm_query = select(ResourcePermission).where(
-                    ResourcePermission.user_id == uuid.UUID(user_id),
-                    ResourcePermission.resource_type == "line",
-                    ResourcePermission.resource_id == conv.line_id,
-                    ResourcePermission.action.in_(["owner", "member"])
-                )
-                result = await db.execute(perm_query)
-                if not result.scalar_one_or_none():
-                    await websocket.close(code=1008, reason="Access denied")
-                    raise HTTPException(status_code=401, detail="Access denied")
+            user_repo = UserRepository(db)
+            membership = await user_repo.get_membership(
+                user_id=uuid.UUID(user_id),
+                tenant_id=conv.line.tenant_id
+            )
+            log.info(f"\n\n ---- membership check user_id={user_id} tenant_id={conv.line.tenant_id} result={membership} \n\n")
+            if not membership:
+                log.info(f"membership is_active: {membership.is_active}")
+                await websocket.close(code=1008, reason="Access denied")
+                return
 
         # Добавляем соединение в список
         if conversation_id not in self.active_connections:
@@ -149,6 +142,7 @@ class ConnectionManager:
     
     async def send_new_conversation(self, tenant_id: str, conversation_data: dict):
         tenant_id = str(tenant_id)
+        log.info(f"send_new_conversation tenant_id={tenant_id} connections={list(self.tenant_connections.keys())}")
         if tenant_id in self.tenant_connections:
             for ws in self.tenant_connections[tenant_id][:]:
                 try:
@@ -156,10 +150,9 @@ class ConnectionManager:
                         'type': 'new_conversation',
                         'data': conversation_data
                     })
+                    log.info(f"send_new_conversation sent to {tenant_id}")
                 except Exception as e:
                     log.error(f"send_new_conversation error: {e}")
-
-
 
 
 manager = ConnectionManager()

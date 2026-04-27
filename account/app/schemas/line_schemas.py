@@ -82,7 +82,7 @@ class LineListResponse(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     name: str
-    channel_type: str | None = None
+    channel_types: list[str] = []   
     status: str
     is_demo: bool
     expires_at: Optional[datetime] = None

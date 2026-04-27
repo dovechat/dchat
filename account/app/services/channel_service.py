@@ -115,7 +115,8 @@ class ChannelAccountService:
                 phone=phone,
                 state_json=account.state_json,
                 updated_at=account.updated_at.isoformat() if account.updated_at else None,
-                expires_at = account.expires_at.isoformat() if account.expires_at else None,
+                expires_at=account.expires_at.isoformat() if account.expires_at else None,
+                connection_status=account.connection_status,  # добавить
             )
             log.info(f"\n\n --------- ChannelAccountService.get_accounts cha_resp {cha_resp} \n\n")
             result.append(cha_resp)
@@ -355,8 +356,8 @@ class ChannelAccountService:
         await self.channel_repo.update_account(account, state_json=state)
 
         '''
-        if instance.external_id == "7103535015" and not instance.token:
-            token = encrypt("a3a408bf27c84275b3c87c7358cfc2a5511b5f1854294b8b87")
+        if instance.external_id == "7103547230" and not instance.token:
+            token = encrypt("8a531316aee0453e8b68a4975f32b5f59919fc4a177e4e919a")
             instance.token = token
             log.debug(f"channel_service connect_whatsapp_green token {token}")
             await self.instance_repo.update(instance)
@@ -390,7 +391,7 @@ class ChannelAccountService:
                     json={
                         "webhookUrl": our_wh_url,
                         "outgoingWebhook": "yes",
-                        "stateInstanceWebhook": "yes",
+                        "stateWebhook": "yes",
                         "incomingWebhook": "yes"
                     }
                 )
@@ -413,11 +414,11 @@ class ChannelAccountService:
         green_wh_url =  f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
         async with httpx.AsyncClient() as client:
             try:
-                    response = await client.get(
+                    res = await client.get(
                         green_wh_url
                     )
-                    response.raise_for_status()
-                    data = response.json()
+                    res.raise_for_status()
+                    data = res.json()
                     log.info(f"----------------- data {data} ")
                     if data.get("type") == "qrCode":
                         return data["message"]  # base64

@@ -110,6 +110,7 @@ class GreenWhatsAppListener:
         file_url = None
         file_name = None
         mime_type = None
+        original_file_name = None
 
         text = None
         if msg_type == "textMessage":
@@ -123,6 +124,7 @@ class GreenWhatsAppListener:
             file_name_rcv = media_data.get("fileName")
             ext = file_name_rcv.split(".")[1]
             file_name = f"{media_id}.{ext}"
+            original_file_name = file_name_rcv
 
         conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
         log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} line_id {line_id} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
@@ -137,6 +139,7 @@ class GreenWhatsAppListener:
                 media_id=media_id,
                 file_name=file_name,
                 file_url=file_url,
+                original_file_name=original_file_name,
                 mime_type=mime_type,
                 text=text,
             )
@@ -152,9 +155,13 @@ class GreenWhatsAppListener:
         }
 
         if media_id:
-            ws_message["media_id"] = str(media_id)
-            ws_message["file_name"] = file_name
-            ws_message["mime_type"] = mime_type
+            ws_message["media"] = [
+                {
+                    "id": str(media_id),
+                    "file_name": original_file_name,
+                    "mime_type": mime_type
+                }
+            ]
 
         await manager.send_new_message(conv.id, ws_message)
 
@@ -171,6 +178,8 @@ class GreenWhatsAppListener:
             chat_repo = MessageRepository(db)
             msg = await chat_repo.get_message_by_channel_msg_id(external_id)
             log.warning(f"_handle_message_status msg {msg}")
+            if status == "failed":
+                status = "error"
             if msg:
                 await chat_repo.set_message_status(msg.id, status)
                 await manager.send_message_status(str(msg.conversation_id), {
@@ -191,8 +200,12 @@ class GreenWhatsAppListener:
             conn_status = "error" if state == "blocked" else "disconnected"
             error_reason = "account_blocked" if state == "blocked" else "phone_offline"
             log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state} error_reason {error_reason}")
-        if state == "authorized":
+        elif state == "authorized":
             conn_status = "connected"
+        elif state == "starting":
+            conn_status = "disconnected"
+        else:
+            return
 
         async with get_session() as db:
             repo = ChannelAccountRepository(db)

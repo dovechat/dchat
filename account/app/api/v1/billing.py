@@ -7,6 +7,7 @@ from app.schemas.billing_schemas import (
     BalanceResponse,
     BalanceAdjust,
     BalanceLedgerResponse,
+    PaymentCreate,
     PaymentResponse,
     PaymentStatusUpdate,
     TariffCreate,
@@ -69,6 +70,16 @@ async def get_ledger_history(
 
 
 # === PAYMENT ENDPOINTS ===
+@billing_router.post("/payments", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+async def create_payment(
+    data: PaymentCreate,
+    current_user: UserContext = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(check_tenant_access),
+    billing_service: BillingService = Depends(get_billing_service)
+) -> PaymentResponse:
+    """Create payment request"""
+    return await billing_service.create_payment(tenant_id, data)
+
 
 @billing_router.get("/payments", response_model=list[PaymentResponse])
 async def get_payments(

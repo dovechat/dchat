@@ -43,13 +43,13 @@ async def websocket_endpoint(
     try:
         while True:
             log.info("Waiting for message...")
-            await websocket.receive_text()
-            log.info(f"Received: {message}")
+            data = await websocket.receive_text()
+            log.info(f"\n\n** ** ** Received: {data} \n\n")
     except WebSocketDisconnect:
-        log.info("Client disconnected normally")
+        log.info(f"Client disconnected")
         await manager.disconnect(conversation_id, websocket)
     except Exception as e:
-        log.error(f"ERROR: WebSocket error: {e}")
+        log.error(f"ERROR: WebSocket error: {e}", exc_info=True)
         await manager.disconnect(conversation_id, websocket)
 
 
@@ -73,3 +73,25 @@ async def tenant_websocket(
     except Exception as e:
         log.error(f"Tenant WS error: {e}")
         await manager.disconnect_tenant(tenant_id, websocket)
+
+
+@router.websocket("/user")
+async def user_websocket(
+    websocket: WebSocket,
+    token: str,
+):
+    user = await validate_token(token)
+    if not user:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
+    user_id = str(user["sub"])
+    await websocket.accept()
+    await manager.connect_tenant(websocket, user_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await manager.disconnect_tenant(user_id, websocket)
+    except Exception as e:
+        log.error(f"User WS error: {e}")
+        await manager.disconnect_tenant(user_id, websocket)

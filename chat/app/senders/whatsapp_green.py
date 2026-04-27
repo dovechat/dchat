@@ -22,8 +22,12 @@ class WhatsAppGreenSender(BaseSender):
         clean_phone = data.phone.lstrip('+')
         chat_id = f"{clean_phone}@c.us"
 
-        if data.media_id:
-            file_url = f"{settings.s3_external_url}{data.media_id}"
-            return await conn.send_file(chat_id, file_url, data.text)
+        if data.media:
+            results = []
+            for m in data.media:
+                file_url = f"{settings.s3_external_url}{m['id']}"
+                result = await conn.send_file(chat_id, file_url, data.text)
+                results.append(result)
+            return results[-1] if results else None
         else:
             return await conn.send_message(chat_id, data.text)

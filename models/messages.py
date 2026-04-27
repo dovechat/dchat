@@ -1,6 +1,16 @@
 import uuid
 import enum
-from sqlalchemy import Column, Index, BigInteger, String, JSON, Enum, ForeignKey, DateTime
+from sqlalchemy import (
+    Boolean,
+    Column,
+    BigInteger,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    JSON,
+    String,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -26,6 +36,7 @@ class Conversation(Base):
     crm_type = Column(String, nullable=False)
     crm_chat_id = Column(String, index=True)
     client_phone = Column(String, index=True)
+    is_closed = Column(Boolean, default=False, nullable=False, server_default="false")
     meta = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
     updated_at = Column(DateTime, onupdate=func.now())
@@ -45,9 +56,9 @@ class Message(Base):
     direction = Column(Enum(MessageDirection, native_enum=False), nullable=False, index=True)
     status = Column(Enum(MessageStatus, native_enum=False), default=MessageStatus.sent, index=True)
     text = Column(String)
-    media_id = Column(String)
     raw_content = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
+    media = relationship("Media", lazy="selectin")
 
     __table_args__ = (
         Index("ix_messages_conversation_created", "conversation_id", "created_at"),
@@ -61,3 +72,10 @@ class MessageStatusEvent(Base):
     status = Column(Enum(MessageStatus, native_enum=False), nullable=False, index=True)
     details = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
+
+class Media(Base):
+    __tablename__ = "media"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    message_id = Column(BigInteger, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True)
+    file_name = Column(String, nullable=True)
+    mime_type = Column(String, nullable=True)

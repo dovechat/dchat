@@ -14,6 +14,7 @@ from app.repositories.line_repo import  LineRepository
 from repo.instance_repo import InstanceRepository
 from repo.conversation_repo import ConversationRepository
 from repo.message_repo import MessageRepository
+from repo.user import UserRepository
 from services.cleanup_service import CleanupService
 from app.repositories.billing_repo import BalanceLedgerRepository, BalanceRepository
 from repo.line_repo import ChannelAccountRepository
@@ -113,14 +114,18 @@ async def get_billing_repo(db: AsyncSession = Depends(get_db)) -> BalanceReposit
 async def ledger_repo(db: AsyncSession = Depends(get_db)) -> BalanceLedgerRepository:
     return BalanceLedgerRepository(db)
 
+async def get_user_repo(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    return UserRepository(db)
+
 async def get_line_service(
     billing_repo: BalanceRepository = Depends(get_billing_repo),
     ledger_repo: BalanceLedgerRepository = Depends(get_ledger_repo),
     line_repo: LineRepository = Depends(get_line_repo),
     instance_repo: InstanceRepository = Depends(get_instance_repo),
-    channel_account_repo: ChannelAccountRepository = Depends(get_channel_account_repo)
+    channel_account_repo: ChannelAccountRepository = Depends(get_channel_account_repo),
+    user_repo: UserRepository = Depends(get_user_repo),
 ) -> LineService:
-    return LineService(billing_repo, ledger_repo, line_repo, instance_repo, channel_account_repo)
+    return LineService(billing_repo, ledger_repo, line_repo, instance_repo, channel_account_repo, user_repo)
 
 async def get_webhook_service():
     async for session in get_db():

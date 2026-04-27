@@ -10,6 +10,7 @@ from app.services.bot_service import BotService
 from app.services.chat_service import ChatService
 from app.services.line_service import LineService
 from app.schemas.chat_schemas import (
+    ConversationCloseRequest,
     ConversationCreate,
     ConversationListResponse,
     ConversationResponse,
@@ -34,20 +35,34 @@ def get_bot_service(db: AsyncSession = Depends(get_db)) -> ChatService:
 def get_line_service(db: AsyncSession = Depends(get_db)) -> LineService:
     return LineService(db)
 
-@router.get("/conversations", response_model=List[ConversationListResponse])
-async def list_conversations(
-    line_id: str | None = None,
+
+@router.patch("/conversations/{conversation_id}/status")
+async def set_conversation_status(
+    conversation_id: uuid.UUID,
+    body: ConversationCloseRequest,
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
 ):
-    """Get list of conversations for current tenant"""
-    return await chat_service.get_conversations(
-        tenant_id=current_user.tenant_id,
+    return await chat_service.close_or_open_conversation(
+        conversation_id=conversation_id,
+        is_closed=body.is_closed,
+        user_id=current_user.id,
+    )
+
+
+@router.get("/conversations", response_model=List[ConversationListResponse])
+async def list_conversations(
+    line_id: uuid.UUID | None = None,
+    crm_type: str | None = None,
+    is_closed: bool | None = None,
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await chat_service.get_conversations_filtered(
+        user_id=current_user.id,
         line_id=line_id,
-        skip=skip,
-        limit=limit
+        crm_type=crm_type,
+        is_closed=is_closed,
     )
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
@@ -101,7 +116,7 @@ async def create_conversation(
 async def create_message_tguser(
     request: Request,
     data: str = Form(...),
-    file: UploadFile | None = File(None),
+    files: list[UploadFile] = File(default=[]),
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -109,7 +124,7 @@ async def create_message_tguser(
     return await chat_service.create_msg_tguser(
         request=request,
         data=message_data,
-        file=file,
+        files=files,
         current_user=current_user,
     )
 
@@ -118,7 +133,7 @@ async def create_message_tgbot(
     # data: MessageCreate,
     request: Request,
     data: str = Form(...),
-    file: UploadFile | None = File(None),
+    files: list[UploadFile] = File(default=[]),
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -127,7 +142,7 @@ async def create_message_tgbot(
     return await chat_service.create_msg_tgbot(
         request=request,
         data=message_data,
-        file=file,
+        files=files,
         current_user=current_user,
     )
 
@@ -135,14 +150,14 @@ async def create_message_tgbot(
 async def create_message_whatsapp_green(
     request: Request,
     data: str = Form(...),
-    file: UploadFile | None = File(None),
+    files: list[UploadFile] = File(default=[]),
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
     message_data = MessageCreate.parse_raw(data)
     return await chat_service.create_msg_whatsapp_green(
         data=message_data,
-        file=file,
+        files=files,
         current_user=current_user,
     )
 
@@ -151,7 +166,7 @@ async def create_message_whatsapp_green(
 async def create_message_waba(
     request: Request,
     data: str = Form(...),
-    file: UploadFile | None = File(None),
+    files: list[UploadFile] = File(default=[]),
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -159,7 +174,7 @@ async def create_message_waba(
     return await chat_service.create_msg_waba(
         request=request,
         data=message_data,
-        file=file,
+        files=files,
         current_user=current_user,
     )
 
@@ -204,7 +219,7 @@ async def get_lines_with_channels(
     chat_service: ChatService = Depends(get_chat_service)
 ):
     return await chat_service.get_lines_with_available_channels(
-        tenant_id=current_user.tenant_id
+        user_id=current_user.id
     )
 
 
@@ -220,3 +235,4 @@ async def upload_file(
     log.info(f"Uploading file: {file.filename}")
     result = await chat_service.upload(media_id, file)
     return result
+

@@ -11,12 +11,14 @@ from app.schemas.billing_schemas import (
     BalanceResponse,
     BalanceAdjust,
     BalanceLedgerResponse,
+    PaymentCreate,
     PaymentResponse,
     PaymentStatusUpdate,
     TariffCreate,
     TariffUpdate,
     TariffResponse
 )
+from models.billing import Payment
 import logging
 
 log = logging.getLogger("uvicorn.error")
@@ -86,6 +88,13 @@ class BillingService:
         return [BalanceLedgerResponse.model_validate(e) for e in entries]
 
     # === PAYMENTS ===
+    async def create_payment(self, tenant_id: uuid.UUID, data: "PaymentCreate") -> Payment:
+        return await self.payment_repo.create(
+            tenant_id=tenant_id,
+            amount=data.amount,
+            payment_method=data.payment_method,
+            status="pending",
+        )
 
     async def get_payments(
             self,

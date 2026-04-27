@@ -22,8 +22,8 @@ class TelegramUserSender(BaseSender):
         conversation_id = str(data.conversation_id)
         recipient = data.phone
         text = data.text
-        
-        if data.media_id:
+
+        if data.media:
             return await self.listener.send_file_user(data)
         else:
             return await self.listener.send_message_user(data)

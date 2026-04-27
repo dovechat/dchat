@@ -22,12 +22,13 @@ async def notify_connection_error(line_id: uuid.UUID, channel_type: str | None =
 
 async def _do_notify(db: AsyncSession, line_id: uuid.UUID, channel_type: str | None = None):
     line = await LineRepository(db).get_by_id(line_id)
-    notification_service = NotificationService(
-        NotificationSettingsRepository(db),
-        NotificationLogRepository(db)
-    )
-    await notification_service.notify_line_connection_error(
-        tenant_id=line.tenant_id,
-        line_name=line.name,
-        channel_type=channel_type,
-    )
+    if line:
+        notification_service = NotificationService(
+            NotificationSettingsRepository(db),
+            NotificationLogRepository(db)
+        )
+        await notification_service.notify_line_connection_error(
+            tenant_id=line.tenant_id,
+            line_name=line.name,
+            channel_type=channel_type,
+        )
