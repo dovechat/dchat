@@ -25,6 +25,7 @@ app = FastAPI(
     title="DoveChat Chat Service",
     description="WebSocket and REST API for real-time messaging",
     version="0.1.0",
+    root_path="/api",
     swagger_ui_parameters={
         "defaultModelsExpandDepth": -1,
         "persistAuthorization": True
@@ -73,6 +74,7 @@ async def startup():
     app.state.green_listener = GreenWhatsAppListener()
     app.state.waba_listener = WabaListener()
 
+'''
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     from fastapi.openapi.docs import get_swagger_ui_html
@@ -80,7 +82,7 @@ async def custom_swagger_ui_html():
         openapi_url="/api/openapi.json", # Явно говорим фронту: иди сюда
         title=app.title + " - Swagger UI",
     )
-
+'''
 
 
 
