@@ -5,6 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
 from .v1.chat import router as chat_router
 from .v1.websocket import router as websocket_router
 from app.consumers.green_whatsapp import GreenWhatsAppListener
@@ -21,15 +22,11 @@ from .v1.webhooks import router as webhooks_router
 import logging
 logging.getLogger("fastapi").setLevel(logging.DEBUG)
 
-app = FastAPI(
+from api.app_start import start
+
+app = start(
     title="DoveChat Chat Service",
-    description="WebSocket and REST API for real-time messaging",
-    version="0.1.0",
-    root_path="/api",
-    swagger_ui_parameters={
-        "defaultModelsExpandDepth": -1,
-        "persistAuthorization": True
-    }
+    description="WebSocket and REST API for real-time messaging"
 )
 
 app.state.green_listener = GreenWhatsAppListener()
@@ -66,24 +63,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-
-
 @app.on_event("startup")
 async def startup():
     app.state.listener = TelegramListener()
     app.state.green_listener = GreenWhatsAppListener()
     app.state.waba_listener = WabaListener()
-
-'''
-@app.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html():
-    from fastapi.openapi.docs import get_swagger_ui_html
-    return get_swagger_ui_html(
-        openapi_url="/api/openapi.json", # Явно говорим фронту: иди сюда
-        title=app.title + " - Swagger UI",
-    )
-'''
-
 
 
 app.include_router(public_router, prefix="/api/v1")

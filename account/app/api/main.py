@@ -19,15 +19,11 @@ import logging
 logging.getLogger('uvicorn.error').setLevel(logging.DEBUG)
 log = logging.getLogger("uvicorn.error")
 
-app = FastAPI(
-    title="DoveChat",
-    description="DoveChat admin",
-    version="0.1.0",
-    debug=True,
-    swagger_ui_parameters={
-        "defaultModelsExpandDepth": -1,
-        "persistAuthorization": True
-    }
+from api.app_start import start
+
+app = start(
+    title="DoveChat Chat Service",
+    description="Management of REST API for real-time messaging"
 )
 
 from fastapi.middleware.cors import CORSMiddleware

@@ -11,13 +11,11 @@ from app.api.v1 import users, lines, instances, billing, dashboard
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("uvicorn.error")
 
-app = FastAPI(
-    title="DoveChat Admin API",
-    description="Административная панель DoveChat SaaS",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+from api.app_start import start
+
+app = start(
+    title="DoveChat Chat Service",
+    description="Admin WebSocket and REST API for real-time messaging"
 )
 
 app.add_middleware(
