@@ -13,8 +13,8 @@ class UserRole(str, Enum):
 
     OWNER = "owner"
     ADMIN = "admin"
-    SUPPORT = "manager"
-    MEMBER = "member"
+    SUPPORT = "support"
+    USER = "user"
 
 
 class TokenType(str, Enum):
@@ -74,7 +74,7 @@ class UserContext(BaseModel):
 
     def is_manager(self) -> bool:
         """Check if user is manager, admin or owner"""
-        return self.role in [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER]
+        return self.role in [UserRole.OWNER, UserRole.ADMIN, UserRole.SUPPORT]
 
     def can_modify_resource(self, resource_owner_id: int) -> bool:
         """Check resource modification permissions"""
