@@ -26,7 +26,8 @@ from api.app_start import start
 
 app = start(
     title="DoveChat Chat Service",
-    description="WebSocket and REST API for real-time messaging"
+    description="Chat WebSocket and REST API for real-time messaging",
+    server_prefix="/api"
 )
 
 app.state.green_listener = GreenWhatsAppListener()
@@ -36,6 +37,8 @@ app.add_middleware(
     allow_origins=[
 	"https://tg.dove-chat.com:8443",
         "http://chat.127.0.0.1.nip.io",
+        "http://localhost",
+        "http://127.0.0.1",
         "http://localhost:3001",
         "http://0.0.0.0:3001",
         "http://127.0.0.1:3001",
@@ -69,11 +72,11 @@ async def startup():
     app.state.green_listener = GreenWhatsAppListener()
     app.state.waba_listener = WabaListener()
 
-
-app.include_router(public_router, prefix="/api/v1")
-app.include_router(private_router, prefix="/api/v1")
-app.include_router(chat_router, prefix="/api/v1")
-app.include_router(tenant_router, prefix="/api/v1")
+prefix = "/v1"
+app.include_router(public_router, prefix=prefix)
+app.include_router(private_router, prefix=prefix)
+app.include_router(chat_router, prefix=prefix)
+app.include_router(tenant_router, prefix=prefix)
 app.include_router(websocket_router, prefix="/ws")
-app.include_router(line_router, prefix="/api/v1")
-app.include_router(webhooks_router, prefix="/api/v1")
+app.include_router(line_router, prefix=prefix)
+app.include_router(webhooks_router, prefix=prefix)

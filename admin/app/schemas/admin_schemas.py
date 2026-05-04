@@ -6,7 +6,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +124,7 @@ class InstanceOut(BaseModel):
     allocated_to_line_id: UUID | None = None
     last_cleanup_at: datetime | None = None
     health: dict | None = None
+    line_name: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -217,3 +218,10 @@ class AdminStatsOut(BaseModel):
     idle_instances: int
     allocated_instances: int
     error_instances: int
+
+
+class TenantShortOut(BaseModel):
+    id: UUID
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)

@@ -57,6 +57,8 @@ class BaseRepository(Generic[ModelType]):
                     column = getattr(target, key)
                     if isinstance(value, list):
                         query = query.where(column.in_(value))
+                    elif isinstance(value, str) and '%' in value:
+                        query = query.where(column.ilike(value))
                     else:
                         query = query.where(column == value)
 
@@ -71,13 +73,18 @@ class BaseRepository(Generic[ModelType]):
         return items
 
     async def count(self, filters: dict[str, Any] | None = None) -> int:
-        """Count records."""
         query = select(func.count()).select_from(self.model)
 
         if filters:
             for key, value in filters.items():
                 if hasattr(self.model, key) and value is not None:
-                    query = query.where(getattr(self.model, key) == value)
+                    column = getattr(self.model, key)
+                    if isinstance(value, list):
+                        query = query.where(column.in_(value))
+                    elif isinstance(value, str) and '%' in value:
+                        query = query.where(column.ilike(value))
+                    else:
+                        query = query.where(column == value)
 
         result = await self.session.execute(query)
         return result.scalar_one()

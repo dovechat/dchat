@@ -46,7 +46,7 @@ class JWTService:
             tenant_id: str | uuid.UUID | None = None,
     ) -> str:
         """Create a single JWT token"""
-        log.info(f"\n\n ******* jwt_service._create_token tenant_id {tenant_id} \n\n")
+        log.info(f"\n\n ******* jwt_service._create_token tenant_id {tenant_id} role {role}\n\n")
         payload = {
             "sub": str(user_id),
             "type": token_type.value,

@@ -20,11 +20,12 @@ from schemas.auth_schemas import TokenPayload, UserContext
 from services.auth_service import AuthService
 from services.jwt_services import JWTService
 from services.line_service import LineService
+from services.user_service import UserService
 
 log = logging.getLogger("uvicorn.error")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"http://0.0.0.0:8071/api/v1/auth/login")
-
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"http://0.0.0.0:8071/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Global redis instance
 rdb = redis.from_url("redis://rdb:6379", decode_responses=True)
@@ -90,3 +91,10 @@ async def get_line_service(
     line_repo: LineRepository = Depends(get_line_repo),
 ) -> LineService:
     return LineService(line_repo)
+
+# ------ users
+def get_user_service(
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> UserService:
+    from services.user_service import UserService
+    return UserService(user_repo)

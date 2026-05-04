@@ -31,10 +31,10 @@ class AdminTenantService:
         email: str | None,
         actor_id: UUID,
     ) -> UserListResponse:
-        users = await self._uow.tenants.get_all_users(
+        users = await self._uow.users.get_all_users(
             skip=skip, limit=limit, role=role, status=status, email=email
         )
-        total = await self._uow.tenants.count_users(role=role, status=status)
+        total = await self._uow.users.count_users(role=role, status=status)
 
         await self._uow.audit.log(
             actor_id=actor_id,
@@ -50,7 +50,7 @@ class AdminTenantService:
         )
 
     async def get_user(self, user_id: UUID, actor_id: UUID) -> UserOut:
-        user = await self._uow.tenants.get_user(user_id)
+        user = await self._uow.users.get_user(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -69,12 +69,12 @@ class AdminTenantService:
         request: SetUserStatusRequest,
         actor_id: UUID,
     ) -> MessageResponse:
-        user = await self._uow.tenants.get_user(user_id)
+        user = await self._uow.users.get_user(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         old_status = user.status
-        await self._uow.tenants.set_user_status(user, request.status.value)
+        await self._uow.users.set_user_status(user, request.status.value)
 
         await self._uow.audit.log(
             actor_id=actor_id,
@@ -94,12 +94,12 @@ class AdminTenantService:
         request: ResetPasswordRequest,
         actor_id: UUID,
     ) -> MessageResponse:
-        user = await self._uow.tenants.get_user(user_id)
+        user = await self._uow.users.get_user(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         new_hash = get_password_hash(request.new_password)
-        await self._uow.tenants.set_user_password_hash(user, new_hash)
+        await self._uow.users.set_user_password_hash(user, new_hash)
 
         await self._uow.audit.log(
             actor_id=actor_id,

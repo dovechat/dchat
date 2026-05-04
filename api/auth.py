@@ -3,9 +3,17 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.dependencies import get_auth_service, get_current_user, get_db
-from schemas.auth_schemas import LoginRequest, RegisterRequest, TokenPair, UserContext as User
+from core.dependencies import get_auth_service, get_current_user, get_db, get_user_service
+from schemas.auth_schemas import (
+    ChangePasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    TokenPair,
+    UserContext as User,
+    UpdateMeRequest,
+)
 from services.auth_service import AuthService
+from services.user_service import  UserService
 
 import logging
 log = logging.getLogger("uvicorn.error")
@@ -96,3 +104,47 @@ async def switch_tenant(
 ):
     log.info(f'---------- switch_tenant in new monrepo common auth handler tenant_id={tenant_id}')
     return await auth_service.switch_context(db, current_user.id, tenant_id)
+
+
+@private_router.get("/users/me")
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    user = await user_service.get_me(current_user.id)
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "status": user.status,
+        "full_name": user.full_name,
+        "phone": user.phone,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+@private_router.patch("/users/me")
+async def update_me(
+    data: UpdateMeRequest,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    user = await user_service.update_me(current_user.id, data.full_name, data.phone)
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "status": user.status,
+        "full_name": user.full_name,
+        "phone": user.phone,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+@private_router.post("/users/me/password")
+async def change_password(
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    await user_service.change_password(current_user.id, data.password, data.password_confirm)
+    return {"ok": True}

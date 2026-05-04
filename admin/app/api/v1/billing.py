@@ -10,6 +10,7 @@ from app.schemas.admin_schemas import (
     BalanceOut,
     LedgerListResponse,
     MessageResponse,
+    TenantShortOut,
 )
 from app.services.billing_service import AdminBillingService
 
@@ -72,3 +73,10 @@ async def create_adjustment(
         request=request,
         actor_id=UUID(admin["sub"]),
     )
+
+@router.get("/tenants", response_model=list[TenantShortOut])
+async def list_tenants(db: DBSession, admin: AdminUser):
+    uow = AdminUnitOfWork(db)
+    service = AdminBillingService(uow)
+    return await service.get_tenants()
+

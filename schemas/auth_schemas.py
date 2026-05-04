@@ -109,3 +109,11 @@ class RegisterDB(RegisterBase):
     """Registration data for insert into database"""
 
     password_hash: str
+
+class UpdateMeRequest(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+
+class ChangePasswordRequest(BaseModel):
+    password: str
+    password_confirm: str

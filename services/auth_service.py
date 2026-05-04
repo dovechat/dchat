@@ -63,6 +63,8 @@ class AuthService:
             )
 
         role = None
+        if user.role:
+            role = user.role.value
         return self.jwt_service.create_token_pair(
             user_id=user.id, role=role
         )
@@ -189,3 +191,5 @@ class AuthService:
 
         log.info(f"\n\n ******* auth_service.switch_context refresh.refresh_token {res['refresh_token']} \n\n")
         return res
+
+

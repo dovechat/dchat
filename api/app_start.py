@@ -2,24 +2,36 @@ from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 
 
-def start(title: str, description: str = "", version: str = "0.1.0"):
+def start(title: str, description: str = "", version: str = "0.1.0", server_prefix: str = ""):
     app = FastAPI(
         title=title,
         description=description,
         version=version,
-        docs_url=None,  # Отключаем стандартный, чтобы не лез в корень
+        docs_url=None,
         openapi_url="/openapi.json"
     )
+
+    if server_prefix:
+        def custom_openapi():
+            if app.openapi_schema:
+                return app.openapi_schema
+            from fastapi.openapi.utils import get_openapi
+            schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                description=app.description,
+                routes=app.routes,
+            )
+            schema["servers"] = [{"url": server_prefix}]
+            app.openapi_schema = schema
+            return app.openapi_schema
+        app.openapi = custom_openapi
 
     @app.get("/docs", include_in_schema=False)
     async def custom_swagger_ui_html():
         return get_swagger_ui_html(
-            # Точка перед путем — это магия, которая делает путь относительным 
-            # и заставляет браузер не прыгать в корень домена
             openapi_url="./openapi.json",
             title=app.title,
-            # Оставляем дефолтные ссылки, FastAPI сам отдаст их, 
-            # если они вшиты, или мы их просто не трогаем
             swagger_ui_parameters=app.swagger_ui_parameters,
         )
 

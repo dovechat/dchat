@@ -23,6 +23,7 @@ class AdminLineRepository(BaseRepository[Line]):
             tenant_id: UUID | None = None,
             channel_type: str | None = None,
             status: str | None = None,
+            name: str | None = None,
     ) -> list[Line]:
         filters: dict[str, Any] = {}
         if tenant_id:
@@ -31,6 +32,8 @@ class AdminLineRepository(BaseRepository[Line]):
             filters["channel_type"] = channel_type
         if status:
             filters["status"] = status
+        if name:
+            filters["name"] = f'%{name}%'
         return await self.get_multi(
             skip=skip,
             limit=limit,
@@ -48,15 +51,18 @@ class AdminLineRepository(BaseRepository[Line]):
         return await self.update(line, status="active")
 
     async def count_lines(
-        self,
-        tenant_id: UUID | None = None,
-        status: str | None = None,
+            self,
+            tenant_id: UUID | None = None,
+            status: str | None = None,
+            name: str | None = None,
     ) -> int:
         filters: dict[str, Any] = {}
         if tenant_id:
             filters["tenant_id"] = tenant_id
         if status:
             filters["status"] = status
+        if name:
+            filters["name"] = f'%{name}%'
         return await self.count(filters=filters)
 
 

@@ -18,9 +18,9 @@ class AdminStatsService:
         self._uow = uow
 
     async def get_stats(self, actor_id: UUID) -> AdminStatsOut:
-        total_users = await self._uow.tenants.count_users()
-        active_users = await self._uow.tenants.count_users(status="active")
-        blocked_users = await self._uow.tenants.count_users(status="suspended")
+        total_users = await self._uow.users.count_users()
+        active_users = await self._uow.users.count_users(status="active")
+        blocked_users = await self._uow.users.count_users(status="suspended")
 
         total_lines = await self._uow.lines.count_lines()
         active_lines = await self._uow.lines.count_lines(status="active")

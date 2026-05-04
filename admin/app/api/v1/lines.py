@@ -26,6 +26,7 @@ async def list_lines(
     tenant_id: UUID | None = Query(None),
     channel_type: str | None = Query(None),
     status: str | None = Query(None),
+    name: str | None = Query(None),
 ):
     """Список всех линий по всем тенантам с фильтрацией."""
     uow = AdminUnitOfWork(db)
@@ -37,6 +38,7 @@ async def list_lines(
         channel_type=channel_type,
         status=status,
         actor_id=UUID(admin["sub"]),
+        name=name,
     )
 
 

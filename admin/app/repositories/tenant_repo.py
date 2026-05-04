@@ -6,10 +6,16 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from repo.base import BaseRepository
-from models.tenants import User, Membership
+from models.tenants import Membership, Tenant, User
 
 
-class AdminTenantRepository(BaseRepository[User]):
+class AdminTenantRepository(BaseRepository[Tenant]):
+    """Репозиторий пользователей для нужд админки."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(Tenant, session)
+
+class AdminUserRepository(BaseRepository[User]):
     """Репозиторий пользователей для нужд админки."""
 
     def __init__(self, session: AsyncSession) -> None:
@@ -30,7 +36,7 @@ class AdminTenantRepository(BaseRepository[User]):
         if status:
             filters["status"] = status
         if email:
-            filters["email"] = email
+            filters["email"] = f'%{email}%'
         return await self.get_multi(skip=skip, limit=limit, filters=filters)
 
     async def get_user(self, user_id: UUID) -> User | None:

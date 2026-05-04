@@ -2,10 +2,12 @@
 from uuid import UUID
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from repo.base import BaseRepository
-from models.lines import Instance, InstancePoolEvent
+from models.lines import Instance, InstancePoolEvent, Line
 
 
 class AdminInstanceRepository(BaseRepository[Instance]):
@@ -15,19 +17,27 @@ class AdminInstanceRepository(BaseRepository[Instance]):
         super().__init__(Instance, session)
 
     async def get_all(
-        self,
-        *,
-        skip: int = 0,
-        limit: int = 100,
-        provider: str | None = None,
-        status: str | None = None,
+            self,
+            *,
+            skip: int = 0,
+            limit: int = 100,
+            provider: str | None = None,
+            status: str | None = None,
     ) -> list[Instance]:
-        filters: dict[str, Any] = {}
-        if provider:
-            filters["provider"] = provider
-        if status:
-            filters["status"] = status
-        return await self.get_multi(skip=skip, limit=limit, filters=filters)
+        from models.lines import Line
+        query = (
+            select(Instance, Line.name.label("line_name"))
+            .outerjoin(Line, Instance.allocated_to_line_id == Line.id)
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        rows = result.all()
+        items = []
+        for inst, line_name in rows:
+            inst.line_name = line_name or '—'
+            items.append(inst)
+        return items
 
     async def get_instance(self, instance_id: UUID) -> Instance | None:
         return await self.get_by_id(instance_id)

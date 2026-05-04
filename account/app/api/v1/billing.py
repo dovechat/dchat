@@ -42,8 +42,14 @@ async def get_balance(
     tenant_id: uuid.UUID = Depends(check_tenant_access),
     billing_service: BillingService = Depends(get_billing_service)
 ) -> BalanceResponse:
-    """Get current balance"""
-    return await billing_service.get_balance(tenant_id)
+    log.error(f"get_balance called tenant_id={tenant_id} user={current_user.tenant_id}")
+    try:
+        result = await billing_service.get_balance(tenant_id)
+        log.error(f"get_balance result={result}")
+        return result
+    except Exception as e:
+        log.error(f"get_balance error: {e}", exc_info=True)
+        raise
 
 
 @billing_router.post("/balance/adjust", response_model=BalanceResponse)

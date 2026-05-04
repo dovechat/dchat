@@ -58,4 +58,4 @@ class AdminAuditRepository(BaseRepository[AuditLog]):
         if user_id: filters["user_id"] = user_id
         if entity_type: filters["entity_type"] = entity_type
         if action: filters["action"] = action
-        return await self.get_multi(skip=skip, limit=limit, filters=filters)
+        return await self.get_multi(skip=skip, limit=limit, filters=filters, order_by=[('created_at', 'desc')])

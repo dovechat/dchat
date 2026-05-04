@@ -1,7 +1,7 @@
 """Unit of Work for admin service."""
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories.tenant_repo import AdminTenantRepository
+from app.repositories.tenant_repo import AdminTenantRepository, AdminUserRepository
 from app.repositories.line_repo import AdminChannelAccountRepository, AdminLineRepository
 from app.repositories.instance_repo import AdminInstanceRepository
 from app.repositories.billing_repo import AdminBillingRepository
@@ -23,6 +23,7 @@ class AdminUnitOfWork:
         self.instances = AdminInstanceRepository(session)
         self.billing = AdminBillingRepository(session)
         self.audit = AdminAuditRepository(session)
+        self.users = AdminUserRepository(session)
 
     async def commit(self) -> None:
         await self._session.commit()

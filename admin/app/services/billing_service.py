@@ -65,7 +65,7 @@ class AdminBillingService:
 
     async def get_balance(self, tenant_id: UUID, actor_id: UUID) -> BalanceOut:
         # Проверяем, что тенант существует
-        user = await self._uow.tenants.get_all_users(
+        user = await self._uow.users.get_all_users(
             filters={"tenant_id": tenant_id}, limit=1
         ) if False else None  # заглушка — в реальном коде проверка через tenant repo
 
@@ -113,3 +113,6 @@ class AdminBillingService:
             f"for tenant {tenant_id}: {request.description}"
         )
         return MessageResponse(message=f"Adjustment created: {request.amount} on {request.balance_type} balance")
+
+    async def get_tenants(self):
+        return await self._uow.tenants.get_multi(limit=1000, order_by=[('name', 'asc')])

@@ -31,6 +31,7 @@ class AdminLineService:
         channel_type: str | None,
         status: str | None,
         actor_id: UUID,
+        name: str | None,
     ) -> LineListResponse:
         lines = await self._uow.lines.get_all_lines(
             skip=skip,
@@ -38,8 +39,9 @@ class AdminLineService:
             tenant_id=tenant_id,
             channel_type=channel_type,
             status=status,
+            name=name,
         )
-        total = await self._uow.lines.count_lines(tenant_id=tenant_id, status=status)
+        total = await self._uow.lines.count_lines(tenant_id=tenant_id, status=status, name=name)
 
         await self._uow.audit.log(
             actor_id=actor_id,

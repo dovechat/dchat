@@ -14,8 +14,9 @@ log = logging.getLogger("uvicorn.error")
 from api.app_start import start
 
 app = start(
-    title="DoveChat Chat Service",
-    description="Admin WebSocket and REST API for real-time messaging"
+    title="DoveChat Admin Service",
+    description="Admin WebSocket and REST API for real-time messaging",
+    server_prefix="/admin"
 )
 
 app.add_middleware(
@@ -31,7 +32,7 @@ async def h(request, exc):
     logging.error(exc.errors())
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
-API_PREFIX = "/api/v1/admin"
+API_PREFIX = "/api/v1"
 
 app.include_router(dashboard.router, prefix=API_PREFIX)
 app.include_router(users.router, prefix=API_PREFIX)
