@@ -6,6 +6,7 @@ from app.repositories.line_repo import AdminChannelAccountRepository, AdminLineR
 from app.repositories.instance_repo import AdminInstanceRepository
 from app.repositories.billing_repo import AdminBillingRepository
 from app.repositories.audit_repo import AdminAuditRepository
+from repo.membership_repo import MembershipRepository
 
 
 class AdminUnitOfWork:
@@ -24,6 +25,7 @@ class AdminUnitOfWork:
         self.billing = AdminBillingRepository(session)
         self.audit = AdminAuditRepository(session)
         self.users = AdminUserRepository(session)
+        self.memberships = MembershipRepository(session)
 
     async def commit(self) -> None:
         await self._session.commit()

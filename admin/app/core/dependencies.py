@@ -9,6 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.database import get_db
+from app.core.uow import AdminUnitOfWork
+from app.repositories.billing_repo import (
+    BalanceLedgerRepository,
+    BalanceRepository,
+    PaymentRepository,
+    TariffRepository
+)
+from app.services.billing_service import AdminBillingService
 
 bearer_scheme = HTTPBearer()
 
@@ -25,6 +33,23 @@ def decode_token(token: str) -> dict | None:
         return payload
     except jwt.PyJWTError:
         return None
+
+
+async def get_tariff_repo(db: AsyncSession = Depends(get_db)) -> TariffRepository:
+    return TariffRepository(db)
+
+
+async def get_uow(db: AsyncSession = Depends(get_db)) -> AdminUnitOfWork:
+    return AdminUnitOfWork(db)
+
+
+async def get_billing_service(
+    uow: AdminUnitOfWork = Depends(get_uow),
+    tariff_repo: TariffRepository = Depends(get_tariff_repo)
+) -> AdminBillingService:
+    return AdminBillingService(uow, tariff_repo)
+
+
 
 
 async def get_current_admin(

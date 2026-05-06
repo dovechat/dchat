@@ -1,10 +1,8 @@
 """Pydantic schemas for admin service."""
-from __future__ import annotations
-
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
@@ -41,7 +39,7 @@ class UserRole(str, Enum):
 
 
 class UserOut(BaseModel):
-    id: UUID
+    id: uuid.UUID
     email: EmailStr
     role: UserRole
     status: UserStatus
@@ -73,7 +71,7 @@ class LineStatus(str, Enum):
     expired = "expired"
 
 class ChannelOut(BaseModel):
-    id: UUID
+    id: uuid.UUID
     channel_type: str
     expires_at: datetime | None = None
     connection_status: str | None = None
@@ -81,8 +79,8 @@ class ChannelOut(BaseModel):
     model_config = {"from_attributes": True}
 
 class LineOut(BaseModel):
-    id: UUID
-    tenant_id: UUID
+    id: uuid.UUID
+    tenant_id: uuid.UUID
     name: str
     status: LineStatus
     is_demo: bool
@@ -117,11 +115,11 @@ class InstanceStatus(str, Enum):
 
 
 class InstanceOut(BaseModel):
-    id: UUID
+    id: uuid.UUID
     provider: str
     external_id: str
     status: InstanceStatus
-    allocated_to_line_id: UUID | None = None
+    allocated_to_line_id: uuid.UUID | None = None
     last_cleanup_at: datetime | None = None
     health: dict | None = None
     line_name: str | None = None
@@ -142,7 +140,7 @@ class CreateInstanceRequest(BaseModel):
 
 
 class BulkCleanRequest(BaseModel):
-    instance_ids: list[UUID] = Field(..., min_length=1, max_length=100)
+    instance_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
 
 
 # ---------------------------------------------------------------------------
@@ -151,12 +149,12 @@ class BulkCleanRequest(BaseModel):
 
 class LedgerEntryOut(BaseModel):
     id: int
-    tenant_id: UUID
+    tenant_id: uuid.UUID
     amount: Decimal
     balance_type: str
     operation_type: str
     description: str | None = None
-    reference_id: UUID | None = None
+    reference_id: uuid.UUID | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -184,8 +182,8 @@ class AdjustmentRequest(BaseModel):
 
 class AuditLogOut(BaseModel):
     id: int
-    tenant_id: UUID | None = None
-    user_id: UUID | None = None
+    tenant_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
     action: str
     entity_type: str | None = None
     entity_id: str | None = None
@@ -221,7 +219,37 @@ class AdminStatsOut(BaseModel):
 
 
 class TenantShortOut(BaseModel):
-    id: UUID
+    id: uuid.UUID
     name: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# === TARIFF SCHEMAS ===
+
+class TariffCreate(BaseModel):
+    name: str
+    channel_type: str
+    period_days: int = Field(..., ge=1)
+    price: Decimal = Field(..., ge=0)
+    is_active: bool = True
+
+class TariffUpdate(BaseModel):
+    name: str | None = None
+    channel_type: str | None = None
+    period_days: int | None = Field(None, ge=1)
+    price: Decimal | None = Field(None, ge=0)
+    is_active: bool | None = None
+
+
+class TariffResponse(BaseModel):
+    """Tariff info"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    channel_type: str
+    period_days: int
+    price: Decimal
+    is_active: bool
+    created_at: datetime | None = datetime.now(timezone.utc)

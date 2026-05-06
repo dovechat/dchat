@@ -1,35 +1,41 @@
 """Admin service: billing operations."""
+import uuid
 import logging
-from uuid import UUID
-
+1
 from fastapi import HTTPException, status
 
 from app.core.uow import AdminUnitOfWork
+from app.repositories.billing_repo import TariffRepository
 from app.schemas.admin_schemas import (
     AdjustmentRequest,
     BalanceOut,
     LedgerListResponse,
     LedgerEntryOut,
     MessageResponse,
+    TariffCreate,
+    TariffResponse,
+    TariffUpdate,
 )
 from models.billing import LedgerOperationType
+from models.tenants import UserStatus
 
 log = logging.getLogger("uvicorn.error")
 
 
 class AdminBillingService:
 
-    def __init__(self, uow: AdminUnitOfWork) -> None:
+    def __init__(self, uow: AdminUnitOfWork, tariff_repo: TariffRepository) -> None:
         self._uow = uow
+        self.tariff_repo = tariff_repo
 
     async def get_ledger(
         self,
         skip: int,
         limit: int,
-        tenant_id: UUID | None,
+        tenant_id: uuid.UUID | None,
         operation_type: str | None,
         balance_type: str | None,
-        actor_id: UUID,
+        actor_id: uuid.UUID,
     ) -> LedgerListResponse:
         op_type_enum = None
         if operation_type:
@@ -63,7 +69,7 @@ class AdminBillingService:
             total=total,
         )
 
-    async def get_balance(self, tenant_id: UUID, actor_id: UUID) -> BalanceOut:
+    async def get_balance(self, tenant_id: uuid.UUID, actor_id: uuid.UUID) -> BalanceOut:
         # Проверяем, что тенант существует
         user = await self._uow.users.get_all_users(
             filters={"tenant_id": tenant_id}, limit=1
@@ -83,9 +89,9 @@ class AdminBillingService:
 
     async def create_adjustment(
         self,
-        tenant_id: UUID,
+        tenant_id: uuid.UUID,
         request: AdjustmentRequest,
-        actor_id: UUID,
+        actor_id: uuid.UUID,
     ) -> MessageResponse:
         entry = await self._uow.billing.create_adjustment(
             tenant_id=tenant_id,
@@ -106,6 +112,16 @@ class AdminBillingService:
                 "description": request.description,
             },
         )
+        if request.amount > 0:
+            memberships = await self._uow.memberships.get_multi(
+                filters={"tenant_id": tenant_id, "role": "owner", "is_active": True}
+            )
+            for m in memberships:
+                user = await self._uow.users.get_by_id(m.user_id)
+                if user and user.status == "trial":
+                    await self._uow.users.update(user, status="active")
+            await self._uow.commit()
+        await self._uow.users.update(user, status=UserStatus.active)
         await self._uow.commit()
 
         log.info(
@@ -116,3 +132,46 @@ class AdminBillingService:
 
     async def get_tenants(self):
         return await self._uow.tenants.get_multi(limit=1000, order_by=[('name', 'asc')])
+
+
+# === TARIFFS ===
+
+    async def get_tariffs(self) -> list[TariffResponse]:
+        """Get all active tariffs"""
+        tariffs = await self.tariff_repo.get_all_active()
+        return [TariffResponse.model_validate(t) for t in tariffs]
+
+    async def create_tariff(self, data: TariffCreate) -> TariffResponse:
+        """Create new tariff"""
+        print(f"****************** data {data}")
+        tariff = await self.tariff_repo.create_tariff(
+            name=data.name,
+            channel_type=data.channel_type,
+            period_days=data.period_days,
+            price=data.price,
+            is_active=data.is_active
+        )
+        return TariffResponse.model_validate(tariff)
+
+    async def update_tariff(
+            self,
+            tariff_id: uuid.UUID,
+            data: TariffUpdate
+    ) -> TariffResponse:
+        """Update tariff"""
+        tariff = await self.tariff_repo.get_by_id(tariff_id)
+
+        if not tariff:
+            raise HTTPException(status_code=404, detail="Tariff not found")
+
+        update_data = data.model_dump(exclude_unset=True)
+        updated_tariff = await self.tariff_repo.update_tariff(tariff, **update_data)
+
+        return TariffResponse.model_validate(updated_tariff)
+
+
+    async def delete_tariff(self, tariff_id: uuid.UUID) -> None:
+        tariff = await self.tariff_repo.get_by_id(tariff_id)
+        if not tariff:
+            raise ValueError("Тариф не найден")
+        await self.tariff_repo.delete(tariff)

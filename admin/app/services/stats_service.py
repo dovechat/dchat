@@ -78,7 +78,7 @@ class AdminAuditService:
         total = len(logs)
 
         # Само это действие тоже логируем — но без рекурсии, минимально
-        log.debug(f"Admin {user_id_filter} viewed audit log (skip={skip}, limit={limit})")
+        log.info(f"Admin {user_id_filter} viewed audit log (skip={skip}, limit={limit})")
 
         return AuditLogListResponse(
             items=[AuditLogOut.model_validate(entry) for entry in logs],
