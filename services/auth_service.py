@@ -45,6 +45,21 @@ class AuthService:
     def __init__(self, jwt_service: JWTService) -> None:
         self.jwt_service = jwt_service
 
+    async def set_password(
+        self,
+        user_id: uuid.UUID,
+        password: str,
+        db: AsyncSession,
+    ) -> TokenPair:
+        user_repo = UserRepository(db)
+        user = await user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        await user_repo.update(user, password_hash=self.jwt_service.password_hash(password))
+        return self.jwt_service.create_token_pair(
+            user_id=user.id, role=user.role.value if user.role else None
+        )
+
     async def login(
         self,
         request: LoginRequest,
@@ -85,7 +100,7 @@ class AuthService:
                 detail="User with this email already exists",
             )
         log.info(f"\n\n ************* AuthService.register_user data {data} \n\n")
-        data.password = self.jwt_service.password_hash(data.password)
+        # data.password = self.jwt_service.password_hash(data.password)
 
         user = await user_repo.create_user(data)
 

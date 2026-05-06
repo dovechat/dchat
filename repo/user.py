@@ -31,8 +31,8 @@ class UserRepository(BaseRepository[User]):
     ) -> User:
         """Create new user"""
         db_data = RegisterDB(
-            **data.model_dump(exclude={'password'}),
-            password_hash=data.password
+            **data.model_dump(),
+            password_hash=None
         )
         return await self.create(
             **db_data.model_dump()

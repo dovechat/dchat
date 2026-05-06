@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.dependencies import get_auth_service, get_current_user, get_db
-from schemas.auth_schemas import LoginRequest, RegisterRequest, TokenPair, UserContext as User
+from schemas.auth_schemas import LoginRequest, RegisterRequest, SetPasswordRequest, TokenPair, UserContext as User
 from services.auth_service import AuthService
 
 
@@ -71,6 +71,17 @@ async def verify(
         raise HTTPException(status_code=404, detail="User not found")
 
     raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+
+@private_router.post("/set-password", response_model=TokenPair)
+async def set_password(
+    data: SetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    """Set password after email verification"""
+    return await auth_service.set_password(current_user.id, data.password, db)
 
 
 @private_router.post("/switch-tenant")

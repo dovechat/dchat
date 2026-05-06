@@ -94,21 +94,22 @@ PhoneStr = Annotated[str, AfterValidator(validate_phone)]
 
 class RegisterBase(BaseModel):
     """Base registration"""
-
     email: EmailStr
     phone: PhoneStr
     
 
 class RegisterRequest(RegisterBase):
     """Registration request"""
-
-    password: str
     ifsms: bool 
+
+
+class SetPasswordRequest(BaseModel):
+    password: str
+
 
 class RegisterDB(RegisterBase):
     """Registration data for insert into database"""
-
-    password_hash: str
+    password_hash: str | None = None
 
 class UpdateMeRequest(BaseModel):
     full_name: str | None = None
