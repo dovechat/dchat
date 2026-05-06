@@ -12,6 +12,7 @@ class MemberResponse(BaseModel):
     tenant_id: UUID
     role: str
     is_active: bool
+    email: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 class LinePermissionCreate(BaseModel):

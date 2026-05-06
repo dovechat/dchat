@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from core.database import AsyncSessionLocal
-from repo.line_repo import LineRepository, ChannelAccountRepository, InstanceRepository
+from repo.line_repo import LineRepository, ChannelAccountRepository
+from repo.instance_repo import InstanceRepository
 from repo.conversation_repo import ConversationRepository
 from repo.message_repo import MessageRepository
 from notification.notification_repo import NotificationSettingsRepository, NotificationLogRepository

@@ -1,5 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import JSONResponse
+import logging
+
+log = logging.getLogger("uvicorn.error")
 
 
 def start(title: str, description: str = "", version: str = "0.1.0", server_prefix: str = ""):
@@ -10,6 +15,24 @@ def start(title: str, description: str = "", version: str = "0.1.0", server_pref
         docs_url=None,
         openapi_url="/openapi.json"
     )
+
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError):
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception):
+        log.error(f"Unhandled exception: {exc}")
+        return JSONResponse(status_code=500, content={"detail": "Внутренняя ошибка сервера"})
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        log.error(f"422 Validation Error: {exc.errors()}")
+        log.error(f"Request body: {await request.body()}")
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.errors()}
+        )
 
     if server_prefix:
         def custom_openapi():

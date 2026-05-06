@@ -16,13 +16,13 @@ class MessageRepository(BaseRepository[Message]):
         super().__init__(Message, session)
 
     async def get_media_ids_by_conversation(self, conversation_id: uuid.UUID) -> list[str]:
-        result = await self.session.execute(
-            select(Message.media_id)
-            .where(Message.conversation_id == conversation_id)
-            .where(Message.media_id.isnot(None))
-            .where(Message.media_id != "None")
+        from models.messages import Media
+        media_list = await self.get_multi(
+            filters={"conversation_id": conversation_id},
+            join_model=Media,
+            limit=10000,
         )
-        return list(result.scalars().all())
+        return [str(m.media[0].id) for m in media_list if m.media]
 
 
 class MediaRepository(BaseRepository[Media]):

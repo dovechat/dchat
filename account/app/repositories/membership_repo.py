@@ -27,18 +27,22 @@ class MembershipRepository(BaseRepository[Membership]):
         return result.scalar_one_or_none()
 
     async def get_by_tenant(
-        self, 
-        tenant_id: uuid.UUID, 
-        skip: int = 0, 
-        limit: int = 100,
-        role: Optional[str] = None
-    ) -> List[Membership]:
-        """Get all members of a tenant, optionally filtered by role."""
-        query = select(Membership).where(Membership.tenant_id == tenant_id)
+            self,
+            tenant_id: uuid.UUID,
+            skip: int = 0,
+            limit: int = 100,
+            role: Optional[str] = None
+    ) -> List[tuple]:
+        from models.tenants import User
+        query = (
+            select(Membership, User.email)
+            .join(User, User.id == Membership.user_id)
+            .where(Membership.tenant_id == tenant_id)
+        )
         if role:
             query = query.where(Membership.role == role)
         result = await self.session.execute(query.offset(skip).limit(limit))
-        return list(result.scalars().all())
+        return result.all()
 
     async def delete_by_user_and_tenant(self, user_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
         """Delete membership by user and tenant."""

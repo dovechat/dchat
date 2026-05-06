@@ -15,7 +15,11 @@ from app.schemas.admin_schemas import (
 from app.services.billing_service import AdminBillingService
 
 router = APIRouter(prefix="/billing", tags=["Admin — Billing"])
-
+tariff_router = APIRouter(
+    tags=["Tariffs"],
+    prefix="/tariffs",
+    dependencies=[Depends(auth_scheme)]
+)
 
 @router.get("/ledger", response_model=LedgerListResponse)
 async def get_ledger(
@@ -79,4 +83,5 @@ async def list_tenants(db: DBSession, admin: AdminUser):
     uow = AdminUnitOfWork(db)
     service = AdminBillingService(uow)
     return await service.get_tenants()
+
 

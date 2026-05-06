@@ -39,6 +39,7 @@ class AdminLineRepository(BaseRepository[Line]):
             limit=limit,
             filters=filters,
             join_model=ChannelAccount if channel_type else None,
+            order_by=[("created_at", "desc")]
         )
 
     async def get_line(self, line_id: UUID) -> Line | None:

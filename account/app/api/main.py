@@ -50,18 +50,6 @@ app.add_middleware(
 ],
 '''
 
-from fastapi.exceptions import RequestValidationError
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    log.error(f"422 Validation Error: {exc.errors()}")
-    log.error(f"Request body: {await request.body()}")
-    return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors()}
-    )
-
-
 @app.get("/routes")
 def list_routes():
     return [route.path for route in app.routes]

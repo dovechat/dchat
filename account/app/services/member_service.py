@@ -75,9 +75,13 @@ class MemberService:
         pass
 
     async def list_members(self, tenant_id: UUID, skip: int, limit: int) -> List[MemberResponse]:
-        """Список сотрудников тенанта"""
-        members = await self.member_repo.get_by_tenant(tenant_id, skip, limit)
-        return [MemberResponse.from_orm(m) for m in members]
+        rows = await self.member_repo.get_by_tenant(tenant_id, skip, limit)
+        result = []
+        for membership, email in rows:
+            r = MemberResponse.from_orm(membership)
+            r.email = email
+            result.append(r)
+        return result
 
     async def remove_member(self, tenant_id: UUID, user_id: UUID):
         """Удалить сотрудника из тенанта"""
