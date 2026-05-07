@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-WORKDIR /app
+WORKDIR /mono
 
 # Системные зависимости
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -8,24 +8,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Poetry
-RUN pip install poetry==1.8.3
+COPY core core/
+COPY models models/
+COPY repo repo/
+COPY schemas schemas/
+COPY services services/
+COPY infra infra/
+COPY admin admin/
+
+WORKDIR /mono/admin
+RUN pip install --no-cache-dir poetry==1.8.3
 ENV POETRY_VIRTUALENVS_CREATE=false \
     POETRY_NO_INTERACTION=1
-
-# Зависимости
-COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-root
-
-# Общие модули монорепы (core, models, repo, schemas, services, infra)
-COPY ../core /app/core
-COPY ../models /app/models
-COPY ../repo /app/repo
-COPY ../schemas /app/schemas
-COPY ../services /app/services
-COPY ../infra /app/infra
-
-# Код сервиса
-COPY admin/app /app/app
 
 EXPOSE 8072

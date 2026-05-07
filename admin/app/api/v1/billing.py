@@ -132,5 +132,5 @@ async def delete_tariff(
     admin: AdminUser,
     billing_service: AdminBillingService = Depends(get_billing_service)
 ):
-    await billing_service.delete_tariff(tariff_id)
+    await billing_service.delete_tariff(tariff_id, actor_id=uuid.UUID(admin["sub"]),)
 

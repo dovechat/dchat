@@ -45,9 +45,8 @@ async def get_uow(db: AsyncSession = Depends(get_db)) -> AdminUnitOfWork:
 
 async def get_billing_service(
     uow: AdminUnitOfWork = Depends(get_uow),
-    tariff_repo: TariffRepository = Depends(get_tariff_repo)
 ) -> AdminBillingService:
-    return AdminBillingService(uow, tariff_repo)
+    return AdminBillingService(uow)
 
 
 

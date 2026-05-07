@@ -43,14 +43,6 @@ class AdminLineService:
         )
         total = await self._uow.lines.count_lines(tenant_id=tenant_id, status=status, name=name)
 
-        await self._uow.audit.log(
-            actor_id=actor_id,
-            action="list_lines",
-            resource_type="line",
-            details={"filters": {"tenant_id": str(tenant_id) if tenant_id else None, "status": status}},
-        )
-        await self._uow.commit()
-
         items = []
         for l in lines:
             channels = await self._uow.channels.get_multi(filters={"line_id": l.id})
@@ -74,13 +66,6 @@ class AdminLineService:
         if not line:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Line not found")
 
-        await self._uow.audit.log(
-            actor_id=actor_id,
-            action="get_line",
-            resource_type="line",
-            resource_id=line_id,
-        )
-        await self._uow.commit()
         channels = await self._uow.channels.get_multi(filters={"line_id": line_id})
         return LineOut(
             id=line.id,

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-from app.api.v1 import users, lines, instances, billing, dashboard
+from app.api.v1 import users, lines, instances, billing, dashboard, tenants
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("uvicorn.error")
@@ -40,6 +40,7 @@ app.include_router(lines.router, prefix=API_PREFIX)
 app.include_router(instances.router, prefix=API_PREFIX)
 app.include_router(billing.router, prefix=API_PREFIX)
 app.include_router(billing.tariff_router, prefix=API_PREFIX)
+app.include_router(tenants.router, prefix=API_PREFIX)
 
 
 @app.get("/health", tags=["Health"])

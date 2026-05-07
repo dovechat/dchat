@@ -53,6 +53,14 @@ class AdminInstanceRepository(BaseRepository[Instance]):
             allocated_to_line_id=None,
         )
 
+    async def allocate(self, instance: Instance, line_id: UUID) -> Instance:
+        """Привязать инстанс к линии."""
+        return await self.update(
+            instance,
+            status="busy",
+            allocated_to_line_id=line_id,
+        )
+
     async def create_instance(self, provider: str, external_id: str) -> Instance:
         return await self.create(
             provider=provider,

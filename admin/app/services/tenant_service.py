@@ -11,6 +11,9 @@ from app.schemas.admin_schemas import (
     UserListResponse,
     SetUserStatusRequest,
     ResetPasswordRequest,
+    TenantOut,
+    TenantListResponse,
+    SetTenantStatusRequest,
     MessageResponse,
 )
 
@@ -21,6 +24,8 @@ class AdminTenantService:
 
     def __init__(self, uow: AdminUnitOfWork) -> None:
         self._uow = uow
+
+    # ── Users ──────────────────────────────────────────────────────────────
 
     async def list_users(
         self,
@@ -36,14 +41,6 @@ class AdminTenantService:
         )
         total = await self._uow.users.count_users(role=role, status=status)
 
-        await self._uow.audit.log(
-            actor_id=actor_id,
-            action="list_users",
-            resource_type="user",
-            details={"filters": {"role": role, "status": status, "email": email}},
-        )
-        await self._uow.commit()
-
         return UserListResponse(
             items=[UserOut.model_validate(u) for u in users],
             total=total,
@@ -54,13 +51,6 @@ class AdminTenantService:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-        await self._uow.audit.log(
-            actor_id=actor_id,
-            action="get_user",
-            resource_type="user",
-            resource_id=user_id,
-        )
-        await self._uow.commit()
         return UserOut.model_validate(user)
 
     async def set_user_status(
@@ -111,3 +101,66 @@ class AdminTenantService:
 
         log.info(f"Admin {actor_id}: password reset for user {user_id}")
         return MessageResponse(message="Password reset successfully")
+
+    # ── Tenants ────────────────────────────────────────────────────────────
+
+    async def list_tenants(
+        self,
+        skip: int,
+        limit: int,
+        name: str | None,
+        status: str | None,
+        actor_id: UUID,
+    ) -> TenantListResponse:
+        filters = {}
+        if name:
+            filters["name"] = f"%{name}%"
+        if status:
+            filters["status"] = status
+
+        tenants = await self._uow.tenants.get_multi(
+            skip=skip, limit=limit,
+            filters=filters or None,
+            order_by=[("name", "asc")],
+        )
+        total = await self._uow.tenants.count(filters=filters or None)
+
+        return TenantListResponse(
+            items=[TenantOut.model_validate(t) for t in tenants],
+            total=total,
+        )
+
+    async def get_tenant(self, tenant_id: UUID, actor_id: UUID) -> TenantOut:
+        tenant = await self._uow.tenants.get_by_id(tenant_id)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+
+        return TenantOut.model_validate(tenant)
+
+    async def set_tenant_status(
+        self,
+        tenant_id: UUID,
+        request: SetTenantStatusRequest,
+        actor_id: UUID,
+    ) -> MessageResponse:
+        tenant = await self._uow.tenants.get_by_id(tenant_id)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+
+        old_status = tenant.status
+        await self._uow.tenants.update(tenant, status=request.status.value)
+
+        await self._uow.audit.log(
+            actor_id=actor_id,
+            action="set_tenant_status",
+            resource_type="tenant",
+            resource_id=tenant_id,
+            details={
+                "old_status": old_status.value if hasattr(old_status, "value") else old_status,
+                "new_status": request.status.value,
+            },
+        )
+        await self._uow.commit()
+
+        log.info(f"Admin {actor_id}: tenant {tenant_id} status {old_status} → {request.status.value}")
+        return MessageResponse(message=f"Статус компании изменён на {request.status.value}")

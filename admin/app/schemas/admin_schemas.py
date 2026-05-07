@@ -183,10 +183,10 @@ class AdjustmentRequest(BaseModel):
 class AuditLogOut(BaseModel):
     id: int
     tenant_id: uuid.UUID | None = None
-    user_id: uuid.UUID | None = None
+    user: str | None = None
     action: str
     entity_type: str | None = None
-    entity_id: str | None = None
+    entity_name: str | None = None
     old_state: dict | None = None
     new_state: dict | None = None
     ip_address: str | None = None
@@ -253,3 +253,36 @@ class TariffResponse(BaseModel):
     price: Decimal
     is_active: bool
     created_at: datetime | None = datetime.now(timezone.utc)
+
+
+
+# ---------------------------------------------------------------------------
+# Тенанты
+# ---------------------------------------------------------------------------
+
+class TenantStatus(str, Enum):
+    active = "active"
+    blocked = "blocked"
+
+
+class TenantOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    status: TenantStatus
+    payment: str | None = None
+    locale: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TenantListResponse(BaseModel):
+    items: list[TenantOut]
+    total: int
+
+
+class SetTenantStatusRequest(BaseModel):
+    status: TenantStatus
+
+
+class ReallocateRequest(BaseModel):
+    line_id: uuid.UUID

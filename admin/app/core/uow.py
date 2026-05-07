@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.tenant_repo import AdminTenantRepository, AdminUserRepository
 from app.repositories.line_repo import AdminChannelAccountRepository, AdminLineRepository
 from app.repositories.instance_repo import AdminInstanceRepository
-from app.repositories.billing_repo import AdminBillingRepository
+from app.repositories.billing_repo import AdminBillingRepository, TariffRepository
 from app.repositories.audit_repo import AdminAuditRepository
 from repo.membership_repo import MembershipRepository
 
@@ -26,6 +26,7 @@ class AdminUnitOfWork:
         self.audit = AdminAuditRepository(session)
         self.users = AdminUserRepository(session)
         self.memberships = MembershipRepository(session)
+        self.tariff = TariffRepository(session)
 
     async def commit(self) -> None:
         await self._session.commit()

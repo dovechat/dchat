@@ -5,7 +5,6 @@ import logging
 from fastapi import HTTPException, status
 
 from app.core.uow import AdminUnitOfWork
-from app.repositories.billing_repo import TariffRepository
 from app.schemas.admin_schemas import (
     AdjustmentRequest,
     BalanceOut,
@@ -24,9 +23,8 @@ log = logging.getLogger("uvicorn.error")
 
 class AdminBillingService:
 
-    def __init__(self, uow: AdminUnitOfWork, tariff_repo: TariffRepository) -> None:
+    def __init__(self, uow: AdminUnitOfWork) -> None:
         self._uow = uow
-        self.tariff_repo = tariff_repo
 
     async def get_ledger(
         self,
@@ -56,14 +54,6 @@ class AdminBillingService:
         )
         total = len(entries)
 
-        await self._uow.audit.log(
-            actor_id=actor_id,
-            action="view_ledger",
-            resource_type="billing",
-            details={"tenant_id": str(tenant_id) if tenant_id else None},
-        )
-        await self._uow.commit()
-
         return LedgerListResponse(
             items=[LedgerEntryOut.model_validate(e) for e in entries],
             total=total,
@@ -76,14 +66,6 @@ class AdminBillingService:
         ) if False else None  # заглушка — в реальном коде проверка через tenant repo
 
         balance = await self._uow.billing.get_tenant_balance(tenant_id)
-
-        await self._uow.audit.log(
-            actor_id=actor_id,
-            action="view_balance",
-            resource_type="billing",
-            details={"tenant_id": str(tenant_id)},
-        )
-        await self._uow.commit()
 
         return BalanceOut(main=balance["main"], bonus=balance["bonus"])
 
@@ -138,13 +120,13 @@ class AdminBillingService:
 
     async def get_tariffs(self) -> list[TariffResponse]:
         """Get all active tariffs"""
-        tariffs = await self.tariff_repo.get_all_active()
+        tariffs = await self._uow.tariff.get_all_active()
         return [TariffResponse.model_validate(t) for t in tariffs]
 
     async def create_tariff(self, data: TariffCreate) -> TariffResponse:
         """Create new tariff"""
         print(f"****************** data {data}")
-        tariff = await self.tariff_repo.create_tariff(
+        tariff = await self._uow.tariff.create_tariff(
             name=data.name,
             channel_type=data.channel_type,
             period_days=data.period_days,
@@ -159,19 +141,32 @@ class AdminBillingService:
             data: TariffUpdate
     ) -> TariffResponse:
         """Update tariff"""
-        tariff = await self.tariff_repo.get_by_id(tariff_id)
+        tariff = await self._uow.tariff.get_by_id(tariff_id)
 
         if not tariff:
             raise HTTPException(status_code=404, detail="Tariff not found")
 
         update_data = data.model_dump(exclude_unset=True)
-        updated_tariff = await self.tariff_repo.update_tariff(tariff, **update_data)
+        updated_tariff = await self._uow.tariff.update_tariff(tariff, **update_data)
 
         return TariffResponse.model_validate(updated_tariff)
 
 
-    async def delete_tariff(self, tariff_id: uuid.UUID) -> None:
-        tariff = await self.tariff_repo.get_by_id(tariff_id)
+    async def delete_tariff(
+            self,
+            tariff_id: uuid.UUID,
+            actor_id: uuid.UUID,
+    ) -> None:
+        tariff = await self._uow.tariff.get_by_id(tariff_id)
         if not tariff:
             raise ValueError("Тариф не найден")
-        await self.tariff_repo.delete(tariff)
+        await self._uow.tariff.delete(tariff)
+
+        await self._uow.audit.log(
+            actor_id=actor_id,
+            action="delete_tariff",
+            resource_type="tariffs",
+            details={"tariff_id": str(tariff_id)},
+        )
+
+        await self._uow.commit()
