@@ -12,6 +12,7 @@ from app.schemas.admin_schemas import (
     InstanceOut,
     MessageResponse,
 )
+from infra.crypto import encrypt
 from models.lines import InstanceStatus
 from services.cleanup_service import CleanupService
 from repo.conversation_repo import ConversationRepository
@@ -74,6 +75,7 @@ class AdminInstanceService:
         return InstanceOut.model_validate(instance)
         '''
 
+
     async def create_instance(
         self,
         request: CreateInstanceRequest,
@@ -89,9 +91,11 @@ class AdminInstanceService:
                 detail="Instance with this external_id already exists",
             )
 
+        token_enc = encrypt(request.token)
         instance = await self._uow.instances.create_instance(
             provider=request.provider,
             external_id=request.external_id,
+            token=token_enc,
         )
 
         await self._uow.audit.log(

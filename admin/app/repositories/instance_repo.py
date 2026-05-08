@@ -61,11 +61,12 @@ class AdminInstanceRepository(BaseRepository[Instance]):
             allocated_to_line_id=line_id,
         )
 
-    async def create_instance(self, provider: str, external_id: str) -> Instance:
+    async def create_instance(self, provider: str, external_id: str, token: str) -> Instance:
         return await self.create(
             provider=provider,
             external_id=external_id,
             status="idle",
+            token=token,
         )
 
     async def count_by_status(self, status: str) -> int:

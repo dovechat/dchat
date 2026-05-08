@@ -17,7 +17,7 @@ from app.api.v1.webhooks import router as webhooks_router
 
 import logging
 logging.getLogger('uvicorn.error').setLevel(logging.DEBUG)
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 from api.app_start import start
 

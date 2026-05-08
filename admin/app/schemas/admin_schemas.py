@@ -137,7 +137,7 @@ class InstanceListResponse(BaseModel):
 class CreateInstanceRequest(BaseModel):
     provider: str = Field("green", description="green | waba")
     external_id: str = Field(..., description="ID инстанса у провайдера")
-
+    token: str = Field("token", description="green auth token")
 
 class BulkCleanRequest(BaseModel):
     instance_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)

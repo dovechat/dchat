@@ -332,6 +332,7 @@ class ChannelAccountService:
         # 1. Проверяем линию
         line = await self.line_repo.get_line_by_id(line_id, tenant_id)
         if not line:
+            log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} NOT FOUND")
             raise HTTPException(404, "Line not found")
 
         log.info(f"******** channel_service connect_whatsapp_green line {line}")
@@ -349,6 +350,7 @@ class ChannelAccountService:
         instance = await self.instance_repo.get_free_green_instance()
         log.info(f"******** channel_service connect_whatsapp_green instance {instance}")
         if not instance:
+            log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} No free WhatsApp Green instance available")
             raise HTTPException(404, "No free WhatsApp Green instance available")
 
         state = {}
@@ -363,9 +365,14 @@ class ChannelAccountService:
             await self.instance_repo.update(instance)
         '''
 
-        token = decrypt(instance.token)
+        if instance.token is not None:
+            token = decrypt(instance.token)
+        else:
+            log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} Instance token is None")
+            raise HTTPException(404, "Set up your instance token")
+            
 
-        log.info(f"******** channel_service connect_whatsapp_green instance {instance}")
+        log.info(f"*+*+*+*+* channel_service connect_whatsapp_green instance {instance}")
 
         # 4. Получаем QR от Green API
         qr = await self.get_qr_from_green(instance.external_id, token)

@@ -4,7 +4,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 import logging
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 
 def start(title: str, description: str = "", version: str = "0.1.0", server_prefix: str = ""):
