@@ -15,6 +15,7 @@ from app.schemas.admin_schemas import (
     TenantListResponse,
     SetTenantStatusRequest,
     MessageResponse,
+    UpdateTenantRequest,
 )
 
 log = logging.getLogger("uvicorn.error")
@@ -110,6 +111,8 @@ class AdminTenantService:
         limit: int,
         name: str | None,
         status: str | None,
+        payment: str | None,
+        locale: str | None,
         actor_id: UUID,
     ) -> TenantListResponse:
         filters = {}
@@ -117,6 +120,10 @@ class AdminTenantService:
             filters["name"] = f"%{name}%"
         if status:
             filters["status"] = status
+        if payment:
+            filters["payment"] = payment
+        if locale:
+            filters["locale"] = locale
 
         tenants = await self._uow.tenants.get_multi(
             skip=skip, limit=limit,
@@ -164,3 +171,21 @@ class AdminTenantService:
 
         log.info(f"Admin {actor_id}: tenant {tenant_id} status {old_status} → {request.status.value}")
         return MessageResponse(message=f"Статус компании изменён на {request.status.value}")
+
+    
+    async def update_tenant(self, tenant_id: UUID, request: UpdateTenantRequest, actor_id: UUID) -> TenantOut:
+        tenant = await self._uow.tenants.get_by_id(tenant_id)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+    
+        data = request.model_dump(exclude_none=True)
+        await self._uow.tenants.update(tenant, **data)
+        await self._uow.audit.log(
+            actor_id=actor_id,
+            action="update_tenant",
+            resource_type="tenant",
+            resource_id=tenant_id,
+            details=data,
+        )
+        await self._uow.commit()
+        return TenantOut.model_validate(tenant)

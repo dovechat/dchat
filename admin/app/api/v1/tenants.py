@@ -10,6 +10,7 @@ from app.schemas.admin_schemas import (
     TenantOut,
     SetTenantStatusRequest,
     MessageResponse,
+    UpdateTenantRequest,
 )
 from app.services.tenant_service import AdminTenantService
 from core.dependencies import get_db
@@ -29,10 +30,14 @@ async def list_tenants(
     limit: int = Query(50, ge=1, le=200),
     name: str | None = Query(None),
     status: str | None = Query(None),
+    payment: str | None = Query(None),
+    locale: str | None = Query(None),
 ):
     return await svc.list_tenants(
         skip=skip, limit=limit, name=name, status=status,
         actor_id=uuid.UUID(admin["sub"]),
+        payment=payment,
+        locale=locale,
     )
 
 
@@ -53,3 +58,13 @@ async def set_tenant_status(
     svc: AdminTenantService = Depends(get_service),
 ):
     return await svc.set_tenant_status(tenant_id, body, actor_id=uuid.UUID(admin["sub"]))
+
+
+@router.patch("/{tenant_id}", response_model=TenantOut)
+async def update_tenant(
+    tenant_id: uuid.UUID,
+    body: UpdateTenantRequest,
+    admin: AdminUser,
+    svc: AdminTenantService = Depends(get_service),
+):
+    return await svc.update_tenant(tenant_id, body, actor_id=uuid.UUID(admin["sub"]))

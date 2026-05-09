@@ -284,5 +284,12 @@ class SetTenantStatusRequest(BaseModel):
     status: TenantStatus
 
 
+class UpdateTenantRequest(BaseModel):
+    name: str | None = None
+    locale: str | None = None
+    payment: str | None = None
+    status: TenantStatus | None = None
+
+
 class ReallocateRequest(BaseModel):
     line_id: uuid.UUID

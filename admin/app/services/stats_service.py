@@ -67,6 +67,12 @@ class AdminAuditService:
         if entity_type == "user":
             obj = await self._uow.users.get_user(entity_id)
             return obj.email if obj else "удалено"
+        if entity_type == "tariff":
+            obj = await self._uow.tariff.get_by_id(entity_id)
+            return obj.name if obj else "удалено"
+        if entity_type == "billing":
+            obj = await self._uow.tenants.get_by_id(entity_id)
+            return obj.name if obj else "удалено"
 
 
     async def get_logs(

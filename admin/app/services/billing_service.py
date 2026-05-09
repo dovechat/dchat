@@ -83,6 +83,8 @@ class AdminBillingService:
             admin_user_id=actor_id,
         )
 
+        log.info(f"\n\n admin billing_service.create_adjustment tenant_id {tenant_id} \n\n")
+
         await self._uow.audit.log(
             actor_id=actor_id,
             action="balance_adjustment",
@@ -123,7 +125,7 @@ class AdminBillingService:
         tariffs = await self._uow.tariff.get_all_active()
         return [TariffResponse.model_validate(t) for t in tariffs]
 
-    async def create_tariff(self, data: TariffCreate) -> TariffResponse:
+    async def create_tariff(self, data: TariffCreate, actor_id: uuid.UUID,) -> TariffResponse:
         """Create new tariff"""
         print(f"****************** data {data}")
         tariff = await self._uow.tariff.create_tariff(
@@ -133,12 +135,22 @@ class AdminBillingService:
             price=data.price,
             is_active=data.is_active
         )
+
+        await self._uow.audit.log(
+            actor_id=actor_id,
+            action="new",
+            resource_type="tariff",
+            resource_id=tariff.id,
+            details={"tariff_id": str(tariff.id)},
+        )
+
         return TariffResponse.model_validate(tariff)
 
     async def update_tariff(
             self,
             tariff_id: uuid.UUID,
-            data: TariffUpdate
+            data: TariffUpdate,
+            actor_id: uuid.UUID,
     ) -> TariffResponse:
         """Update tariff"""
         tariff = await self._uow.tariff.get_by_id(tariff_id)
@@ -148,6 +160,14 @@ class AdminBillingService:
 
         update_data = data.model_dump(exclude_unset=True)
         updated_tariff = await self._uow.tariff.update_tariff(tariff, **update_data)
+
+        await self._uow.audit.log(
+            actor_id=actor_id,
+            action="update_tariff",
+            resource_type="tariff",
+            resource_id=tariff_id,
+            details={"tariff_id": str(tariff_id)},
+        )
 
         return TariffResponse.model_validate(updated_tariff)
 
@@ -165,7 +185,8 @@ class AdminBillingService:
         await self._uow.audit.log(
             actor_id=actor_id,
             action="delete_tariff",
-            resource_type="tariffs",
+            resource_type="tariff",
+            resource_id=tariff_id,
             details={"tariff_id": str(tariff_id)},
         )
 

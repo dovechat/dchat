@@ -112,7 +112,7 @@ async def create_tariff(
     billing_service: AdminBillingService = Depends(get_billing_service)
 ) -> TariffResponse:
     """Create new tariff (admin only)"""
-    return await billing_service.create_tariff(data)
+    return await billing_service.create_tariff(data, actor_id=uuid.UUID(admin["sub"]),)
 
 
 @tariff_router.patch("/{tariff_id}", response_model=TariffResponse)
@@ -123,7 +123,7 @@ async def update_tariff(
     billing_service: AdminBillingService = Depends(get_billing_service)
 ) -> TariffResponse:
     """Update tariff (admin only)"""
-    return await billing_service.update_tariff(tariff_id, data)
+    return await billing_service.update_tariff(tariff_id, data, actor_id=uuid.UUID(admin["sub"]),)
 
 
 @tariff_router.delete("/{tariff_id}", status_code=204)
