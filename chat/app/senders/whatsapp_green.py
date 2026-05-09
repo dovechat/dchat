@@ -26,7 +26,7 @@ class WhatsAppGreenSender(BaseSender):
             results = []
             for m in data.media:
                 file_url = f"{settings.s3_external_url}{m['id']}"
-                result = await conn.send_file(chat_id, file_url, data.text)
+                result = await conn.send_file(chat_id, file_url, data.text, file_name=m.get('file_name', 'file'))
                 results.append(result)
             return results[-1] if results else None
         else:

@@ -52,13 +52,13 @@ class GreenWhatsAppConnection:
         }
         return await self.send(url, payload)
 
-    async def send_file(self, chat_id: str, file_url: str, caption: str = "") -> dict:
+    async def send_file(self, chat_id: str, file_url: str, caption: str = "", file_name: str = "file") -> dict:
         """Отправить файл"""
         url = self.send_file_url()
         payload = {
             "chatId": chat_id,
             "urlFile": file_url,
-            "fileName": "file",
+            "fileName": file_name,
             "caption": caption
         }
         return await self.send(url, payload)
