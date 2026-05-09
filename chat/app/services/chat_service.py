@@ -706,6 +706,46 @@ class ChatService:
         _, message = await self.conv_msg(data)
         return MessageResponse.model_validate(message)
 
+    async def save_incoming_green(
+            self,
+            conversation_id: uuid.UUID,
+            payload: dict,
+            media_id: uuid.UUID | None = None,
+            file_name: str | None = None,
+            file_url: str | None = None,
+            original_file_name: str | None = None,
+            mime_type: str | None = None,
+            text: str | None = None,
+    ) -> MessageResponse:
+        """Сохранить входящее сообщение из WhatsApp Green"""
+
+        if file_url:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(file_url)
+                if res:
+                    file_bytes = res.content
+                    if file_bytes:
+                        await self._save_file(file_bytes, media_id, original_file_name or file_name, mime_type)
+
+        raw_content = payload
+        if mime_type:
+            raw_content["mime_type"] = mime_type
+
+        data = MessageCreate(
+            conversation_id=conversation_id,
+            direction=MessageDirection.inbound,
+            text=text,
+            channel_msg_id=payload.get("idMessage"),
+            media_id=str(media_id) if media_id else None,
+            file_name=original_file_name or file_name,
+            mime_type=mime_type,
+            raw_content=raw_content
+        )
+
+        _, message = await self.conv_msg(data)
+        return MessageResponse.model_validate(message)
+
+
 
     async def save_incoming_waba(
             self,

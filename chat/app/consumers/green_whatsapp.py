@@ -145,6 +145,7 @@ class GreenWhatsAppListener:
             )
         except Exception as e:
             log.error(f"\n\n !!! --- ERROR chat_service.save_incoming_green {e}---  \n\n")
+            return
 
         ws_message = {
             "id": str(message.id),
