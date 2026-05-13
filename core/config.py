@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     tg_api_id: str = ""
     tg_api_hash: str = ""
     tg_webhook_url: str = ""
+    vk_webhook_domain = ""
     notification_bot_token: str = ""
     low_balance_warn_days: tuple[int, ...]  = (5, 3)
 

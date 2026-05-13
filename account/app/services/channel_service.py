@@ -503,7 +503,7 @@ class ChannelAccountService:
         secret_key: str,
         line_id: uuid.UUID
     ) -> int:
-        wh_url = f"{settings.host_url}/api/v1/webhooks/vk/{line_id}"
+        wh_url = f"{settings.vk_webhook_domain}/api/v1/webhooks/vk/{line_id}"
         log.info(f"wh_url {wh_url}")
         resp = await client.post(
             "https://api.vk.com/method/groups.addCallbackServer",
