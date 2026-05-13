@@ -10,7 +10,7 @@ from core.redis import rdb
 from infra.crypto import decrypt
 from repo.conversation_repo import ConversationRepository
 from app.repositories.message_repo import MessageRepository
-from repo.line_repo import ChannelAccountRepository
+from repo.line_repo import ChannelAccountRepository, LineRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 
@@ -154,17 +154,19 @@ class VkListener:
 
     async def vk_confirm(self, line_id: uuid.UUID) -> str:
         creds = await self._get_creds(line_id)
-
-        await self.channel_repo.update_connection_status(
-            line_id=line_id,
-            status="connected",
-            channel_type=ChannelType.VK,
-        )
-        # Обновляем connection_state в lines
-        await self.line_repo.update_connection_state(
-            line_id=line_id,
-            state={"status": "connected"}
-        )
+        async with get_session() as db:
+            channel_repo = ChannelAccountRepository(db)
+            await channel_repo.update_connection_status(
+                line_id=line_id,
+                status="connected",
+                channel_type=ChannelType.VK,
+            )
+            # Обновляем connection_state в lines
+            line_repo = LineRepository(db)
+            await line_repo.update_connection_state(
+                line_id=line_id,
+                state={"status": "connected"}
+            )
         log.info(f"Line {line_id} connected via VK")
         return creds["confirmation_code"]
 
