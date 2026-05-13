@@ -65,7 +65,7 @@ class AdminBillingService:
             filters={"tenant_id": tenant_id}, limit=1
         ) if False else None  # заглушка — в реальном коде проверка через tenant repo
 
-        balance = await self._uow.billing.get_tenant_balance(tenant_id)
+        balance = await self._uow.balance.get_tenant_balance(tenant_id)
 
         return BalanceOut(main=balance["main"], bonus=balance["bonus"])
 

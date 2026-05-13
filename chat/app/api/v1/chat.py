@@ -179,6 +179,25 @@ async def create_message_waba(
     )
 
 
+
+@router.post("/messages/vk", response_model=MessageResponse)
+async def create_message_vk(
+    request: Request,
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    message_data = MessageCreate.parse_raw(data)
+    return await chat_service.create_msg_vk(
+        request=request,
+        data=message_data,
+        files=files,
+        current_user=current_user,
+    )
+
+
+
 @router.post("/bot/webhook/{line_id}")
 async def telegram_bot_webhook(
     line_id: uuid.UUID,

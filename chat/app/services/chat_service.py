@@ -311,9 +311,11 @@ class ChatService:
         else:
             # 4. Ошибка -> в Kafka (для каждого канала своё)
             topic_map = {
-                "telegram_user": "telegram_user_retry",
-                "telegram_bot": "telegram_bot_retry",
-                "whatsapp_green": "whatsapp_green_retry",
+                "telegram_user": "telegram-user-retry",
+                "telegram_bot": "telegram-bot-retry",
+                "whatsapp_green": "whatsapp-green-retry",
+                "waba": "waba-retry",
+                "vk": "vk-retry",
             }
 
             log.info(f"=============== !!! FAIL success {success} ChatServcie._finalize_message")
@@ -364,6 +366,9 @@ class ChatService:
             content_type=mime_type,
             metadata=metadata,
         )
+
+        log.info(f"========== _save_file saved media_id {media_id} filename {filename} size {size}")
+
         return {
             "media_id": media_id,
             "filename": filename,
@@ -679,6 +684,87 @@ class ChatService:
 
         return MessageResponse.model_validate(message)
 
+
+
+
+    async def create_msg_vk(
+            self,
+            request: Request,
+            data: MessageCreate,
+            files: list[UploadFile] | None = None,
+            current_user: UserContext = Depends(get_current_user),
+    ) -> MessageResponse:
+        """Create new VK message"""
+        # Получаем креды линии
+        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
+        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+
+        log.info(f"***** create_msg_vk files {files} data.media {data.media}")
+        log.info(f"\n\n ***** ChatService.create_msg_vk creds {creds} \n\n")
+
+        if files:
+            media_items = []
+            for file in files:
+                media_id = uuid.uuid4()
+                await self._save_uploaded_file(file, media_id)
+                media_items.append({
+                    "id": str(media_id),
+                    "file_name": file.filename,
+                    "mime_type": file.content_type,
+                })
+            data.media = media_items
+
+        # Сохраняем сообщение в БД
+        conv, message = await self.conv_msg(data, current_user)
+
+        # Отправляем на фронт сразу
+        await manager.send_new_message(str(data.conversation_id), {
+            "id": str(message.id),
+            "text": message.text,
+            "direction": "outbound",    
+            "created_at": message.created_at.isoformat(),
+            "user_id": str(current_user.id),
+            "user_email": current_user.email,
+            "status": "sent",
+            "media": data.media or [],
+        })
+
+        data.message_id = message.id
+        # Отправка через VK
+        sender = SenderFactory.get_sender("vk")
+        sender.set_listener(request.app.state.vk_listener)
+        sender.set_creds(creds)
+        success = False
+        channel_msg_id = None
+
+        log.info(f"\n\n ========== create_msg_vk data.message_id  {data.message_id} \n\n")
+
+        try:
+            result = await sender.send(data)
+            success = True if result else None
+            channel_msg_id = str(result) if isinstance(result, int) else result.get("message_id")
+        except Exception as e:
+            log.error(f"VK send failed: {e}")
+            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
+                await notify_connection_error(uuid.UUID(str(conv.line_id)), "vk", self.db)
+
+        # Финальное обновление
+        await self._finalize_message(
+            message=message,
+            conversation_id=data.conversation_id,
+            channel_type="vk",
+            data=data,
+            current_user=current_user,
+            success=success,
+            channel_msg_id=channel_msg_id,
+            raw_content=None
+        )
+
+        return MessageResponse.model_validate(message)
+
+
+
+
     async def save_incoming_message(
             self,
             conversation_id: uuid.UUID,
@@ -772,6 +858,25 @@ class ChatService:
         _, message = await self.conv_msg(data, None)  # user_id=None для входящих
         return MessageResponse.model_validate(message)
 
+    async def save_incoming_vk(
+            self,
+            conversation_id: uuid.UUID,
+            external_id: str,
+            text: str | None,
+            msg_type: str,
+            media_items: list | None = None,
+            raw_data: dict | None = None
+    ) -> MessageResponse:
+        data = MessageCreate(
+            conversation_id=conversation_id,
+            direction=MessageDirection.inbound,
+            text=text or "",
+            channel_msg_id=external_id,
+            media=media_items,
+            raw_content=raw_data
+        )
+        _, message = await self.conv_msg(data, None)
+        return MessageResponse.model_validate(message)
 
 
     async def upload_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:

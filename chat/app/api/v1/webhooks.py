@@ -1,6 +1,7 @@
 
 import uuid
 from fastapi import APIRouter, Request, Depends
+from fastapi.responses import PlainTextResponse
 from app.services.webhook_service import WebhookService
 from app.core.dependencies import get_webhook_service
 
@@ -28,3 +29,19 @@ async def waba_webhook(line_id: str, request: Request):
     payload = await request.json()
     await waba_listener.handle_webhook(line_id, payload)
     return {"status": "ok"}
+
+
+@router.post("/vk/{line_id}")
+async def whatsapp_green_webhook(
+    line_id: uuid.UUID,
+    request: Request,
+    service: WebhookService = Depends(get_webhook_service)
+):
+    """Receive webhook from Green API for WhatsApp line"""
+    payload = await request.json()
+    log.info(f"VK webhook for line {line_id}: {payload.get('type')}")
+    vk_listener = request.app.state.vk_listener
+    log.info(f"VK vk_listener {vk_listener}")
+    result = await vk_listener.handle_webhook(line_id, payload)
+    # result = await service.process_vk_webhook(line_id, payload)
+    return PlainTextResponse(result)

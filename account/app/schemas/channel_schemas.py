@@ -23,6 +23,8 @@ class VKCredentials(BaseModel):
     """Credentials for VK channel"""
     access_token: str = Field(..., description="VK access token")
     group_id: Optional[str] = Field(None, description="VK group/community ID")
+    secret_key: Optional[str] = Field(None, description="VK callback secret key")
+    confirmation_code: Optional[str] = Field(None, description="VK confirmation code")
 
 
 class ChannelAccountResponse(BaseModel):

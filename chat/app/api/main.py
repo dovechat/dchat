@@ -11,6 +11,7 @@ from .v1.websocket import router as websocket_router
 from app.consumers.green_whatsapp import GreenWhatsAppListener
 from app.consumers.waba import WabaListener
 from app.consumers.telegram_listener import TelegramListener
+from app.consumers.vk import VkListener
 from app.core.kafka_producer import kafka_producer
 from contextlib import asynccontextmanager
 from core.database import get_db
@@ -71,6 +72,7 @@ async def startup():
     app.state.listener = TelegramListener()
     app.state.green_listener = GreenWhatsAppListener()
     app.state.waba_listener = WabaListener()
+    app.state.vk_listener = VkListener()
 
 prefix = "/v1"
 app.include_router(public_router, prefix=prefix)

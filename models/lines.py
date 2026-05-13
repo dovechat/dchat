@@ -45,6 +45,7 @@ class ChannelType(enum.Enum):
     telegram_bot = "telegram_bot"
     whatsapp_green = "whatsapp_green"
     waba = "waba"
+    vk="vk"
 
 class Provider(enum.Enum):
     green = "green"

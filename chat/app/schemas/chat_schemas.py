@@ -21,6 +21,7 @@ class ConversationCreate(BaseModel):
 
 class MessageCreate(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    message_id: int | None = None
     conversation_id: uuid.UUID
     channel_msg_id: str | None = None
     direction: MessageDirection
@@ -110,3 +111,24 @@ class LineWithChannelsResponse(BaseModel):
 
 class ConversationCloseRequest(BaseModel):
     is_closed: bool
+
+
+# ------ VK ------
+
+class VkMessage(BaseModel):
+    id: int
+    date: int
+    peer_id: int
+    from_id: int
+    text: str
+
+
+class VkObject(BaseModel):
+    message: VkMessage
+
+
+class VkWebhook(BaseModel):
+    type: str
+    group_id: int
+    secret: str
+    object: VkObject

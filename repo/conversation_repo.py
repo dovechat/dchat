@@ -24,3 +24,14 @@ class ConversationRepository(BaseRepository[Conversation]):
         if crm_type is not None:
             filters["crm_type"] = crm_type
         return await self.get_multi(skip=skip, limit=limit, filters=filters)
+
+    async def get_by_line_and_crm(
+        self,
+        line_id: uuid.UUID,
+        crm_type: str,
+    ) -> Conversation:
+        """Get conversations for specific line and channel"""
+        filters = {"line_id": line_id, "crm_type": crm_type}
+        res = await self.get_multi(filters=filters)
+        if res:
+            return res[0]

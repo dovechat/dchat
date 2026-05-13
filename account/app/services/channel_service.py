@@ -486,40 +486,87 @@ class ChannelAccountService:
         except Exception as e:
             log.error(f"Send green set_webhook failed : {e}")
 
+    async def _vk_verify_token(self, client: httpx.AsyncClient, access_token: str) -> None:
+        resp = await client.get(
+            "https://api.vk.com/method/groups.getById",
+            params={"access_token": access_token, "v": "5.199"}
+        )
+        result = resp.json()
+        if result.get("error"):
+            raise ValueError(f"VK token error: {result['error']['error_msg']}")
+
+    async def _vk_add_callback_server(self, client: httpx.AsyncClient, group_id: str, access_token: str,
+                                      secret_key: str, line_id: uuid.UUID) -> int:
+        wh_url = f"{settings.host_url}/chat/api/v1/webhooks/vk/{line_id}"
+        log.info(f"wh_url {wh_url}")
+        resp = await client.post(
+            "https://api.vk.com/method/groups.addCallbackServer",
+            data={
+                "group_id": group_id,
+                "title": "dchat",
+                "url": wh_url,
+                "secret_key": secret_key or "",
+                "access_token": access_token,
+                "v": "5.199"
+            }
+        )
+        result = resp.json()
+        if result.get("error"):
+            raise ValueError(f"VK callback error: {result['error']['error_msg']}")
+        return result["response"]["server_id"]
+
+    async def _vk_set_callback_settings(self, client: httpx.AsyncClient, group_id: str, server_id: int,
+                                        access_token: str) -> None:
+        resp = await client.post(
+            "https://api.vk.com/method/groups.setCallbackSettings",
+            data={
+                "group_id": group_id,
+                "server_id": server_id,
+                "message_new": 1,
+                "message_reply": 1,
+                "access_token": access_token,
+                "v": "5.199"
+            }
+        )
+        result = resp.json()
+        if result.get("error"):
+            raise ValueError(f"VK settings error: {result['error']['error_msg']}")
+
     async def update_vk(
             self,
             line_id: uuid.UUID,
             tenant_id: uuid.UUID,
             credentials: VKCredentials
     ) -> ChannelAccountResponse:
-        """Update VK credentials"""
-        await self._verify_line_channel_type(line_id, tenant_id, "vk")
+        await self._verify_line_exists(line_id, tenant_id,)
 
-        encrypted = self._encrypt_credentials(credentials.model_dump())
-        account = await self.channel_repo.get_by_line(line_id)
+        creds_dict = credentials.model_dump()
+
+        async with httpx.AsyncClient() as client:
+            await self._vk_verify_token(client, credentials.access_token)
+            server_id = await self._vk_add_callback_server(
+                client, credentials.group_id, credentials.access_token, credentials.secret_key or "", line_id
+            )
+            creds_dict["server_id"] = server_id
+            await self._vk_set_callback_settings(client, credentials.group_id, server_id, credentials.access_token)
+
+        encrypted = self._encrypt_credentials(creds_dict)
+        account = await self.channel_repo.get_by_line_and_type(line_id, "vk")
 
         if account:
-            updated = await self.channel_repo.update_account(
-                account,
-                credentials_encrypted=encrypted
-            )
+            updated = await self.channel_repo.update_account(account, credentials_encrypted=encrypted)
         else:
-            updated = await self.channel_repo.create_account(
-                line_id=line_id,
-                credentials_encrypted=encrypted
-            )
+            updated = await self.channel_repo.create_account(line_id=line_id, credentials_encrypted=encrypted)
 
         line = await self.line_repo.get_line_by_id(line_id, tenant_id)
-
 
         return ChannelAccountResponse(
             id=updated.id,
             line_id=updated.line_id,
-            channel_type=line.channel_type,
+            channel_type=updated.channel_type,
             state_json=updated.state_json,
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
-
 
     async def line_cleanup(self, line_id: uuid.UUID, tenant_id: uuid.UUID):
         accounts = await self.get_accounts(line_id, tenant_id)

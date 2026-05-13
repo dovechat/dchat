@@ -54,6 +54,11 @@ class LineRepository(BaseRepository[Line]):
     async def get_lines_with_channels_by_tenant(self, tenant_id: uuid.UUID):
         return await self.get_multi(0, 20, {"tenant_id": tenant_id}, ChannelAccount)
 
+    async def update_connection_state(self, line_id: uuid.UUID, state: dict) -> None:
+        line = await self.get_by_id(line_id)
+        if line:
+            await self.update(line, connection_state=state)
+
 
 class ChannelAccountRepository(BaseRepository[ChannelAccount]):
 
@@ -116,7 +121,8 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             line_id: uuid.UUID,
             status: str,
             channel_type: ChannelType,
-            connection_error: str | None = None
+            connection_error: str | None = None,
+            phone: str | None = None
     ) -> None:
         account = await self.get_by_line_and_type(line_id, channel_type)
         if account:
@@ -125,6 +131,7 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
                 connection_status=status,
                 last_checked_at=datetime.now(),
                 connection_error=connection_error,
+                phone=phone,
             )
 
     async def get_expired(self, now: datetime) -> list:

@@ -1,15 +1,19 @@
+import json
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.chat_service import ChatService
-
 from app.repositories.chat_repo import ChatRepository
-from repo.line_repo import ChannelAccountRepository
-from repo.line_repo import InstanceRepository
+from app.services.chat_service import ChatService
+from infra.crypto import decrypt
+from repo.line_repo import ChannelAccountRepository, InstanceRepository, LineRepository
+from schemas.line_schemas import ChannelType
+
+
+
 
 log = logging.getLogger(__name__)
-
 
 class WebhookHandler(ABC):
     @abstractmethod
@@ -80,7 +84,7 @@ class StateChangedHandler(WebhookHandler):
 
 class WebhookHandlerFactory:
     @staticmethod
-    def get_handler(event_type: str) -> WebhookHandler:
+    def get_handler(event_type: str) -> WebhookHandler | None:
         if event_type == "incomingMessageReceived":
             return IncomingMessageHandler()
         elif event_type == "outgoingMessageStatus":
@@ -92,12 +96,14 @@ class WebhookHandlerFactory:
 
 class WebhookService:
     def __init__(self, db: AsyncSession):
-        self.services = {
-            "chat_service": ChatService(db),
-            "channel_repo":  ChannelAccountRepository(db)
-        }
+        self.channel_repo = ChannelAccountRepository(db)
+        self.line_repo=LineRepository(db)
         self.chat_repo = ChatRepository(db)
         self.instance_repo = InstanceRepository(db)
+        self.services = {
+            "chat_service": ChatService(db),
+            "channel_repo":  self.channel_repo,
+        }
 
     async def process_green_webhook(self, payload: dict):
         event_type = payload.get("typeWebhook")
@@ -137,3 +143,6 @@ class WebhookService:
             await handler.handle(conv.id, payload, self.services)
         else:
             log.warning(f"Unhandled webhook type: {event_type}")
+
+
+

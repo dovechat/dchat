@@ -176,6 +176,17 @@ class LineService:
         base = account.expires_at if account.expires_at and account.expires_at > now else now
         delta = timedelta(days=30) if data.subscription_period == SubscriptionPeriod.MONTH else timedelta(days=365)
 
+
+        try:
+            await self.line_repo.update_line(
+                line=line,
+                connection_state={"status": "connected"},
+                status="active",
+            )
+        except Exception as e:
+            log.error(f"\n\n!!!  --- ERROR --- can't update_line {line} {e} --- !!!\n\n")
+
+
         updated = await self.channel_account_repo.update_account(
             account,
             expires_at=base + delta,
