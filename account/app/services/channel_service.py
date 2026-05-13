@@ -516,7 +516,9 @@ class ChannelAccountService:
                 "v": "5.199"
             }
         )
+        log.info(f"_vk_add_callback_server resp {resp}")
         result = resp.json()
+        log.info(f"_vk_add_callback_server result {result}")
         if result.get("error"):
             raise ValueError(f"VK callback error: {result['error']['error_msg']}")
         return result["response"]["server_id"]
