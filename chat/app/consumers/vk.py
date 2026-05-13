@@ -154,16 +154,11 @@ class VkListener:
 
     async def vk_confirm(self, line_id: uuid.UUID) -> str:
         creds = await self._get_creds(line_id)
-        group_id_db = creds.get("group_id", "")
-        confirmation_code = creds.get("confirmation_code", "")
-        log.info(f"------- group_id {group_id} group_id_db {group_id_db} confirmation_code {confirmation_code}")
-        connection_error = "can't get number of scanning phone" if group_id and group_id != group_id_db else None
 
         await self.channel_repo.update_connection_status(
             line_id=line_id,
             status="connected",
             channel_type=ChannelType.VK,
-            connection_error=connection_error,
         )
         # Обновляем connection_state в lines
         await self.line_repo.update_connection_state(
