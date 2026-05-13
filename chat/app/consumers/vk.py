@@ -13,6 +13,7 @@ from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository, LineRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
+from schemas.line_schemas import ChannelType
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
