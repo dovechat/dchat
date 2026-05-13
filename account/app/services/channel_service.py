@@ -495,8 +495,14 @@ class ChannelAccountService:
         if result.get("error"):
             raise ValueError(f"VK token error: {result['error']['error_msg']}")
 
-    async def _vk_add_callback_server(self, client: httpx.AsyncClient, group_id: str, access_token: str,
-                                      secret_key: str, line_id: uuid.UUID) -> int:
+    async def _vk_add_callback_server(
+        self,
+        client: httpx.AsyncClient,
+        group_id: str,
+        access_token: str,
+        secret_key: str,
+        line_id: uuid.UUID
+    ) -> int:
         wh_url = f"{settings.host_url}/api/v1/webhooks/vk/{line_id}"
         log.info(f"wh_url {wh_url}")
         resp = await client.post(
@@ -515,8 +521,13 @@ class ChannelAccountService:
             raise ValueError(f"VK callback error: {result['error']['error_msg']}")
         return result["response"]["server_id"]
 
-    async def _vk_set_callback_settings(self, client: httpx.AsyncClient, group_id: str, server_id: int,
-                                        access_token: str) -> None:
+    async def _vk_set_callback_settings(
+            self,
+            client: httpx.AsyncClient,
+            group_id: str,
+            server_id: int,
+            access_token: str
+    ) -> None:
         resp = await client.post(
             "https://api.vk.com/method/groups.setCallbackSettings",
             data={
@@ -547,6 +558,7 @@ class ChannelAccountService:
             server_id = await self._vk_add_callback_server(
                 client, credentials.group_id, credentials.access_token, credentials.secret_key or "", line_id
             )
+            log.info(f"VK server_id: {server_id}, group_id: {credentials.group_id}")
             creds_dict["server_id"] = server_id
             await self._vk_set_callback_settings(client, credentials.group_id, server_id, credentials.access_token)
 
