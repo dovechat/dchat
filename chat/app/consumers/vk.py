@@ -173,10 +173,10 @@ class VkListener:
         log.info(f"Line {line_id} connected via VK")
         return creds["confirmation_code"]
 
-    async def _get_creds(self, line_id: str) -> dict:
+    async def _get_creds(self, line_id: uuid.UUID) -> dict:
         async with get_session() as db:
             repo = ChannelAccountRepository(db)
-            account = await repo.get_by_line_and_type(uuid.UUID(line_id), "vk")
+            account = await repo.get_by_line_and_type((line_id, "vk")
             if not account:
                 raise ValueError(f"No VK channel account for line {line_id}")
             creds_json = decrypt(account.credentials_encrypted["encrypted_data"])
