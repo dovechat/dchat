@@ -550,11 +550,11 @@ class ChannelAccountService:
             credentials: VKCredentials
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id,)
-
         creds_dict = credentials.model_dump()
-
+        log.info("ChannelAccountService update_vk")
         async with httpx.AsyncClient() as client:
             await self._vk_verify_token(client, credentials.access_token)
+            log.info("ChannelAccountService update_vk after _vk_verify_token ")
             server_id = await self._vk_add_callback_server(
                 client, credentials.group_id, credentials.access_token, credentials.secret_key or "", line_id
             )
