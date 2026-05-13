@@ -153,7 +153,7 @@ class VkListener:
 
 
     async def vk_confirm(self, line_id: uuid.UUID) -> str:
-        creds = self._get_creds(line_id)
+        creds = await self._get_creds(line_id)
         group_id_db = creds.get("group_id", "")
         confirmation_code = creds.get("confirmation_code", "")
         log.info(f"------- group_id {group_id} group_id_db {group_id_db} confirmation_code {confirmation_code}")
