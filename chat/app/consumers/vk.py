@@ -73,7 +73,7 @@ class VkConnection:
             "title": filename,
         })
         doc = saved.get("doc") or saved[0]
-        log.debug(saved.fdfdf)
+        log.debug(saved)
         # 4. Отправить
         return f"doc{doc['owner_id']}_{doc['id']}"
 
