@@ -53,7 +53,7 @@ class TenantRepository(BaseRepository[Tenant]):
     ) -> list[tuple[Tenant, int]]:
         member_count_sq = (
             select(Membership.tenant_id, func.count(Membership.id).label("cnt"))
-            .where(, Membership.role != 'owner')
+            .where(Membership.role != 'owner')
             .group_by(Membership.tenant_id)
             .subquery()
         )
