@@ -75,6 +75,7 @@ async def get_current_user(
         id=user.id,
         email=user.email,
         role=token_data.role,
+        member=token_data.member,
         tenant_id=token_data.tenant_id 
     )
 

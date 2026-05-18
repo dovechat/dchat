@@ -40,6 +40,7 @@ app.add_middleware(
 [
     "http://lk.127.0.0.1.nip.io",
     "http://0.0.0.0:8071",
+    "http://localhost:8071",
     "http://0.0.0.0:8001",
     "http://localhost:3000",
     "http://127.0.0.1:3000",

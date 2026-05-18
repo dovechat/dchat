@@ -79,6 +79,10 @@ class Tenant(Base):
     locale = Column(String, default="en_US")
     payment = Column(Enum(TenantPayment, name="tenantpayment"), default=TenantPayment.acquiring, nullable=False)
     status = Column(Enum(TenantStatus, name="tenantstatus"), default=TenantStatus.active, nullable=False)
+    address = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    inn = Column(String(12), nullable=True)
 
 
 class User(Base):

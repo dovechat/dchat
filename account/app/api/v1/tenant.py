@@ -79,7 +79,7 @@ async def update_tenant(
     """Update tenant details"""
     return await tenant_service.update_tenant(
         tenant_id=tenant_id, 
-        data=data.model_dump(exclude_unset=True), 
+        data=data.model_dump(),
         current_user=current_user
     )
 

@@ -98,8 +98,9 @@ async def get_tenant_repo(db: AsyncSession = Depends(get_db)) -> TenantRepositor
 def check_tenant_access(tenant_id: uuid.UUID, current_user: UserContext = Depends(get_current_user)):
     log.info(f"******** service lines tenant_id {tenant_id} -- current_user.tenant_id {current_user.tenant_id}")
     if current_user.tenant_id != tenant_id:
-        from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Token tenant_id mismatch")
+    if current_user.member not in ('owner', 'admin', 'member'):
+        raise HTTPException(status_code=403, detail="No membership in tenant")
     return tenant_id
 
 async def get_requisits_repo(db: AsyncSession = Depends(get_db)) -> RequisitsRepository:

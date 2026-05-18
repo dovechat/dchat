@@ -190,21 +190,22 @@ class AuthService:
                 detail="No access to tenant"
             )
 
-        # Handle both list (when tenant_id is None) and single object
         if isinstance(result, list):
             membership = min(result, key=lambda m: 0 if m.role == "owner" else 1)
         else:
             membership = result
 
-        log.info(f"\n\n ******* switch_context membership.tenant_id {membership.tenant_id} \n\n")
+        user = await user_repo.get_by_id(user_id)
+
+        log.info(f"\n\n ******* switch_context user.role={user.role} membership.role={membership.role} \n\n")
 
         res = self.jwt_service.create_token_pair(
             user_id=user_id,
-            role=membership.role,
-            tenant_id=membership.tenant_id
+            role=user.role,
+            tenant_id=membership.tenant_id,
+            member=membership.role,
         )
 
         log.info(f"\n\n ******* auth_service.switch_context refresh.refresh_token {res['refresh_token']} \n\n")
         return res
-
 

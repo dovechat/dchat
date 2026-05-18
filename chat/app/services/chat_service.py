@@ -107,12 +107,18 @@ class ChatService:
         if not tenant_ids:
             return []
 
+        log.info(f"user_id {user_id} line_id {line_id} crm_type {crm_type} is_closed {is_closed}")
+
+        log.info(f"tenant_ids {tenant_ids}")
+
         rows = await self.conv_repo.get_conversations_with_filters(
             tenant_ids=tenant_ids,
             line_id=line_id,
             crm_type=crm_type,
             is_closed=is_closed,
         )
+
+        log.info(f"rows {rows}")
 
         conversations = []
         for conv, line_name, tenant_id, unread_count, last_msg_at in rows:
@@ -128,6 +134,7 @@ class ChatService:
                 unread_count=unread_count,
                 last_message=last_msg
             ))
+        log.info(f"conversations {conversations}")
         return conversations
 
 

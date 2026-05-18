@@ -54,7 +54,6 @@ class TenantRepository(BaseRepository[Tenant]):
         tenant = await self.get_by_id(tenant_id)
         if not tenant:
             return None
-
         return await self.update(
             tenant,
             **data

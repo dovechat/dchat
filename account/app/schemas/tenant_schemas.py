@@ -52,6 +52,10 @@ class Tenant(BaseModel):
     locale: str = Field("en_US", max_length=10)
     payment: TenantPayment = TenantPayment.AQUIRING
     status: TenantStatus = TenantStatus.ACTIVE
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    inn: str | None = Field(None, max_length=12)
 
 
 class TenantCreate(Tenant):

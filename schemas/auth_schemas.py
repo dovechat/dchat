@@ -33,6 +33,7 @@ class TokenPayload(BaseModel):
     type: str
     tenant_id: str | uuid.UUID | None = None
     role: str | None = None
+    member: str | None = None
 
 
 class TokenPair(BaseModel):
@@ -63,6 +64,7 @@ class UserContext(BaseModel):
     email: str
     tenant_id: uuid.UUID | None = None
     role: UserRole | None = None
+    member: str | None = None
 
     def is_owner(self) -> bool:
         """Check if user is admin or owner"""

@@ -44,14 +44,16 @@ class JWTService:
             token_type: TokenType,
             role: str | None = None,
             tenant_id: str | uuid.UUID | None = None,
+            member: str | None = None,
     ) -> str:
         """Create a single JWT token"""
         log.info(f"\n\n ******* jwt_service._create_token tenant_id {tenant_id} role {role}\n\n")
         payload = {
             "sub": str(user_id),
             "type": token_type.value,
-            "role": role,
+            "role": role.value if hasattr(role, 'value') else role,
             "tenant_id": str(tenant_id) if tenant_id else None,
+            "member": member,
             "iat": datetime.utcnow(),
         }
 
@@ -67,10 +69,11 @@ class JWTService:
             user_id: int,
             role: str | None = None,
             tenant_id: str | None = None,
+            member: str | None = None,
     ) -> dict[str, str]:
         """Create access + refresh token pair"""
-        access = self._create_token(user_id, TokenType.ACCESS, role, tenant_id)
-        refresh = self._create_token(user_id, TokenType.REFRESH, role, tenant_id)
+        access = self._create_token(user_id, TokenType.ACCESS, role, tenant_id, member)
+        refresh = self._create_token(user_id, TokenType.REFRESH, role, tenant_id, member)
 
         log.info(f"\n\n ******* jwt_service.create_token_pair tenant_id {tenant_id} \n\n")
         log.info(f"\n\n ******* jwt_service.create_token_pair refresh {refresh} \n\n")

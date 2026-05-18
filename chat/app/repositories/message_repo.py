@@ -39,10 +39,13 @@ class MessageRepository(BaseRepository[Message]):
             self,
             conversation_id: uuid.UUID,
     ) -> Message:
-        """Get messages for conversation"""
         stmt = (
             select(self.model)
-            .where(self.model.conversation_id == conversation_id)
+            .where(
+                self.model.conversation_id == conversation_id,
+                self.model.text != None,
+                self.model.text != ""
+            )
             .order_by(desc(self.model.created_at))
             .limit(1)
         )
