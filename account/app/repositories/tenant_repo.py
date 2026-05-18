@@ -41,7 +41,8 @@ class TenantRepository(BaseRepository[Tenant]):
             skip=skip,
             limit=limit,
             filters={"user_id": user_id, "is_active": True},
-            join_model=Membership
+            join_model=Membership,
+            order_by=[('name', 'asc')]
         )
 
     async def get_tenant_by_id(self, tenant_id: uuid.UUID) -> Tenant | None:
