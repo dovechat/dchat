@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from core.dependencies import get_current_user
 from schemas.auth_schemas import UserContext
 
@@ -96,7 +96,8 @@ async def get_tenant_repo(db: AsyncSession = Depends(get_db)) -> TenantRepositor
     return TenantRepository(db)
 
 def check_tenant_access(tenant_id: uuid.UUID, current_user: UserContext = Depends(get_current_user)):
-    log.info(f"******** service lines tenant_id {tenant_id} -- current_user.tenant_id {current_user.tenant_id}")
+    if current_user.role == 'admin':
+        return tenant_id
     if current_user.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="Token tenant_id mismatch")
     if current_user.member not in ('owner', 'admin', 'member'):
