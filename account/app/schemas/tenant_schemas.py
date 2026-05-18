@@ -75,6 +75,7 @@ class TenantResponse(TenantCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    employee_count: int = 0
     # Один объект вместо списка
     banking_details: Optional[BankDetailsResponse] = None
 
