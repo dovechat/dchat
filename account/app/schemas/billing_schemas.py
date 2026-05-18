@@ -59,6 +59,20 @@ class PaymentResponse(BaseModel):
     updated_at: datetime | None = datetime.now(timezone.utc)
 
 
+class BillingHistoryItem(BaseModel):
+    id: str  # str чтобы принять и int и uuid
+    amount: Decimal
+    created_at: datetime | None = None
+    description: Optional[str] = None
+    # payment-специфичные
+    status: Optional[str] = None
+    payment_method: Optional[str] = None
+    # ledger-специфичные
+    balance_type: Optional[str] = None
+    # общее
+    record_type: str  # 'payment' | 'adjustment'
+    
+
 class PaymentStatusUpdate(BaseModel):
     """Update payment status manually"""
     status: str = Field(..., description="paid, failed, pending, refunded")

@@ -80,6 +80,14 @@ class BalanceLedgerRepository(BaseRepository[BalanceLedger]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def get_adjustments_by_tenant(self, tenant_id: uuid.UUID, skip: int = 0, limit: int = 100):
+        return await self.get_multi(
+            skip=skip,
+            limit=limit,
+            filters={"tenant_id": tenant_id, "operation_type": "adjustment"},
+            order_by=[("created_at", "desc")]
+        )
+
 
 class PaymentRepository(BaseRepository[Payment]):
 

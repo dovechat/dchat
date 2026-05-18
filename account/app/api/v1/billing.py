@@ -7,6 +7,7 @@ from app.schemas.billing_schemas import (
     BalanceResponse,
     BalanceAdjust,
     BalanceLedgerResponse,
+    BillingHistoryItem,
     PaymentCreate,
     PaymentResponse,
     PaymentStatusUpdate,
@@ -87,14 +88,14 @@ async def create_payment(
     return await billing_service.create_payment(tenant_id, data)
 
 
-@billing_router.get("/payments", response_model=list[PaymentResponse])
+@billing_router.get("/payments", response_model=list[BillingHistoryItem])
 async def get_payments(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     current_user: UserContext = Depends(get_current_user),
     tenant_id: uuid.UUID = Depends(check_tenant_access),
     billing_service: BillingService = Depends(get_billing_service)
-) -> list[PaymentResponse]:
+) -> list[BillingHistoryItem]:
     """Get payment history"""
     return await billing_service.get_payments(tenant_id, skip, limit)
 

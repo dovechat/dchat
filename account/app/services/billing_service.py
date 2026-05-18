@@ -11,6 +11,7 @@ from app.schemas.billing_schemas import (
     BalanceResponse,
     BalanceAdjust,
     BalanceLedgerResponse,
+    BillingHistoryItem,
     PaymentCreate,
     PaymentResponse,
     PaymentStatusUpdate,
@@ -101,10 +102,32 @@ class BillingService:
             tenant_id: uuid.UUID,
             skip: int = 0,
             limit: int = 100
-    ) -> list[PaymentResponse]:
-        """Get payment history"""
-        payments = await self.payment_repo.get_payments_by_tenant(tenant_id, skip, limit)
-        return [PaymentResponse.model_validate(p) for p in payments]
+    ) -> list[BillingHistoryItem]:
+        payments = await self.payment_repo.get_payments_by_tenant(tenant_id, 0, 1000)
+        adjustments = await self.ledger_repo.get_adjustments_by_tenant(tenant_id, 0, 1000)
+
+        items = []
+        for p in payments:
+            items.append(BillingHistoryItem(
+                id=str(p.id),
+                amount=p.amount,
+                created_at=p.created_at,
+                status=p.status,
+                payment_method=p.payment_method,
+                record_type="payment"
+            ))
+        for a in adjustments:
+            items.append(BillingHistoryItem(
+                id=str(a.id),
+                amount=a.amount,
+                created_at=a.created_at,
+                description=a.description,
+                balance_type=a.balance_type,
+                record_type="adjustment"
+            ))
+
+        items.sort(key=lambda x: x.created_at or datetime.min, reverse=True)
+        return items[skip: skip + limit]
 
     async def update_payment_status(
             self,
