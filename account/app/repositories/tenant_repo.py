@@ -45,6 +45,30 @@ class TenantRepository(BaseRepository[Tenant]):
             order_by=[('name', 'asc')]
         )
 
+    async def get_all_tenants_with_member_counts(
+            self,
+            user_id: uuid.UUID,
+            skip: int = 0,
+            limit: int = 100,
+    ) -> list[tuple[Tenant, int]]:
+        member_count_sq = (
+            select(Membership.tenant_id, func.count(Membership.id).label("cnt"))
+            .group_by(Membership.tenant_id)
+            .subquery()
+        )
+        query = (
+            select(Tenant, func.coalesce(member_count_sq.c.cnt, 0).label("cnt"))
+            .join(Membership, Membership.tenant_id == Tenant.id)
+            .outerjoin(member_count_sq, Tenant.id == member_count_sq.c.tenant_id)
+            .where(Membership.user_id == user_id, Membership.is_active == True)
+            .order_by(Tenant.name.asc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        return result.all()
+
+
     async def get_tenant_by_id(self, tenant_id: uuid.UUID) -> Tenant | None:
         """Get tenant by ID and owner"""
         return await self.get_by_id(tenant_id)

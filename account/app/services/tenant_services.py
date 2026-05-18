@@ -67,10 +67,11 @@ class TenantService:
 
     async def get_all_tenants(self, current_user: UserContext) -> list[TenantResponse]:
         """List tenants where the current user is an active member."""
-        log.info(f"----------- TenantService.get_all_tenants current_user.id {current_user.id}  ")
-        tenants = await self.repo.get_all_tenants(user_id=current_user.id)
-        log.info(f"----------- TenantService.get_all_tenants  {tenants}")
-        return [TenantResponse.model_validate(t) for t in tenants]
+        rows = await self.repo.get_all_tenants_with_member_counts(user_id=current_user.id)
+        return [
+            TenantResponse.model_validate(t).model_copy(update={"employee_count": cnt})
+            for t, cnt in rows
+        ]
 
     async def get_tenant(self, tenant_id: uuid.UUID, current_user: UserContext) -> TenantResponse:
         """Get tenant by ID and user ownership with context validation"""
