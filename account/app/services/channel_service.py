@@ -149,7 +149,7 @@ class ChannelAccountService:
                 res = await client.post(
                     f"https://api.telegram.org/bot{bot_token}/setWebhook",
                     json={
-                        "url": f"{settings.tg_webhook_url}/{line_id}"
+                        "url": f"{settings.tg_webhook_domain}/api/v1/bot/webhook/{line_id}"
                     },
                 )
                 log.info(f"res {res.json()}")
