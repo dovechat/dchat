@@ -54,6 +54,7 @@ class AdminBillingRepository(BaseRepository[BalanceLedger]):
             reference_id=admin_user_id,
         )
 
+    '''
     async def get_tenant_balance(self, tenant_id: uuid.UUID) -> dict[str, float]:
         """
         Суммирует операции из ledger и возвращает текущий баланс.
@@ -70,7 +71,7 @@ class AdminBillingRepository(BaseRepository[BalanceLedger]):
             float(e.amount) for e in entries if e.balance_type == "bonus"
         )
         return {"main": main_balance, "bonus": bonus_balance}
-
+    '''
 
 class PaymentRepository(BaseRepository[Payment]):
 
