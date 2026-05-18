@@ -66,7 +66,7 @@ class TenantService:
         return TenantResponse.model_validate(tenant)
 
     async def get_all_tenants(self, current_user: UserContext) -> list[TenantResponse]:
-        """List tenants where the current user is an active member."""
+        """List tenants where the current user is an active member with count of members."""
         rows = await self.repo.get_all_tenants_with_member_counts(user_id=current_user.id)
         return [
             TenantResponse.model_validate(t).model_copy(update={"employee_count": cnt})
