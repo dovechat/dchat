@@ -39,6 +39,7 @@ class GreenWhatsAppConnection:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
                 log.info(f"\n\n ****** GreenWhatsAppConnection.send response {type(response)} {response} \n\n")
+                log.info(f"GreenWhatsAppConnection.send response body: {response.text}")
                 return response.json()
         except Exception as e:
             log.error(f"!!! --- ERROR: GreenWhatsAppConnection.send failed {e}")
