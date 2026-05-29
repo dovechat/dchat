@@ -371,7 +371,7 @@ class ChannelAccountService:
             token = decrypt(instance.token)
         else:
             log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} Instance token is None")
-            raise HTTPException(404, "Set up your instance token")
+            raise HTTPException(400, "Set up your instance token")
             
 
         log.info(f"*+*+*+*+* channel_service connect_whatsapp_green instance {instance}")
