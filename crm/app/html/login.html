@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>DoveChat — подключение</title>
+<script src="//api.bitrix24.com/api/v1/"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 24px; }
+  .card { background: #fff; border-radius: 8px; padding: 24px; max-width: 360px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  h2 { font-size: 18px; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+  input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
+  button { width: 100%; padding: 10px; background: #2d6cdf; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; }
+  button:disabled { background: #a0b4e0; cursor: not-allowed; }
+  .error { color: #c0392b; font-size: 13px; margin-bottom: 10px; display: none; }
+  .tenant-list { margin-top: 8px; }
+  .tenant-item { padding: 10px 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; cursor: pointer; font-size: 14px; background: #fff; }
+  .tenant-item:hover { background: #f0f5ff; border-color: #2d6cdf; }
+  .section { display: none; }
+  .section.active { display: block; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Подключение DoveChat</h2>
+  <p class="error" id="error"></p>
+
+  <div class="section active" id="section-login">
+    <label>Email</label>
+    <input type="email" id="email" autofocus>
+    <label>Пароль</label>
+    <input type="password" id="password">
+    <button id="btn-login" onclick="doLogin()">Войти</button>
+  </div>
+
+  <div class="section" id="section-tenants">
+    <label style="margin-bottom:12px;display:block;">Выберите компанию:</label>
+    <div class="tenant-list" id="tenant-list"></div>
+  </div>
+</div>
+<script>
+var bxAuth = {};
+var jwtToken = '';
+console.log('script loaded, hostname:', location.hostname, 'href:', location.href);
+BX24.init(function() {
+  console.log('BX24 init called');
+  var info = BX24.placement.info();
+  console.log('placement value:', info.placement);
+  console.log('BX24 init placement');
+  if (!info.placement || info.placement !== 'SETTING_CONNECTOR') {
+      console.log('BX24 init installFinish');
+      BX24.installFinish();
+      return;
+  }
+  console.log('BX24 init after installFinish');
+  bxAuth = {
+    access_token: info.options && info.options.ACCESS_TOKEN || '',
+    refresh_token: info.options && info.options.REFRESH_TOKEN || '',
+    member_id: info.options && info.options.MEMBER_ID || '',
+    domain: info.options && info.options.DOMAIN || new URLSearchParams(location.search).get('DOMAIN') || location.hostname,
+    bx_line_id: (info.options && info.options.LINE) || '',
+  };
+  console.log('placement info:', JSON.stringify(info));
+  console.log('bxAuth:', JSON.stringify(bxAuth));
+  
+});
+
+async function doLogin() {
+  var email = document.getElementById('email').value.trim();
+  var password = document.getElementById('password').value;
+  var btn = document.getElementById('btn-login');
+  var err = document.getElementById('error');
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Вход...';
+
+  try {
+    var resp = await fetch('/crm/api/v1/install/bitrix/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password, bx_auth: bxAuth }),
+    });
+    var data = await resp.json();
+    if (data.error) {
+      err.textContent = data.error;
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Войти';
+      return;
+    }
+    jwtToken = data.jwt_token;
+    if (data.tenants.length === 1) {
+      await selectTenant(data.tenants[0].id);
+    } else {
+      showTenants(data.tenants);
+    }
+  } catch(e) {
+    err.textContent = 'Ошибка подключения к серверу';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Войти';
+  }
+}
+
+function showTenants(tenants) {
+  var list = document.getElementById('tenant-list');
+  list.innerHTML = '';
+  tenants.forEach(function(t) {
+    var el = document.createElement('div');
+    el.className = 'tenant-item';
+    el.textContent = t.name;
+    el.onclick = function() { selectTenant(t.id); };
+    list.appendChild(el);
+  });
+  document.getElementById('section-login').classList.remove('active');
+  document.getElementById('section-tenants').classList.add('active');
+}
+
+async function selectTenant(tenantId) {
+  var err = document.getElementById('error');
+  err.style.display = 'none';
+  try {
+    var resp = await fetch('/crm/api/v1/install/bitrix/select-tenant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jwt_token: jwtToken, tenant_id: tenantId, bx_auth: bxAuth }),
+    });
+    var data = await resp.json();
+    if (data.error) {
+      err.textContent = data.error;
+      err.style.display = 'block';
+      return;
+    }
+    sessionStorage.setItem('bx_auth', JSON.stringify(bxAuth));
+    sessionStorage.setItem('lines', JSON.stringify(data.lines));
+    location.href = '/crm/html/lines.html';
+  } catch(e) {
+    err.textContent = 'Ошибка подключения к серверу';
+    err.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

@@ -20,20 +20,20 @@ class ChatRepository(BaseRepository[Conversation]):
     async def get_conversation_by_crm_id(
         self,
         line_id: uuid.UUID,
-        crm_type: str,
+        channel_type: str,
         crm_chat_id: str
     ) -> Optional[Conversation]:
         """Find conversation by CRM identifiers"""
         return await self.get_one(
             line_id=line_id,
-            crm_type=crm_type,
+            channel_type=channel_type,
             crm_chat_id=crm_chat_id
         )
 
     async def create_conversation(
             self,
             line_id: uuid.UUID,
-            crm_type: str,
+            channel_type: str,
             crm_chat_id: str,
             client_phone: Optional[str] = None,
             meta: Optional[dict] = None
@@ -41,7 +41,7 @@ class ChatRepository(BaseRepository[Conversation]):
         """Create new conversation"""
         return await self.create(
             line_id=line_id,
-            crm_type=crm_type,
+            channel_type=channel_type,
             crm_chat_id=crm_chat_id,
             client_phone=client_phone,
             meta=meta or {}
@@ -65,16 +65,16 @@ class ChatRepository(BaseRepository[Conversation]):
         self,
         line_id: uuid.UUID,
         client_phone: str,
-        crm_type: str,
+        channel_type: str,
         skip: int = 0,
         limit: int = 1
     ) -> Conversation:
         """Get conversations for specific line"""
-        log.info(f"ChatRepository.get_conversations_by_phone line_id {line_id} client_phone {client_phone} crm_type {crm_type}")
+        log.info(f"ChatRepository.get_conversations_by_phone line_id {line_id} client_phone {client_phone} channel_type {channel_type}")
         res = await self.get_multi(
             skip=skip,
             limit=limit,
-            filters={"line_id": line_id, "client_phone": client_phone, "crm_type": crm_type}
+            filters={"line_id": line_id, "client_phone": client_phone, "channel_type": channel_type}
         )
         log.info(f"ChatRepository.get_conversations_by_phone res {res}")
         if res and len(res) > 0:
@@ -105,7 +105,7 @@ class ChatRepository(BaseRepository[Conversation]):
             self,
             tenant_ids: list[uuid.UUID],
             line_id: uuid.UUID | None = None,
-            crm_type: str | None = None,
+            channel_type: str | None = None,
             is_closed: bool | None = None,
     ) -> list:
         stmt = (
@@ -124,8 +124,8 @@ class ChatRepository(BaseRepository[Conversation]):
         )
         if line_id is not None:
             stmt = stmt.where(Conversation.line_id == line_id)
-        if crm_type is not None:
-            stmt = stmt.where(Conversation.crm_type == crm_type)
+        if channel_type is not None:
+            stmt = stmt.where(Conversation.channel_type == channel_type)
         if is_closed is not None:
             stmt = stmt.where(Conversation.is_closed == is_closed)
         result = await self.session.execute(stmt)
@@ -156,7 +156,7 @@ class ChatRepository(BaseRepository[Conversation]):
             .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
             .where(
                 Conversation.id == conversation_id,
-                ChannelAccount.channel_type == Conversation.crm_type
+                ChannelAccount.channel_type == Conversation.channel_type
             )
         )
         result = await self.session.execute(stmt)
@@ -233,7 +233,7 @@ class ChatRepository(BaseRepository[Conversation]):
                 .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
                 .where(
                     Conversation.id == conversation_id,
-                    ChannelAccount.channel_type == Conversation.crm_type
+                    ChannelAccount.channel_type == Conversation.channel_type
                 )
             )
             result = await self.session.execute(stmt)
@@ -261,7 +261,7 @@ class ChatRepository(BaseRepository[Conversation]):
         new_conv = Conversation(
             line_id=line_id,
             client_phone=chat_id,
-            crm_type="telegram_bot",
+            channel_type="telegram_bot",
             crm_chat_id=chat_id,
             meta={"username": client_phone} if client_phone else {}
         )
@@ -284,7 +284,7 @@ class ChatRepository(BaseRepository[Conversation]):
                 ~sa.exists().where(
                     and_(
                         Conversation.line_id == Line.id,
-                        Conversation.crm_type == ChannelAccount.channel_type,
+                        Conversation.channel_type == ChannelAccount.channel_type,
                     )
                 )
             )

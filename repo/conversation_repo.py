@@ -17,21 +17,21 @@ class ConversationRepository(BaseRepository[Conversation]):
         line_id: uuid.UUID,
         skip: int = 0,
         limit: int = 100,
-        crm_type: str | None = None,
+        channel_type: str | None = None,
     ) -> List[Conversation]:
         """Get conversations for specific line"""
         filters = {"line_id": line_id}
-        if crm_type is not None:
-            filters["crm_type"] = crm_type
+        if channel_type is not None:
+            filters["channel_type"] = channel_type
         return await self.get_multi(skip=skip, limit=limit, filters=filters)
 
     async def get_by_line_and_crm(
         self,
         line_id: uuid.UUID,
-        crm_type: str,
+        channel_type: str,
     ) -> Conversation:
         """Get conversations for specific line and channel"""
-        filters = {"line_id": line_id, "crm_type": crm_type}
+        filters = {"line_id": line_id, "channel_type": channel_type}
         res = await self.get_multi(filters=filters)
         if res:
             return res[0]

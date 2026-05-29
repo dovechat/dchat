@@ -14,6 +14,8 @@ from app.schemas.chat_schemas import (
     ConversationCreate,
     ConversationListResponse,
     ConversationResponse,
+    CrmMessageIn,
+    CrmMessageOut,
     LineResponse,
     LineWithChannelsResponse,
     MessageResponse,
@@ -53,17 +55,21 @@ async def set_conversation_status(
 @router.get("/conversations", response_model=List[ConversationListResponse])
 async def list_conversations(
     line_id: uuid.UUID | None = None,
-    crm_type: str | None = None,
+    channel_type: str | None = None,
     is_closed: bool | None = None,
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
 ):
-    return await chat_service.get_conversations_filtered(
-        user_id=current_user.id,
-        line_id=line_id,
-        crm_type=crm_type,
-        is_closed=is_closed,
-    )
+    try:
+        return await chat_service.get_conversations_filtered(
+            user_id=current_user.id,
+            line_id=line_id,
+            channel_type=channel_type,
+            is_closed=is_closed,
+        )
+    except Exception as e:
+        log.error(f"\n\n router.get  /conversations {e} \n\n")
+
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(
@@ -255,3 +261,26 @@ async def upload_file(
     result = await chat_service.upload(media_id, file)
     return result
 
+
+@router.post("/internal/crm-message")
+async def crm_incoming(
+    data: CrmMessageIn,
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await chat_service.save_crm_incoming(data)
+
+
+@router.post("/internal/crm-outgoing")
+async def crm_outgoing(
+    data: CrmMessageOut,
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await chat_service.start_crm_outgoing(data)
+
+
+@router.post("/internal/crm-robot-send")
+async def crm_robot_send(
+    data: CrmMessageOut,
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await chat_service.robot_send(data)

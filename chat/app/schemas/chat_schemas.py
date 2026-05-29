@@ -13,7 +13,7 @@ class MessageStatus(str, enum.Enum):
 
 class ConversationCreate(BaseModel):
     line_id: uuid.UUID
-    crm_type: str
+    channel_type: str
     crm_chat_id: str
     client_phone: str | None = None
     meta: dict | None = None
@@ -62,7 +62,7 @@ class ConversationListResponse(BaseModel):
     line_id: uuid.UUID
     line_name: str | None = None
     tenant_id: uuid.UUID | None = None  # добавить
-    crm_type: str
+    channel_type: str
     crm_chat_id: str
     client_phone: str | None = None
     meta: dict | None = None
@@ -77,7 +77,7 @@ class ConversationResponse(BaseModel):
 
     id: uuid.UUID
     line_id: uuid.UUID
-    crm_type: str
+    channel_type: str
     crm_chat_id: str
     client_phone: str | None = None
     meta: dict | None = None
@@ -132,3 +132,24 @@ class VkWebhook(BaseModel):
     group_id: int
     secret: str
     object: VkObject
+
+
+class CrmMessageIn(BaseModel):
+    line_id: uuid.UUID
+    crm_chat_id: str
+    channel_type: str
+    text: str
+    raw_content: dict = {}
+    media: list[dict] = []
+
+class CrmMessageOut(BaseModel):
+    line_id: uuid.UUID
+    client_phone: str
+    text: str
+    crm_connection_id: uuid.UUID
+    contact_id: str
+    crm_line_id: str
+    connector_id: str
+    channel_type: str
+    channel_account_id: uuid.UUID | None
+    media: list[dict] = []

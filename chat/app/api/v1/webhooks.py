@@ -32,7 +32,7 @@ async def waba_webhook(line_id: str, request: Request):
 
 
 @router.post("/vk/{line_id}")
-async def whatsapp_green_webhook(
+async def vk_webhook(
     line_id: uuid.UUID,
     request: Request,
     service: WebhookService = Depends(get_webhook_service)

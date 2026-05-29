@@ -7,7 +7,7 @@ from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
 from core.dependencies import get_db, get_current_user
 from app.core.dependencies import (
     get_requisits_repo, check_tenant_access,
-    get_tenant_repo, get_tenant_uow
+    get_tenant_repo, get_tenant_uow, get_crm_settings_repo
 )
 from app.schemas.tenant_schemas import (
     BankDetailsRead, BankDetailsRUUpdate,
@@ -16,6 +16,10 @@ from app.schemas.tenant_schemas import (
 from app.services.tenant_services import RequisitsService, TenantCreateService, TenantService
 from schemas.auth_schemas import UserContext
 from services.auth_service import AuthService
+from repo.crm_settings_repo import CrmSettingsRepository
+from app.services.crm_settings_service import CrmSettingsService
+from app.schemas.crm_settings_schemas import CrmSettingsRead, CrmSettingsUpdate
+
 
 import logging
 log = logging.getLogger("uvicorn.error")
@@ -40,6 +44,10 @@ def get_requisits_service(
 ) -> RequisitsService:
     return RequisitsService(requisits_repo)
 
+def get_crm_settings_service(
+    repo=Depends(get_crm_settings_repo),
+) -> CrmSettingsService:
+    return CrmSettingsService(repo)
 
 @tenant_router.post("/create", response_model=TenantResponse, status_code=201)
 async def create_tenant_rt(
@@ -101,3 +109,24 @@ async def update_banking(
     requisits_service: RequisitsService = Depends(get_requisits_service)
 ):
     return await requisits_service.update_tenant_banking(tenant_id, data.model_dump(exclude_unset=True))
+
+
+@tenant_router.get("/{tenant_id}/crm-settings")
+async def get_crm_settings(
+    tenant_id: uuid.UUID,
+    service: CrmSettingsService = Depends(get_crm_settings_service),
+    current_user: UserContext = Depends(get_current_user),
+):
+    check_tenant_access(tenant_id, current_user)
+    return await service.get(tenant_id)
+
+
+@tenant_router.patch("/{tenant_id}/crm-settings")
+async def update_crm_settings(
+    tenant_id: uuid.UUID,
+    body: CrmSettingsUpdate,
+    service: CrmSettingsService = Depends(get_crm_settings_service),
+    current_user: UserContext = Depends(get_current_user),
+):
+    check_tenant_access(tenant_id, current_user)
+    return await service.upsert(tenant_id, **body.model_dump(exclude_unset=True))

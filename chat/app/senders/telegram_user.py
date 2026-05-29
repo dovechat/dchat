@@ -19,9 +19,6 @@ class TelegramUserSender(BaseSender):
         """Отправить текстовое сообщение"""
         log.info("\n\n +++++++++++++ TelegramUserSender.send")
         log.info(f"\n\n +++++++++++++ TelegramUserSender.send  data {data}  \n\n")
-        conversation_id = str(data.conversation_id)
-        recipient = data.phone
-        text = data.text
 
         if data.media:
             return await self.listener.send_file_user(data)

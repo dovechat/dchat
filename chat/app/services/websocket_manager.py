@@ -46,7 +46,7 @@ class ConnectionManager:
                 select(ChannelAccount.phone)
                 .join(Conversation, and_(
                     Conversation.line_id == ChannelAccount.line_id,
-                    Conversation.crm_type == ChannelAccount.channel_type
+                    Conversation.channel_type == ChannelAccount.channel_type
                 ))
                 .where(Conversation.id == conversation_id)
             )
@@ -73,7 +73,7 @@ class ConnectionManager:
         log.info(f"---*----*-- websocket_manager Socket state after append: {websocket.client_state.name}")
 
         # Если это первое соединение - запускаем listener
-        if len(self.active_connections[conversation_id]) == 1 and conv.crm_type == "telegram_user":
+        if len(self.active_connections[conversation_id]) == 1 and conv.channel_type == "telegram_user":
             listener = app.state.listener
             # log.info(f"+++++++++ websocket_manager ConnectionManager.connect listener.start_listening")
             await listener.start_listening(conversation_id, my_phone, peer_phone)
@@ -96,7 +96,7 @@ class ConnectionManager:
         log.info(f"+++++++ websocket manager self.active_connections {self.active_connections} conversation_id {conversation_id}")
         conversation_id = str(conversation_id)
         '''
-        if conv and conv.crm_type != 'telegram_bot':
+        if conv and conv.channel_type != 'telegram_bot':
             if conversation_id not in self.active_connections:
                 log.error(f"! --- ERROR: websocket manager conversation_id not in self.active_connections")
                 return

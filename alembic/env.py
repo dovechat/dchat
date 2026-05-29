@@ -13,6 +13,7 @@ from models.lines import Line, ChannelAccount, Instance, InstancePoolEvent
 from models.messages import Conversation, Message, MessageStatusEvent
 from models.billing import Tariff, Payment, BalanceLedger, RobotJob
 from models.notifications import NotificationSettings, NotificationLog
+from models.crm import CrmConnection, CrmDialogLink
 
 # this is the Alembic Config object
 config = context.config

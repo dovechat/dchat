@@ -62,9 +62,27 @@ class Settings(BaseSettings):
     s3_secret_key: str = "minioadmin"
     s3_secure: bool = False
     s3_bucket: str = "dovechat-media"
-    s3_external_url: str = "http://localhost:9000/dovechat-media/"
+    s3_bt_bucket: str = "storage"
+    s3_external_url: str = "http://localhost:9000/"
     s3_internal_url: str = "http://minio:9000/"
 
+    BITRIX_CLIENT_ID: str = "local.6a11925fa39594.77018871"
+    BITRIX_CLIENT_SECRET: str = "x1W6xLDK1YElQhc2FjCZ3AkinJtahY3teWpO1jCzqO4kuEUsOl"
+    BITRIX_APPLICATION_TOKEN: str = "84b9dd8be3f401e8764e2dd82365361b"
+    BITRIX_CONNECTOR_MAP: dict = {
+        "telegram_bot": "dovechat_telegram_bot",
+        "telegram_user": "dovechat_telegram_user",
+        "vk": "dovechat_vk",
+        "whatsapp_green": "dovechat_whatsapp_green",
+        "waba": "dovechat_waba",
+    }
+    BITRIX_CONNECTOR_NAMES: dict = {
+        "dovechat_telegram_bot": "DoveChat TgBot",
+        "dovechat_telegram_user": "DoveChat TgUser",
+        "dovechat_vk": "DoveChat VK",
+        "dovechat_whatsapp_green": "DoveChat WA",
+        "dovechat_waba": "DoveChat WABA",
+    }
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

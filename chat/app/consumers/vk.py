@@ -14,13 +14,14 @@ from repo.line_repo import ChannelAccountRepository, LineRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from schemas.line_schemas import ChannelType
+from services.storage_service import StorageService
+
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
 
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.199"
-
 
 class VkConnection:
     """Соединение с VK API для одной линии"""
@@ -85,6 +86,7 @@ class VkListener:
 
     def __init__(self):
         self.connections: Dict[str, VkConnection] = {}
+        self.storage = StorageService()
         log.info("VkListener initialized")
 
     async def handle_webhook(self, line_id: str, payload: dict):
@@ -102,13 +104,6 @@ class VkListener:
             return await self.vk_confirm(line_id)
         else:
             log.warning(f"Ignoring VK webhook type: {event_type}")
-
-
-
-
-
-
-
 
     async def vk_handle_reply(self, line_id, payload):
         msg = payload.get("object", {})
@@ -147,10 +142,6 @@ class VkListener:
                 })
 
         return 'ok'
-
-
-
-
 
 
     async def vk_confirm(self, line_id: uuid.UUID) -> str:
@@ -220,13 +211,13 @@ class VkListener:
                     best = max(sizes, key=lambda s: s.get("width", 0))
                     file_bytes = await self._download_file(best.get("url"))
                     fname = f"{att_obj.get('id')}.jpg"
-                    await chat_service._save_file(file_bytes, m_id, fname, "image/jpeg")
+                    await self.storage.save_file(file_bytes, m_id, fname, "image/jpeg")
                     media_items.append({"id": str(m_id), "file_name": fname, "mime_type": "image/jpeg"})
             elif att_type == "doc":
                 file_bytes = await self._download_file(att_obj.get("url"))
                 fname = att_obj.get("title")
                 mtype = att_obj.get("mime_type", "application/octet-stream")
-                await chat_service._save_file(file_bytes, m_id, fname, mtype)
+                await self.storage.save_file(file_bytes, m_id, fname, mtype)
                 media_items.append({"id": str(m_id), "file_name": fname, "mime_type": mtype})
 
         message = await chat_service.save_incoming_vk(

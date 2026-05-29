@@ -19,9 +19,12 @@ from app.schemas.chat_schemas import (
     ChannelAvailable,
     ConversationCreate,
     ConversationResponse,
+    CrmMessageIn,
+    CrmMessageOut,
     LineWithChannelsResponse,
     MessageCreate,
     MessageResponse,
+    MessageStatus,
     ConversationListResponse
 )
 from app.schemas.telegram_schemas import KafkaEvent
@@ -35,6 +38,7 @@ from infra.crypto import decrypt
 from models.messages import Conversation, Message, MessageDirection
 from notification.notification_caller import notify_connection_error
 from schemas.auth_schemas import UserContext
+from services.storage_service import StorageService
 
 import logging
 log = logging.getLogger("uvicorn.error")
@@ -48,12 +52,7 @@ class ChatService:
         self.tenant_repo = TenantRepository(db)
         self.media_repo = MediaRepository(db)
         self.line_repo = LineRepository(db)
-        self.s3_client = Minio(
-            settings.s3_endpoint,
-            access_key=settings.s3_access_key,
-            secret_key=settings.s3_secret_key,
-            secure=settings.s3_secure,
-        )
+        self.storage = StorageService()
 
     async def get_conversations(
             self,
@@ -99,7 +98,7 @@ class ChatService:
             self,
             user_id: uuid.UUID,
             line_id: uuid.UUID | None = None,
-            crm_type: str | None = None,
+            channel_type: str | None = None,
             is_closed: bool = False,
     ) -> list[ConversationListResponse]:
         tenants = await self.tenant_repo.get_all_tenants(user_id=user_id)
@@ -107,14 +106,14 @@ class ChatService:
         if not tenant_ids:
             return []
 
-        log.info(f"user_id {user_id} line_id {line_id} crm_type {crm_type} is_closed {is_closed}")
+        log.info(f"user_id {user_id} line_id {line_id} channel_type {channel_type} is_closed {is_closed}")
 
         log.info(f"tenant_ids {tenant_ids}")
 
         rows = await self.conv_repo.get_conversations_with_filters(
             tenant_ids=tenant_ids,
             line_id=line_id,
-            crm_type=crm_type,
+            channel_type=channel_type,
             is_closed=is_closed,
         )
 
@@ -176,7 +175,7 @@ class ChatService:
         )
 
         # my_phone = None
-        # if conversation.crm_type != "telegram_bot":
+        # if conversation.channel_type != "telegram_bot":
         my_phone = await self.conv_repo.get_line_phone_by_conversation(conversation_id)
 
         log.info(f"\n\n --- ChatService.get_conversation my_phone {my_phone} conversation.__dict__ {conversation.__dict__}--- \n\n ")
@@ -240,7 +239,7 @@ class ChatService:
         """Create new conversation"""
         conversation = await self.conv_repo.create_conversation(
             line_id=data.line_id,
-            crm_type=data.crm_type,
+            channel_type=data.channel_type,
             crm_chat_id=data.crm_chat_id,
             client_phone=data.client_phone,
             meta=data.meta
@@ -309,6 +308,10 @@ class ChatService:
                 )
             
             log.info(f"=============== ChatServcie._finalize_message data.raw_content {data.raw_content}")
+
+
+
+
             # 3. Статус delivered
             await manager.send_message_status(str(conversation_id), {
                 "message_id": str(message.id),
@@ -353,8 +356,9 @@ class ChatService:
     async def _save_uploaded_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
         log.info(f"========== ChatService._save_uploaded_file media_id {media_id}")
         file_bytes = await file.read()
-        return await self._save_file(file_bytes, media_id, file.filename, file.content_type)
+        return await self.storage.save_file(file_bytes, media_id, file.filename, file.content_type)
 
+    '''
     async def _save_file(self, file_bytes: bytes, media_id: uuid.UUID, filename: str, mime_type: str ) -> dict:
         stream = BytesIO(file_bytes)
         if file_bytes is None:
@@ -382,6 +386,7 @@ class ChatService:
             "mime_type": mime_type,
             "size": size
         }
+    '''
 
     def clean_raw_content(self, obj):
         """Рекурсивно преобразует все datetime в строки"""
@@ -818,7 +823,7 @@ class ChatService:
                 if res:
                     file_bytes = res.content
                     if file_bytes:
-                        await self._save_file(file_bytes, media_id, original_file_name or file_name, mime_type)
+                        await self.storage.save_file(file_bytes, media_id, original_file_name or file_name, mime_type)
 
         raw_content = payload
         if mime_type:
@@ -885,7 +890,7 @@ class ChatService:
         _, message = await self.conv_msg(data, None)
         return MessageResponse.model_validate(message)
 
-
+    '''
     async def upload_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
         """Upload file to S3"""
         # 1. Читаем файл
@@ -914,6 +919,7 @@ class ChatService:
             "mime_type": file.content_type,
             "size": len(content)
         }
+    '''
 
     async def close_or_open_conversation(
         self,
@@ -935,3 +941,181 @@ class ChatService:
         updated = await self.conv_repo.set_conversation_closed(conversation_id, is_closed)
         await self.db.commit()
         return updated
+
+    async def save_crm_incoming(self, data: CrmMessageIn):
+        log.info(f" chat_service.save_crm_incoming data {data}")
+        conv = await self.conv_repo.get_multi(
+            filters={"line_id": data.line_id, "crm_chat_id": data.crm_chat_id, "channel_type": data.channel_type},
+            limit=1
+        )
+        log.info(f"chat_service.save_crm_incoming conv {conv} ")
+        if not conv:
+            return {"status": "not_found"}
+        conv = conv[0]
+        log.info(f"chat_service.save_crm_incoming conv 2nc {conv} ")
+
+        msg = await self.msg_repo.create(
+            conversation_id=conv.id,
+            direction=MessageDirection.inbound,
+            status=MessageStatus.sent,
+            text=data.text,
+            raw_content=data.raw_content,
+        )
+
+        for m in data.media:
+            await self.media_repo.create(
+                message_id=msg.id,
+                id=uuid.UUID(m["id"]),
+                file_name=m["file_name"],
+                mime_type=m["mime_type"],
+            )
+
+        log.info(f"chat_service.save_crm_incoming msg  {msg} ")
+        await manager.send_new_message(str(conv.id), {
+            "id": str(msg.id),
+            "text": msg.text,
+            "direction": "inbound",
+            "created_at": msg.created_at.isoformat(),
+            "status": "sent",
+            "media": [{"id": m["id"], "file_name": m["file_name"], "mime_type": m["mime_type"]} for m in data.media],
+        })
+
+        # channel_acc = await self.ch_acc_repo.get_by_line_and_type(conv.line_id, conv.channel_type)
+        # creds = decrypt(channel_acc.credentials_encrypted) if channel_acc else None
+
+        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(conv.id)
+        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+
+        if conv.channel_type == "telegram_bot" and creds:
+            from app.senders.telegram_bot import TelegramBotSender
+            sender = TelegramBotSender()
+            sender.set_bot_token(creds["bot_token"])
+            await sender.send(MessageCreate(
+                conversation_id=conv.id,
+                direction=MessageDirection.outbound,
+                phone=conv.client_phone,
+                text=data.text,
+                status=MessageStatus.sent,
+                media=data.media
+            ))
+
+        return {"status": "ok"}
+
+
+    async def start_crm_outgoing(self, data: CrmMessageOut) -> dict:
+        log.info("start_crm_outgoing")
+    
+        convs = await self.conv_repo.get_multi(
+            filters={"line_id": data.line_id, "client_phone": data.client_phone},
+            limit=1,
+        )
+        if convs:
+            log.info("start_crm_outgoing if convs")
+            conv = convs[0]
+            log.info(f"start_crm_outgoing if convs conv {conv}")
+            if conv.crm_chat_id:
+                log.info(f"start_crm_outgoing if convs conv.crm_chat_id {conv.crm_chat_id}")
+                return {"status": "exists", "conversation_id": str(conv.id)}
+        else:
+            conv = await self.conv_repo.create(
+                line_id=data.line_id,
+                client_phone=data.client_phone,
+                channel_type=data.channel_type,
+                crm_chat_id=f"dc_{data.crm_connection_id}",
+            )
+
+        log.info(f"start_crm_outgoing convs {convs}")
+        log.info(f"start_crm_outgoing data {data}")
+
+        if data.channel_account_id:
+            channel_acc = await self.ch_acc_repo.get_by_id(data.channel_account_id)
+        else:
+            channel_acc = await self.ch_acc_repo.get_multi(
+                filters={"line_id": data.line_id, "channel_type": data.channel_type},
+                limit=1,
+            )
+            channel_acc = channel_acc[0] if channel_acc else None
+        if not channel_acc:
+            return {"error": "Канал не найден"}
+
+        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+        channel_type = channel_acc.channel_type.value if hasattr(channel_acc.channel_type,
+                                                                 "value") else channel_acc.channel_type
+
+        sender = SenderFactory.get_sender(channel_type)
+        if hasattr(sender, "set_bot_token"):
+            sender.set_bot_token(creds.get("bot_token"))
+
+        await sender.send(MessageCreate(
+            conversation_id=conv.id,
+            direction=MessageDirection.outbound,
+            phone=data.client_phone,
+            text=data.text,
+            status=MessageStatus.sent,
+        ))
+
+        log.info(f"start_crm_outgoing creds conv.id {conv.id}")
+        return {"status": "ok", "conversation_id": str(conv.id)}
+
+    async def robot_send(self, data: CrmMessageOut) -> dict:
+        convs = await self.conv_repo.get_multi(
+            filters={"line_id": data.line_id, "client_phone": data.client_phone},
+            limit=1,
+        )
+        if convs:
+            conv = convs[0]
+        else:
+            conv = await self.conv_repo.create(
+                line_id=data.line_id,
+                client_phone=data.client_phone,
+                channel_type=data.channel_type,
+                crm_chat_id=f"dc_{data.crm_connection_id}",
+            )
+
+        if data.channel_account_id:
+            channel_acc = await self.ch_acc_repo.get_by_id(data.channel_account_id)
+        else:
+            results = await self.ch_acc_repo.get_multi(
+                filters={"line_id": data.line_id, "channel_type": data.channel_type},
+                limit=1,
+            )
+            channel_acc = results[0] if results else None
+        if not channel_acc:
+            return {"error": "Канал не найден"}
+
+        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+        channel_type = channel_acc.channel_type.value if hasattr(channel_acc.channel_type,
+                                                                 "value") else channel_acc.channel_type
+
+        msg = await self.msg_repo.create(
+            conversation_id=conv.id,
+            direction=MessageDirection.outbound,
+            status=MessageStatus.sent,
+            text=data.text,
+        )
+
+        media = []
+        if data.media:
+            for m in data.media:
+                await self.media_repo.create(
+                    message_id=msg.id,
+                    id=uuid.UUID(m["id"]),
+                    file_name=m["file_name"],
+                    mime_type=m["mime_type"],
+                )
+            media = data.media
+
+        sender = SenderFactory.get_sender(channel_type)
+        if hasattr(sender, "set_bot_token"):
+            sender.set_bot_token(creds.get("bot_token"))
+
+        await sender.send(MessageCreate(
+            conversation_id=conv.id,
+            direction=MessageDirection.outbound,
+            phone=data.client_phone,
+            text=data.text,
+            status=MessageStatus.sent,
+            media=media,
+        ))
+
+        return {"status": "ok", "conversation_id": str(conv.id), "message_id": str(msg.id)}

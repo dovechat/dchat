@@ -97,7 +97,7 @@ class CleanupService:
         channel_account = await self.channel_account_repo.get_by_line_and_type(line_id, channel_type)
         log.info(f"\n\n ------- cleanup_line channel_account: {channel_account} ---------- \n\n")
 
-        conversations = await self.conversation_repo.get_by_line(line_id, crm_type=channel_type)
+        conversations = await self.conversation_repo.get_by_line(line_id, channel_type=channel_type)
         log.info(f"\n\n ------- cleanup_line conversations: {len(conversations)} ---------- \n\n")
 
         for conversation in conversations:

@@ -34,7 +34,7 @@ def test_conversation():
     conv = MagicMock()
     conv.id = uuid.uuid4()
     conv.line_id = uuid.uuid4()
-    conv.crm_type = "bitrix24"
+    conv.channel_type = "bitrix24"
     conv.crm_chat_id = "chat123"
     conv.client_phone = "+79123456789"
     conv.meta = {}

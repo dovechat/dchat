@@ -144,12 +144,14 @@ class ChannelAccountService:
     async def set_webhook(self, line_id, bot_token):
         try:
             # raise Exception("Test retry")
-            log.info(f"\n\n +++++++++++++  data {settings.tg_webhook_url}/{line_id}  \n\n")
+            wh_url = f"{settings.tg_webhook_domain}/api/v1/bot/webhook/{line_id}"
+            log.info(f"\n\n +++++++++++++  wh_url {wh_url}  \n\n")
+            
             async with httpx.AsyncClient() as client:
                 res = await client.post(
                     f"https://api.telegram.org/bot{bot_token}/setWebhook",
                     json={
-                        "url": f"{settings.tg_webhook_domain}/api/v1/bot/webhook/{line_id}"
+                        "url": wh_url
                     },
                 )
                 log.info(f"res {res.json()}")

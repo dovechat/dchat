@@ -13,6 +13,7 @@ from models.lines import Line
 from repo.line_repo import ChannelAccountRepository
 from repo.membership_repo import MembershipRepository
 from repo.message_repo import MediaRepository
+from services.storage_service import StorageService
 from app.utils import decrypt_credentials
 
 import logging
@@ -26,6 +27,7 @@ class BotService:
         self.msg_repo = MessageRepository(db)
         self.media_repo = MediaRepository(db)
         self.membership_repo = MembershipRepository(db)
+        self.storage = StorageService()
 
     async def handle_webhook(self, line_id: uuid.UUID, update_data: dict):
         """Handle incoming update from Telegram Bot API"""
@@ -56,7 +58,7 @@ class BotService:
             line_id=line_id,
             chat_id=str(chat_id),
             tenant_id=line.tenant_id,
-            client_phone=chat.get("username") or str(chat_id)
+            client_phone=chat.get("username") or str(chat_id),
         )
 
         log.info(f"is_new={is_new} conversation_id={conversation.id} chat_id={chat_id} line_id={line_id}")
@@ -72,7 +74,7 @@ class BotService:
         # Process media if present
         media_id = None
         if has_media:
-            media_id, file_name, mime_type, raw_content = await self._process_media_message(
+            media_id, file_name, mime_type, raw_content, file_size = await self._process_media_message(
                 message, bot_token, raw_content
             )
 
@@ -112,7 +114,7 @@ class BotService:
                     {
                         "id": str(conversation.id),
                         "line_id": str(line_id),
-                        "crm_type": "telegram_bot",
+                        "channel_type": "telegram_bot",
                         "client_phone": str(chat_id),
                         "crm_chat_id": str(chat_id),
                     }
@@ -120,6 +122,25 @@ class BotService:
 
         await manager.send_new_message(str(conversation.id), ws_message)
         log.info(f"send_new_message done")
+
+        try:
+            from crm.app.services.crm_service import CrmService
+            from crm.app.core.uow import CrmUnitOfWork
+            crm_uow = CrmUnitOfWork(self.db)
+            crm_service = CrmService(crm_uow)
+            bx_chat_id = await crm_service.send_to_crm(
+                tenant_id=line.tenant_id,
+                conversation_id=conversation.id,
+                client_phone=str(message.get("from", {}).get("id") or chat_id),
+                client_name=chat.get("first_name") or "",
+                text=text or "",
+                message_id=str(db_message.id),
+                media=[{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "file_size": file_size}] if media_id else []
+            )
+            if bx_chat_id:
+                await self.conv_repo.update(conversation, crm_chat_id=bx_chat_id)
+        except Exception as e:
+            log.error(f"CRM send_to_crm failed: {e}")
 
         return {"ok": True}
 
@@ -133,6 +154,8 @@ class BotService:
         media_id = None
         file_name = None
         mime_type = None
+        file_size = None
+        
 
         chat_service = ChatService(self.db)
 
@@ -162,6 +185,7 @@ class BotService:
                     file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
                     file_resp = await client.get(file_url)
                     file_bytes = file_resp.content
+                    file_size = len(file_bytes)
 
             # Handle document
             elif "document" in message:
@@ -184,10 +208,11 @@ class BotService:
                     file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
                     file_resp = await client.get(file_url)
                     file_bytes = file_resp.content
+                    file_size = len(file_bytes)
 
             if file_bytes:
                 media_id = str(uuid.uuid4())
-                await chat_service._save_file(file_bytes, media_id, file_name, mime_type)
+                await self.storage.save_file(file_bytes, media_id, file_name, mime_type)
 
         except Exception as e:
             log.error(f"Error processing media: {e}")
@@ -198,7 +223,7 @@ class BotService:
             raw_content["mime_type"] = mime_type
 
         log.info(f"-------  media_id {media_id}, file_name {file_name}, mime_type {mime_type}, raw_content {raw_content}")
-        return media_id, file_name, mime_type, raw_content
+        return media_id, file_name, mime_type, raw_content, file_size
 
 
     async def send_message(self, bot_token: str, chat_id: str, text: str):

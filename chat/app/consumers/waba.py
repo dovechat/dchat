@@ -13,6 +13,8 @@ from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
+from services.storage_service import StorageService
+
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
@@ -81,6 +83,7 @@ class WabaListener:
 
     def __init__(self):
         self.connections: Dict[str, WabaConnection] = {}
+        self.storage = StorageService()
         log.info("WabaListener initialized")
 
     async def handle_webhook(self, line_id: str, payload: dict):
@@ -167,7 +170,7 @@ class WabaListener:
                         file_name = None
                         media_id = None
                     # Сохраняем в MinIO
-                    await chat_service._save_file(
+                    await self.storage.save_file(
                         file_bytes=file_bytes,
                         media_id=media_id,
                         filename=file_name or f"{media_id}.bin",

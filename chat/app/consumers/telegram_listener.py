@@ -25,6 +25,7 @@ from app.services.chat_service import ChatService
 from app.utils import get_file_from_s3
 from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
+from services.storage_service import StorageService
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
@@ -215,12 +216,7 @@ class TelegramListener:
         self.bots: Dict[str, TelegramClient] = {}
         self._album_buffer: dict[str, list] = {}  # media_group_id -> list of media items
         self._album_tasks: dict[str, asyncio.Task] = {}  # media_group_id -> flush task
-        self.s3_client = Minio(
-            settings.s3_endpoint,
-            access_key=settings.s3_access_key,
-            secret_key=settings.s3_secret_key,
-            secure=settings.s3_secure
-        )
+        self.storage = StorageService()
         log.info("TelegramListener initialized")
 
     async def start_listening(self, conversation_id: str, my_phone: str, peer_phone: str):
@@ -338,6 +334,9 @@ class TelegramListener:
                 log.error(f"No client for {conversation_id} after waiting")
                 return
 
+        
+        log.info(f'\n\n TelegramListener send_file_user file_name {data.media[0]} \n\n')
+        
         sent = None
         if len(data.media) == 1:
             m = data.media[0]
@@ -355,6 +354,7 @@ class TelegramListener:
             sent = await client.send_file(data.phone, streams, caption=data.text)
             if isinstance(sent, list):
                 sent = sent[-1]
+        log.info(f"------------------- TelegramListener send_file_user start")
         return sent
 
 
@@ -428,7 +428,7 @@ class TelegramListener:
                 mime_type = "image/jpeg"
                 file_name = f"photo_{media_id}.jpg"
     
-            await service._save_file(file_bytes, media_id, file_name, mime_type)
+            await self.storage.save_file(file_bytes, media_id, file_name, mime_type)
     
             media_group_id = getattr(event.message, 'grouped_id', None)
             if media_group_id:

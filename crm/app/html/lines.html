@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>DoveChat — выбор линии</title>
+<script src="//api.bitrix24.com/api/v1/"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 24px; }
+  .card { background: #fff; border-radius: 8px; padding: 24px; max-width: 420px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  h2 { font-size: 18px; margin-bottom: 16px; }
+  .line-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+  .line-item span { font-size: 14px; }
+  button { padding: 6px 14px; background: #2d6cdf; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
+  button:disabled { background: #a0b4e0; cursor: not-allowed; }
+  .empty { color: #888; font-size: 14px; }
+  .error { color: #c0392b; font-size: 13px; margin-top: 10px; display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Выберите линию DoveChat</h2>
+  <div id="list"></div>
+  <p class="error" id="error"></p>
+</div>
+<script>
+BX24.init(function() {});
+
+var bxAuth = JSON.parse(sessionStorage.getItem('bx_auth') || '{}');
+var lines = JSON.parse(sessionStorage.getItem('lines') || '[]');
+
+var list = document.getElementById('list');
+if (!lines.length) {
+  list.innerHTML = '<p class="empty">Нет доступных линий</p>';
+} else {
+  lines.forEach(function(l) {
+    var div = document.createElement('div');
+    div.className = 'line-item';
+    div.innerHTML = '<span>' + l.name + '</span><button onclick="connect(\'' + l.id + '\', this)">Подключить</button>';
+    list.appendChild(div);
+  });
+}
+
+async function connect(lineId, btn) {
+  var err = document.getElementById('error');
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Подключение...';
+
+  try {
+    var resp = await fetch('/crm/api/v1/install/bitrix/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line_id: lineId, bx_auth: bxAuth }),
+    });
+    var data = await resp.json();
+    if (data.error) {
+      err.textContent = data.error;
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Подключить';
+      return;
+    }
+    sessionStorage.setItem('connected_line', data.line_name);
+    location.href = '/crm/html/success.html';
+  } catch(e) {
+    err.textContent = 'Ошибка подключения к серверу';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Подключить';
+  }
+}
+</script>
+</body>
+</html>

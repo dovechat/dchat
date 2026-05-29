@@ -1,0 +1,788 @@
+"""CRM service — routes to the right provider."""
+import httpx
+import  time
+import uuid
+import logging
+from models.crm import CrmConnection
+from crm.app.services.providers.bitrix.provider import BitrixProvider
+from crm.app.services.providers.amocrm.provider import AmoCrmProvider
+
+log = logging.getLogger("uvicorn.error")
+
+PROVIDERS = {
+    "bitrix24": BitrixProvider,
+    "amocrm": AmoCrmProvider,
+}
+
+
+def get_provider(conn: CrmConnection):
+    cls = PROVIDERS.get(conn.crm_type)
+    if not cls:
+        raise ValueError(f"Unknown CRM type: {conn.crm_type}")
+    return cls(conn)
+
+
+class CrmService:
+    def __init__(self, uow):
+        self._uow = uow
+
+    async def send_to_crm(
+            self,
+            tenant_id: uuid.UUID,
+            conversation_id: uuid.UUID,
+            client_phone: str,
+            client_name: str,
+            text: str,
+            message_id: str,
+            media: list[dict] = [],
+    ) -> str | None:
+        conn = await self._uow.crm_connections.get_by_tenant(tenant_id)
+        if not conn:
+            return
+
+        provider = get_provider(conn)
+        link = await self._uow.crm_dialog_links.get_by_conversation(conversation_id, conn.id)
+        crm_chat_id = link.crm_chat_id if link else None
+
+        # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
+        try:
+            result = await provider.send_message(
+                conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
+                text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
+            log.info(f"CRM result: {result}")
+        except Exception as e:
+            try:
+                new_tokens = await provider.refresh_tokens()
+                await self._uow.crm_connections.update(conn, **new_tokens)
+                provider.conn = conn
+                result = await provider.send_message(
+                    conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
+                    text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
+                log.info(f"CRM result after refresh: {result}")
+            except Exception as e2:
+                log.error("CRM send failed tenant=%s: %s", tenant_id, e2)
+                return
+
+        data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+        new_session_id = str(data_result[0].get("session", {}).get("ID", ""))
+
+        # 2. Если диалог новый — создаём link и привязываем к сделке
+        if not link:
+            data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+            session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
+            bx_chat_id = f"dc_{conversation_id}"
+
+            await self._uow.crm_dialog_links.create(
+                conversation_id=conversation_id, crm_connection_id=conn.id,
+                crm_chat_id=bx_chat_id, crm_user_id=client_phone)
+
+            # Ищем контакт и сделку с уже рабочим токеном
+            try:
+                bx = provider._client()
+                contact_id = await bx.find_contact_by_phone(client_phone)
+                log.info(f"find_contact_by_phone client_phone={client_phone} contact_id={contact_id}")
+                if contact_id:
+                    deal_id = await bx.find_open_deal(contact_id)
+                    log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
+                    if deal_id:
+                        attach_result = await bx.attach_deal_to_chat(session_chat_id, conn.crm_line_id, conn.connector_id,
+                                                                     deal_id)
+                        log.info(f"attach_deal_to_chat result={attach_result}")
+                    else:
+                        crm_settings = await self._uow.crm_settings.get_by_tenant(tenant_id)
+                        log.info(
+                            f"no deal found, crm_settings={crm_settings} no_deal_action={crm_settings.no_deal_action if crm_settings else None}")
+                else:
+                    log.warning(f"contact not found for client_phone={client_phone}")
+            except Exception as e:
+                log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
+            return bx_chat_id
+
+    async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
+        conn = await self._uow.crm_connections.get_by_tenant(tenant_id, crm_type)
+        if not conn:
+            return {}
+        provider = get_provider(conn)
+        parsed = await provider.handle_webhook(data)
+        parsed["crm_connection_id"] = conn.id
+        return parsed
+
+    async def _download_bitrix_media(self, data: dict) -> list[dict]:
+        from services.storage_service import StorageService
+        storage = StorageService()
+        media = []
+        i = 0
+        while True:
+            prefix = f"data[MESSAGES][0][message][files][{i}]"
+            link = data.get(f"{prefix}[downloadLink]")
+            if not link:
+                break
+            name = data.get(f"{prefix}[name]", f"file_{i}")
+            mime = data.get(f"{prefix}[mime]", "application/octet-stream")
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(link, timeout=30)
+                    resp.raise_for_status()
+                media_id = uuid.uuid4()
+                await storage.save_file(resp.content, media_id, name, mime)
+                media.append({"id": str(media_id), "file_name": name, "mime_type": mime})
+            except Exception as e:
+                log.error(f"_download_bitrix_media failed i={i}: {e}")
+            i += 1
+        return media
+
+
+    async def handle_bitrix_incoming(self, data: dict) -> None:
+        import re
+        from infra.crypto import decrypt, encrypt
+        from core.config import settings
+        from crm.app.services.providers.bitrix.client import BitrixClient
+
+        log.info(f"handle_bitrix_incoming full data: {data}")
+
+        member_id = data.get("auth[member_id]")
+        if not member_id:
+            return
+
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        log.info(f"handle_bitrix_incoming conn={conn} line_id={conn.line_id if conn else None}")
+        if not conn or not conn.line_id:
+            log.warning(f"handle_bitrix_incoming: no conn or line_id for member_id={member_id}")
+            return
+
+        event = data.get("event")
+        if event != "ONIMCONNECTORMESSAGEADD":
+            return
+
+        # рефреш токена
+        try:
+            refreshed = await BitrixClient.refresh_tokens(
+                domain=conn.domain,
+                refresh_token=decrypt(conn.refresh_token_enc),
+                client_id=settings.BITRIX_CLIENT_ID,
+                client_secret=settings.BITRIX_CLIENT_SECRET,
+            )
+            access_token = refreshed["access_token"]
+            await self._uow.crm_connections.update(
+                conn,
+                access_token_enc=encrypt(refreshed["access_token"]),
+                refresh_token_enc=encrypt(refreshed["refresh_token"]),
+            )
+        except Exception as e:
+            log.error(f"handle_bitrix_incoming token refresh failed: {e}")
+            access_token = decrypt(conn.access_token_enc)
+
+        crm_chat_id = data.get("data[MESSAGES][0][chat][id]")
+        text = data.get("data[MESSAGES][0][message][text]", "")
+        text = re.sub(r'\[/?b\]|\[/?br\]', '', text).strip()
+        media = await self._download_bitrix_media(data)
+
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(
+                    "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-message",
+                    json={
+                        "line_id": str(conn.line_id),
+                        "crm_chat_id": crm_chat_id,
+                        "channel_type": conn.channel_type,
+                        "text": text,
+                        "raw_content": data,
+                        "media": media
+                    },
+                    timeout=10,
+                )
+                log.info(f"crm-message response: {resp.status_code} {resp.text}")
+            except Exception as e:
+                log.error(f"crm-message request failed: {e}")
+
+        im_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
+        im_message_id = data.get("data[MESSAGES][0][im][message_id]")
+        if im_chat_id and im_message_id:
+            try:
+                bx = BitrixClient(domain=conn.domain, access_token=access_token)
+                await bx.call("imconnector.send.status.delivery", {
+                    "CONNECTOR": conn.connector_id,
+                    "LINE": conn.crm_line_id,
+                    "MESSAGES[0][im][chat_id]": im_chat_id,
+                    "MESSAGES[0][im][message_id]": im_message_id,
+                    "MESSAGES[0][message][id][0]": im_message_id,
+                    "MESSAGES[0][chat][id]": crm_chat_id,
+                })
+                log.info(f"delivery status sent for im_message_id={im_message_id}")
+            except Exception as e:
+                log.error(f"delivery status failed: {e}")
+
+    async def _register_robots(self, bx) -> None:
+        from core.config import settings
+
+        for robot_code, robot_name in [
+            ("dovechat_send_text", "DoveChat: Отправить текст"),
+            ("dovechat_send_file", "DoveChat: Отправить файл"),
+            ("dovechat_check_account", "DoveChat: Проверить аккаунт"),
+        ]:
+            try:
+                await bx.call("bizproc.robot.delete", {"CODE": robot_code})
+            except Exception:
+                pass
+
+            if robot_code == "dovechat_check_account":
+                return_properties = {
+                    "exists": {"Name": "Зарегистрирован", "Type": "string", "Multiple": "N"},
+                    "user_id": {"Name": "ID пользователя", "Type": "string", "Multiple": "N"},
+                    "error": {"Name": "Ошибка", "Type": "string", "Multiple": "N"},
+                }
+            else:
+                return_properties = {
+                    "status": {"Name": "Статус", "Type": "string", "Multiple": "N"},
+                    "message_id": {"Name": "ID сообщения", "Type": "string", "Multiple": "N"},
+                    "error": {"Name": "Ошибка", "Type": "string", "Multiple": "N"},
+                }
+
+            properties = {
+                "phone": {
+                    "Name": "Телефон клиента",
+                    "Type": "string",
+                    "Required": "Y",
+                    "Multiple": "N",
+                },
+                "line_id": {
+                    "Name": "ID линии",
+                    "Type": "string",
+                    "Required": "Y",
+                    "Multiple": "N",
+                },
+                "text": {
+                    "Name": "Текст сообщения",
+                    "Type": "text",
+                    "Required": "Y" if robot_code == "dovechat_send_text" else "N",
+                    "Multiple": "N",
+                },
+            }
+            if robot_code == "dovechat_send_file":
+                properties["file_url"] = {
+                    "Name": "Ссылка на файл",
+                    "Type": "string",
+                    "Required": "Y",
+                    "Multiple": "N",
+                }
+                properties["file_name"] = {
+                    "Name": "Имя файла",
+                    "Type": "string",
+                    "Required": "N",
+                    "Multiple": "N",
+                }
+            if robot_code == "dovechat_check_account":
+                properties.pop("text", None)
+
+            try:
+                await bx.call(
+                    "bizproc.robot.add",
+                    {
+                        "CODE": robot_code,
+                        "HANDLER": f"{settings.host_url}/crm/api/v1/robots/{robot_code}",
+                        "AUTH_USER_ID": 1,
+                        "USE_SUBSCRIPTION": "Y",
+                        "NAME": robot_name,
+                        "PROPERTIES": properties,
+                        "RETURN_PROPERTIES": return_properties,
+                        "FILTER": {
+                            "INCLUDE": [
+                                ["crm", "CCrmDocumentDeal"],
+                                ["crm", "CCrmDocumentLead"],
+                                ["crm", "CCrmDocumentContact"],
+                            ]
+                        },
+                    },
+                    use_json=True,
+                )
+                log.info(f"robot registered: {robot_code}")
+            except Exception as e:
+                log.warning(f"bizproc.robot.add {robot_code} failed: {e}")
+
+    async def save_install_tokens(self, body: bytes, domain: str = "" ) -> None:
+        from urllib.parse import parse_qs
+        from core.config import settings
+        from infra.crypto import decrypt, encrypt
+    
+        parsed = parse_qs(body.decode())
+        data = {k: v[0] for k, v in parsed.items()}
+
+        app_token = data.get("APPLICATION_TOKEN")
+        log.info(f"onappinstall app_token={app_token}")
+        log.info(f"onappinstall data={data}")
+
+        if app_token != settings.BITRIX_APPLICATION_TOKEN:
+            log.warning(f"onappinstall: bad application_token expected={settings.BITRIX_APPLICATION_TOKEN}")
+            return
+        log.info(f"\n\n after app_token  != settings.BITRIX_APPLICATION_TOKEN \n\n")
+
+        log.info(f"\n\n if event  ONAPPINSTALL \n\n")
+
+        access_token = data.get("AUTH_ID")
+        refresh_token = data.get("REFRESH_ID")
+        member_id = data.get("member_id")
+        domain = data.get("auth[domain]") or domain
+
+        log.info(f"\n\n member_id  {member_id} domain {domain}\n\n")
+    
+        if not all([access_token, refresh_token, member_id, domain]):
+            log.info(f"\n\n if not all \n\n")
+            log.warning("onappinstall: missing auth fields")
+            return
+
+        rows = await self._uow.crm_connections.get_multi(filters={"domain": domain}, limit=1)
+        conn = rows[0] if rows else None
+
+        log.info(f"save_install_tokens updating conn member_id={member_id} domain={domain}")
+        if conn:
+            log.info(f"save_install_tokens updating conn if conn member_id={member_id} domain={domain}")
+            await self._uow.crm_connections.update(
+                conn,
+                member_id=member_id,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+            )
+        else:
+            await self._uow.crm_connections.create(
+                tenant_id=None,
+                crm_type="bitrix24",
+                domain=domain,
+                member_id=member_id,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+                connector_id="",
+                is_active=False,
+            )
+
+        from crm.app.services.providers.bitrix.client import BitrixClient
+        from core.config import settings
+        bx = BitrixClient(domain=domain, access_token=access_token)
+        for connector_id, connector_name in zip(
+                settings.BITRIX_CONNECTOR_MAP.values(),
+                settings.BITRIX_CONNECTOR_NAMES.values(),
+        ):
+            try:
+                await bx.register_connector(connector_id, name=connector_name)
+            except Exception as e:
+                log.warning(f"register_connector {connector_id} failed: {e}")
+
+        log.info("register_connector loop done")
+
+        try:
+            await bx.call("event.unbind", {
+                "event": "ONIMCONNECTORMESSAGEADD",
+                "handler": f"{settings.host_url}/crm/api/v1/webhooks/bitrix",
+            })
+        except Exception as e:
+            log.warning(f"event.unbind: {e}")
+        result = await bx.call("event.bind", {
+            "event": "ONIMCONNECTORMESSAGEADD",
+            "handler": f"{settings.host_url}/crm/api/v1/webhooks/bitrix",
+            "auth_type": 1,
+        })
+        log.info(f"event.bind result: {result}")
+
+        await self._register_robots(bx)
+        return data.get("PLACEMENT") == "SETTING_CONNECTOR", data.get("auth[domain]") or domain
+
+    async def get_lines_for_bitrix(self, email: str, password: str, bx_auth: dict) -> dict:
+        import httpx
+        ACCOUNT_URL = "http://account.dchat.svc.cluster.local:8071"
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(f"{ACCOUNT_URL}/api/v1/auth/login",
+                                         data={"username": email, "password": password})
+            if resp.status_code != 200:
+                return {"error": "Неверный email или пароль"}
+            jwt_token = resp.json().get("access_token")
+        except Exception as e:
+            log.error(f"get_lines_for_bitrix: login error {e}")
+            return {"error": "Ошибка подключения к серверу"}
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(f"{ACCOUNT_URL}/api/v1/tenant/",
+                                        headers={"Authorization": f"Bearer {jwt_token}"})
+            tenants = resp.json() if resp.status_code == 200 else []
+        except Exception as e:
+            log.error(f"get_lines_for_bitrix: tenants error {e}")
+            tenants = []
+        return {
+            "tenants": tenants,
+            "jwt_token": jwt_token,
+            "bx_auth": bx_auth,
+        }
+    
+    async def connect_line(self, line_id: uuid.UUID, bx_auth: dict) -> dict:
+        from infra.crypto import decrypt, encrypt
+        from core.config import settings
+        from crm.app.services.providers.bitrix.client import BitrixClient
+
+        domain = bx_auth.get("domain", "")
+        rows = await self._uow.crm_connections.get_multi(filters={"domain": domain}, limit=1)
+        conn_existing = rows[0] if rows else None
+
+        member_id = bx_auth.get("member_id") or (conn_existing.member_id if conn_existing else "")
+
+        conn_existing = await self._uow.crm_connections.get_by_member_id(member_id) if member_id else conn_existing
+
+        access_token = decrypt(conn_existing.access_token_enc) if conn_existing else bx_auth.get("access_token", "")
+        refresh_token = decrypt(conn_existing.refresh_token_enc) if conn_existing else bx_auth.get("refresh_token", "")
+    
+        channel_accs = await self._uow.channel_accounts.get_multi(
+            filters={"line_id": line_id}, limit=1
+        )
+        if not channel_accs:
+            return {"error": "Канал для линии не найден"}
+        channel_type = channel_accs[0].channel_type
+    
+        line = await self._uow.lines.get_by_id(line_id)
+        if not line:
+            return {"error": "Линия не найдена"}
+
+        connector_id = settings.BITRIX_CONNECTOR_MAP.get(
+            channel_type.value if hasattr(channel_type, 'value') else channel_type)
+        if not connector_id:
+            return {"error": f"Неподдерживаемый тип канала: {channel_type}"}
+
+        log.warning(
+            f"connect_line domain={domain} token_len={len(access_token)} token_start={access_token[:15]!r} conn_existing={bool(conn_existing)} refresh_token_start={refresh_token[:15]!r}")
+
+        from core.config import settings
+        try:
+            refreshed = await BitrixClient.refresh_tokens(
+                domain=domain, refresh_token=refresh_token,
+                client_id=settings.BITRIX_CLIENT_ID, client_secret=settings.BITRIX_CLIENT_SECRET,
+            )
+            access_token = refreshed["access_token"]
+            refresh_token = refreshed["refresh_token"]
+            if conn_existing:
+                await self._uow.crm_connections.update(
+                    conn_existing,
+                    access_token_enc=encrypt(access_token),
+                    refresh_token_enc=encrypt(refresh_token),
+                )
+        except Exception as e:
+            log.error(f"connect_line token refresh failed: {e}")
+            return {"error": "Ошибка обновления токена Битрикс"}
+
+    
+        bx = BitrixClient(domain=domain, access_token=access_token)
+
+        reg_result = await bx.register_connector(connector_id)
+        log.info(f"register_connector result: {reg_result}")
+
+        crm_line_id = bx_auth.get("bx_line_id") or await bx.create_open_line(line.name)
+        log.info(f"connect_line crm_line_id={crm_line_id!r}")
+
+        link_result = await bx.link_connector(crm_line_id, connector_id)
+        log.info(f"link_connector result: {link_result}")
+        act_result = await bx.activate_connector(crm_line_id, connector_id)
+        log.info(f"activate_connector result: {act_result}")
+
+        await bx.link_connector(crm_line_id, connector_id)
+        await bx.activate_connector(crm_line_id, connector_id)
+
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        channel_type_val = channel_type.value if hasattr(channel_type, 'value') else channel_type
+
+        if not member_id:
+            member_id = conn.member_id
+        log.info(f"connect_line final: conn_existing={conn_existing} member_id={member_id!r}")
+
+        if conn:
+            await self._uow.crm_connections.update(conn,
+                line_id=line_id,
+                channel_type=channel_type_val,
+                connector_id=connector_id,
+                crm_line_id=crm_line_id,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+               member_id=member_id,
+                is_active=True,
+            )
+        else:
+            await self._uow.crm_connections.create(
+                tenant_id=line.tenant_id,
+                line_id=line_id,
+                crm_type="bitrix24",
+                channel_type=channel_type_val,
+                connector_id=connector_id,
+                crm_line_id=crm_line_id,
+                domain=domain,
+                member_id=member_id,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+                is_active=True,
+            )
+    
+        return {"line_name": line.name}
+
+
+    async def get_lines_for_tenant(self, jwt_token: str, tenant_id: str, bx_auth: dict) -> dict:
+        import httpx
+        ACCOUNT_URL = "http://account.dchat.svc.cluster.local:8071"
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    f"{ACCOUNT_URL}/api/v1/auth/switch-tenant",
+                    params={"tenant_id": tenant_id},
+                    headers={"Authorization": f"Bearer {jwt_token}"},
+                )
+            if resp.status_code != 200:
+                return {"error": "Ошибка переключения компании"}
+            tenant_token = resp.json().get("access_token")
+        except Exception as e:
+            log.error(f"get_lines_for_tenant: switch error {e}")
+            return {"error": "Ошибка подключения к серверу"}
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(f"{ACCOUNT_URL}/api/v1/tenants/{tenant_id}/lines/",
+                    headers={"Authorization": f"Bearer {tenant_token}"})
+            lines = resp.json() if resp.status_code == 200 else []
+        except Exception as e:
+            log.error(f"get_lines_for_tenant: lines error {e}")
+            lines = []
+        return {"lines": lines, "bx_auth": bx_auth}
+
+    async def handle_onappinstall(self, body: bytes, domain: str = ""):
+        await self.save_install_tokens(body, domain=domain)
+        from urllib.parse import parse_qs
+        from fastapi.responses import RedirectResponse, JSONResponse
+        parsed = parse_qs(body.decode())
+        data = {k: v[0] for k, v in parsed.items()}
+        if data.get("PLACEMENT") == "SETTING_CONNECTOR":
+            domain_val = data.get("auth[domain]") or domain
+            return RedirectResponse(url=f"/crm/api/v1/install/bitrix?DOMAIN={domain_val}")
+        return RedirectResponse(url="/crm/html/install_finish.html", status_code=303)
+
+    async def get_lines_for_member(self, member_id: str) -> dict:
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        if not conn:
+            return {"lines": []}
+        line = await self._uow.lines.get_by_id(conn.line_id)
+        if not line:
+            return {"lines": []}
+        channels = await self._uow.channel_accounts.get_multi(
+            filters={"line_id": conn.line_id},
+        )
+        return {"lines": [{"id": str(line.id), "name": line.name, "channels": [
+            {"id": str(c.id),
+             "channel_type": c.channel_type.value if hasattr(c.channel_type, "value") else c.channel_type}
+            for c in channels
+        ]}]}
+    
+    async def start_outgoing(self, member_id: str, contact_id: str, line_id: uuid.UUID, channel_account_id: uuid.UUID, text: str) -> dict:
+        import httpx
+        from infra.crypto import decrypt, encrypt
+        from core.config import settings
+        from crm.app.services.providers.bitrix.client import BitrixClient
+    
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        if not conn:
+            return {"error": "Подключение не найдено"}
+    
+        try:
+            refreshed = await BitrixClient.refresh_tokens(
+                domain=conn.domain,
+                refresh_token=decrypt(conn.refresh_token_enc),
+                client_id=settings.BITRIX_CLIENT_ID,
+                client_secret=settings.BITRIX_CLIENT_SECRET,
+            )
+            access_token = refreshed["access_token"]
+            await self._uow.crm_connections.update(
+                conn,
+                access_token_enc=encrypt(refreshed["access_token"]),
+                refresh_token_enc=encrypt(refreshed["refresh_token"]),
+            )
+        except Exception as e:
+            log.error(f"start_outgoing token refresh failed: {e}")
+            access_token = decrypt(conn.access_token_enc)
+    
+        bx = BitrixClient(domain=conn.domain, access_token=access_token)
+        phone = await bx.get_contact_phone(contact_id)
+        if not phone:
+            return {"error": "Телефон контакта не найден"}
+    
+        line = await self._uow.lines.get_by_id(line_id)
+        if not line:
+            return {"error": "Линия не найдена"}
+    
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(
+                    "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-outgoing",
+                    json={
+                        "line_id": str(line_id),
+                        "client_phone": phone,
+                        "text": text,
+                        "crm_connection_id": str(conn.id),
+                        "contact_id": contact_id,
+                        "crm_line_id": conn.crm_line_id,
+                        "connector_id": conn.connector_id,
+                        "channel_type": conn.channel_type,
+                        "channel_account_id": str(channel_account_id) if channel_account_id else None
+                    },
+                    timeout=10,
+                )
+                if resp.status_code != 200:
+                    return {"error": "Ошибка отправки сообщения"}
+                return resp.json()
+            except Exception as e:
+                log.error(f"start_outgoing crm-outgoing failed: {e}")
+                return {"error": "Ошибка соединения с чат-сервисом"}
+
+    async def handle_robot(self, robot_code: str, data: dict) -> dict:
+        from infra.crypto import decrypt, encrypt
+        from core.config import settings
+        from crm.app.services.providers.bitrix.client import BitrixClient
+
+        event_token = data.get("event_token") or data.get("EVENT_TOKEN")
+        member_id = data.get("auth[member_id]")
+        phone = data.get("properties[phone]") or data.get("PROPERTIES[phone]")
+        line_id_str = data.get("properties[line_id]") or data.get("PROPERTIES[line_id]")
+
+        log.info(f"handle_robot code={robot_code} member_id={member_id} phone={phone} line_id={line_id_str}")
+
+        if not all([event_token, member_id, phone, line_id_str]):
+            log.error(
+                f"handle_robot missing fields: event_token={event_token} member_id={member_id} phone={phone} line_id={line_id_str}")
+            return {"status": "error"}
+
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        if not conn:
+            log.error(f"handle_robot no connection for member_id={member_id}")
+            return {"status": "error"}
+
+        try:
+            refreshed = await BitrixClient.refresh_tokens(
+                domain=conn.domain,
+                refresh_token=decrypt(conn.refresh_token_enc),
+                client_id=settings.BITRIX_CLIENT_ID,
+                client_secret=settings.BITRIX_CLIENT_SECRET,
+            )
+            access_token = refreshed["access_token"]
+            await self._uow.crm_connections.update(
+                conn,
+                access_token_enc=encrypt(refreshed["access_token"]),
+                refresh_token_enc=encrypt(refreshed["refresh_token"]),
+            )
+        except Exception as e:
+            log.error(f"handle_robot token refresh failed: {e}")
+            access_token = decrypt(conn.access_token_enc)
+
+        try:
+            line_id = uuid.UUID(line_id_str)
+        except ValueError:
+            log.error(f"handle_robot invalid line_id: {line_id_str}")
+            return {"status": "error"}
+
+        bx = BitrixClient(domain=conn.domain, access_token=access_token)
+
+        if robot_code == "dovechat_check_account":
+            return_values = await self._robot_check_account(phone, line_id)
+        else:
+            return_values = await self._robot_send(robot_code, data, conn, line_id, phone)
+
+        try:
+            log_message = return_values.get("error") or "Получен ответ от приложения."
+            await bx.call(
+                "bizproc.event.send",
+                {
+                    "EVENT_TOKEN": event_token,
+                    "RETURN_VALUES": return_values,
+                    "LOG_MESSAGE": log_message,
+                },
+            )
+            log.info(f"handle_robot bizproc.event.send done code={robot_code}")
+        except Exception as e:
+            log.error(f"handle_robot bizproc.event.send failed: {e}")
+
+        return {"status": "ok"}
+
+    async def _robot_send(self, robot_code: str, data: dict, conn, line_id: uuid.UUID, phone: str) -> dict:
+        import time
+        text = data.get("properties[text]") or data.get("PROPERTIES[text]") or ""
+        file_url = data.get("properties[file_url]") or data.get("PROPERTIES[file_url]")
+        file_name = data.get("properties[file_name]") or data.get("PROPERTIES[file_name]") or "file"
+
+        started_at = time.monotonic()
+        status = "error"
+        message_id = ""
+        error_msg = ""
+
+        try:
+            payload: dict = {
+                "line_id": str(line_id),
+                "client_phone": phone,
+                "text": text,
+                "crm_connection_id": str(conn.id),
+                "contact_id": "",
+                "crm_line_id": conn.crm_line_id,
+                "connector_id": conn.connector_id,
+                "channel_type": conn.channel_type,
+                "channel_account_id": None,
+                "media": [],
+            }
+
+            if robot_code == "dovechat_send_file" and file_url:
+                from services.storage_service import StorageService
+                import uuid as _uuid
+                storage = StorageService()
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(file_url, timeout=30)
+                    resp.raise_for_status()
+                log.info(f"_robot_send file downloaded: {file_url} status={resp.status_code}")
+                media_id = _uuid.uuid4()
+                mime = resp.headers.get("content-type", "application/octet-stream").split(";")[0]
+                await storage.save_file(resp.content, media_id, file_name, mime)
+                payload["media"] = [{"id": str(media_id), "file_name": file_name, "mime_type": mime}]
+
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-robot-send",
+                    json=payload,
+                    timeout=15,
+                )
+                log.info(f"_robot_send crm-robot-send resp: {resp.status_code} {resp.text}")
+                result = resp.json()
+
+            if result.get("status") == "ok" or result.get("conversation_id"):
+                status = "ok"
+                message_id = result.get("message_id", result.get("conversation_id", ""))
+            else:
+                error_msg = result.get("error", "unknown error")
+
+        except Exception as e:
+            log.error(f"_robot_send failed: {e}")
+            error_msg = str(e)
+
+        duration_ms = int((time.monotonic() - started_at) * 1000)
+        log.info(f"_robot_send done code={robot_code} status={status} duration={duration_ms}ms")
+
+        return {"status": status, "message_id": message_id, "error": error_msg}
+
+    async def _robot_check_account(self, phone: str, line_id: uuid.UUID) -> dict:
+        from models.lines import ChannelType
+        accounts = await self._uow.channel_accounts.get_multi(
+            filters={"line_id": line_id, "channel_type": ChannelType.telegram_user},
+            limit=1,
+        )
+        if not accounts or not accounts[0].session_string:
+            log.error(f"_robot_check_account no telegram_user account for line_id={line_id}")
+            return {"exists": "нет", "user_id": "", "error": "Нет активного Telegram User аккаунта"}
+        session_string = accounts[0].session_string
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "http://tg-connector.dchat.svc.cluster.local:8000/prod/check-phone",
+                    json={"phone": phone, "session_string": session_string},
+                    timeout=15,
+                )
+                log.info(f"_robot_check_account resp: {resp.status_code} {resp.text}")
+                result = resp.json()
+            exists = "да" if result.get("exists") else "нет"
+            user_id = str(result.get("user_id") or "")
+            return {"exists": exists, "user_id": user_id, "error": ""}
+        except Exception as e:
+            log.error(f"_robot_check_account failed: {e}")
+            return {"exists": "нет", "user_id": "", "error": str(e)}

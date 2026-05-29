@@ -33,7 +33,7 @@ class Conversation(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), nullable=False, index=True)
     line = relationship("Line", foreign_keys=[line_id])
-    crm_type = Column(String, nullable=False)
+    channel_type = Column(String, nullable=False)
     crm_chat_id = Column(String, index=True)
     client_phone = Column(String, index=True)
     is_closed = Column(Boolean, default=False, nullable=False, server_default="false")
@@ -42,7 +42,7 @@ class Conversation(Base):
     updated_at = Column(DateTime, onupdate=func.now())
 
     __table_args__ = (
-        Index("ix_conversations_line_id_crm_type", "line_id", "crm_type"),
+        Index("ix_conversations_line_id_channel_type", "line_id", "channel_type"),
     )
 
 class Message(Base):
