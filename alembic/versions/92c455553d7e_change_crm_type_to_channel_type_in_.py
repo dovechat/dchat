@@ -47,11 +47,16 @@ def upgrade() -> None:
         sa.Column('crm_line_id', sa.String(), nullable=True)
     )
 
+    op.execute("""
+        ALTER TABLE crm_connections
+        ALTER COLUMN line_id
+        TYPE UUID
+        USING line_id::uuid
+    """)
+
     op.alter_column(
         'crm_connections',
         'line_id',
-        existing_type=sa.VARCHAR(),
-        type_=sa.UUID(),
         nullable=True
     )
 
