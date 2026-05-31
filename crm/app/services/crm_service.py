@@ -425,8 +425,6 @@ class CrmService:
 
         member_id = bx_auth.get("member_id") or (conn_existing.member_id if conn_existing else "")
 
-        conn_existing = await self._uow.crm_connections.get_by_member_id(member_id) if member_id else conn_existing
-
         access_token = decrypt(conn_existing.access_token_enc) if conn_existing else bx_auth.get("access_token", "")
         refresh_token = decrypt(conn_existing.refresh_token_enc) if conn_existing else bx_auth.get("refresh_token", "")
     
