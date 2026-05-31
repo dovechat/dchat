@@ -49,7 +49,7 @@ class CrmDialogLink(Base):
 class CrmSettings(Base):
     __tablename__ = "crm_settings"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, unique=True, index=True)
     no_deal_action = Column(String, nullable=False, default="nothing")
     auto_create_contact = Column(Boolean, nullable=False, default=True)
     responsible_user_id = Column(String, nullable=True)
