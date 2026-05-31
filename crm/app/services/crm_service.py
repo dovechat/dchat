@@ -361,6 +361,7 @@ class CrmService:
                 settings.BITRIX_CONNECTOR_MAP.values(),
                 settings.BITRIX_CONNECTOR_NAMES.values(),
         ):
+            log.info(f"register_connector iteration: {connector_id}")
             try:
                 await bx.register_connector(connector_id, name=connector_name)
             except Exception as e:
