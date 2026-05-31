@@ -421,6 +421,7 @@ class CrmService:
         domain = bx_auth.get("domain", "")
         rows = await self._uow.crm_connections.get_multi(filters={"domain": domain}, limit=1)
         conn_existing = rows[0] if rows else None
+        log.info(f"connect_line rows={rows} conn_existing={conn_existing}")
 
         member_id = bx_auth.get("member_id") or (conn_existing.member_id if conn_existing else "")
 
