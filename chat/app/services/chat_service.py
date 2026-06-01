@@ -945,7 +945,7 @@ class ChatService:
     async def save_crm_incoming(self, data: CrmMessageIn):
         log.info(f" chat_service.save_crm_incoming data {data}")
         conv = await self.conv_repo.get_multi(
-            filters={"line_id": data.line_id, "crm_chat_id": data.crm_chat_id, "channel_type": data.channel_type},
+            filters={"line_id": data.line_id, "crm_chat_id": data.crm_chat_id},
             limit=1
         )
         log.info(f"chat_service.save_crm_incoming conv {conv} ")
