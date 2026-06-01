@@ -14,10 +14,18 @@ static_router = APIRouter(prefix="/html", tags=["html"])
 
 HTML_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "html")
 
-
-@install_router.api_route("/bitrix", methods=["GET", "POST"])
-async def bitrix_placement():
+@install_router.get("/bitrix")
+async def bitrix_placement_get(request: Request):
     return FileResponse(os.path.join(HTML_DIR, "login.html"))
+
+@install_router.post("/bitrix")
+async def bitrix_placement_post(
+    request: Request,
+    crm_service: CrmService = Depends(get_crm_service),
+):
+    body = await request.body()
+    domain = request.query_params.get("DOMAIN", "")
+    return await crm_service.handle_onappinstall(body, domain=domain)
 
 @static_router.api_route("/lines.html", methods=["GET", "POST"])
 async def lines_placement():
