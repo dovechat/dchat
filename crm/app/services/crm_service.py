@@ -552,7 +552,18 @@ class CrmService:
         data = {k: v[0] for k, v in parsed.items()}
         if data.get("PLACEMENT") == "SETTING_CONNECTOR":
             domain_val = data.get("auth[domain]") or domain
-            return RedirectResponse(url=f"/crm/api/v1/install/bitrix?DOMAIN={domain_val}")
+            access_token = data.get("AUTH_ID", "")
+            refresh_token = data.get("REFRESH_ID", "")
+            member_id = data.get("member_id", "")
+            return RedirectResponse(
+                url=(
+                    f"/crm/api/v1/install/bitrix?DOMAIN={domain_val}"
+                    f"&ACCESS_TOKEN={access_token}"
+                    f"&REFRESH_TOKEN={refresh_token}"
+                    f"&MEMBER_ID={member_id}"
+                ),
+                status_code=303,
+            )
         return RedirectResponse(url="/crm/html/install_finish.html", status_code=303)
 
     async def get_lines_for_member(self, member_id: str) -> dict:

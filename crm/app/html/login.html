@@ -43,28 +43,18 @@
 var bxAuth = {};
 var jwtToken = '';
 console.log('script loaded, hostname:', location.hostname, 'href:', location.href);
+var params = new URLSearchParams(location.search);
+var bxAuth = {
+    access_token: params.get('ACCESS_TOKEN') || '',
+    refresh_token: params.get('REFRESH_TOKEN') || '',
+    member_id: params.get('MEMBER_ID') || '',
+    domain: params.get('DOMAIN') || location.hostname,
+    bx_line_id: '',
+};
 BX24.init(function() {
-  console.log('BX24 init called');
-  var info = BX24.placement.info();
-  console.log('placement value:', info.placement);
-  console.log('BX24 init placement');
-  if (!info.placement || info.placement !== 'SETTING_CONNECTOR') {
-      console.log('BX24 init installFinish');
-      BX24.installFinish();
-      return;
-  }
-  console.log('BX24 init after installFinish');
-  bxAuth = {
-    access_token: info.options && info.options.ACCESS_TOKEN || '',
-    refresh_token: info.options && info.options.REFRESH_TOKEN || '',
-    member_id: info.options && info.options.MEMBER_ID || '',
-    domain: info.options && info.options.DOMAIN || new URLSearchParams(location.search).get('DOMAIN') || location.hostname,
-    bx_line_id: (info.options && info.options.LINE) || '',
-  };
-  console.log('placement info:', JSON.stringify(info));
-  console.log('bxAuth:', JSON.stringify(bxAuth));
-  document.title = JSON.stringify(bxAuth);
-  
+    if (BX24.placement.info().placement !== 'SETTING_CONNECTOR') {
+        BX24.installFinish();
+    }
 });
 
 async function doLogin() {
