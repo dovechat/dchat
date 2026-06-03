@@ -446,7 +446,7 @@ class ChatService:
             # log.info(f"\n\n +++++++++++++ ChatService.create_msg_tguser  data {data} message {message}  \n\n")
             sent = await sender.send(data)
             success = True if sent else False
-            log.info(f"\n\n !!! --- ChatService.create_msg_tguser file sent {sent} file {file} success {success} \n\n")
+            log.info(f"\n\n !!! --- ChatService.create_msg_tguser file sent {sent} success {success} \n\n")
 
         except Exception as e:
             log.error(f"ERROR: create_msg_tguser sender.send {e} data {data}")

@@ -149,7 +149,7 @@ class ChannelAccountService:
             
             async with httpx.AsyncClient(trust_env=False) as client:
                 res = await client.post(
-                    f"https://tg.dove-chat.com/tg-api/bot{bot_token}/setWebhook",
+                    f"{settings.tg_bot_send_url}/bot{bot_token}/setWebhook",
                     json={
                         "url": wh_url
                     },
