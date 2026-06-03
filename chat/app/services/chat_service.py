@@ -202,7 +202,7 @@ class ChatService:
         messages = await self.msg_repo.get_conversation_messages(
             conversation_id, skip, limit
         )
-
+        messages = list(reversed(messages))
         result = []
         for msg in messages:
             msg_dict = msg.__dict__
@@ -279,11 +279,17 @@ class ChatService:
 
         if data.media:
             for m in data.media:
-                await self.media_repo.create(message_id=message.id, **m)
+                try:
+                    await self.media_repo.create(message_id=message.id, **m)
+                except Exception:
+                    await self.db.rollback()
 
         await self.db.commit()
+        await self.db.refresh(message, attribute_names=["media"])
+        log.info(f"conv_msg message.media after refresh: {message.media}")
         return conv, message
 
+    
     async def _finalize_message(
             self,
             message,
@@ -307,17 +313,19 @@ class ChatService:
                     raw_content=raw_content
                 )
             
-            log.info(f"=============== ChatServcie._finalize_message data.raw_content {data.raw_content}")
-
-
-
+            log.info(f"=============== ChatServcie._finalize_message data.raw_content {data.raw_content} data.media {data.media}")
 
             # 3. Статус delivered
-            await manager.send_message_status(str(conversation_id), {
-                "message_id": str(message.id),
-                "status": "delivered",
-                "mime_type": data.raw_content.get("mime_type")
-            })
+            try:
+                log.error(f" ---  _finalize_message manager.send_message_status data.media {data.media}")
+                await manager.send_message_status(str(conversation_id), {
+                    "message_id": str(message.id),
+                    "status": "delivered",
+                    # "mime_type": data.raw_content.get("mime_type"),
+                    "media": data.media or [],
+                })
+            except Exception as e:
+                log.error(f"!!! ERROR ---  _finalize_message manager.send_message_status data.media {data.media} {e}")
         else:
             # 4. Ошибка -> в Kafka (для каждого канала своё)
             topic_map = {
@@ -400,16 +408,14 @@ class ChatService:
             return [self.clean_raw_content(i) for i in obj]
         return obj
 
-
     async def create_msg_tguser(
-        self,
-        request: Request,
-        data: MessageCreate,
-        files: list[UploadFile] = [],
-        current_user: UserContext = Depends(get_current_user),
+            self,
+            data: MessageCreate,
+            listener: 'TelegramListener',
+            files: list[UploadFile] = [],
+            current_user: UserContext = Depends(get_current_user),
     ) -> MessageResponse:
         """Create new message in conversation"""
-        listener = request.app.state.listener
 
         if files:
             media_items = []
@@ -446,7 +452,7 @@ class ChatService:
             # log.info(f"\n\n +++++++++++++ ChatService.create_msg_tguser  data {data} message {message}  \n\n")
             sent = await sender.send(data)
             success = True if sent else False
-            log.info(f"\n\n !!! --- ChatService.create_msg_tguser file sent {sent} file {file} success {success} \n\n")
+            log.info(f"\n\n !!! --- ChatService.create_msg_tguser file sent {sent} success {success} \n\n")
 
         except Exception as e:
             log.error(f"ERROR: create_msg_tguser sender.send {e} data {data}")
@@ -477,7 +483,6 @@ class ChatService:
 
     async def create_msg_tgbot(
             self,
-            request: Request,
             data: MessageCreate,
             files: list[UploadFile] = [],
             current_user: UserContext = Depends(get_current_user),
@@ -627,7 +632,6 @@ class ChatService:
 
     async def create_msg_waba(
             self,
-            request: Request,
             data: MessageCreate,
             files: list[UploadFile] | None = None,
             current_user: UserContext = Depends(get_current_user),
@@ -656,7 +660,6 @@ class ChatService:
 
         # Отправка через WABA
         sender = SenderFactory.get_sender("waba")
-        sender.set_listener(request.app.state.waba_listener)
         sender.set_creds(creds)
         success = False
         channel_msg_id = None
@@ -701,7 +704,6 @@ class ChatService:
 
     async def create_msg_vk(
             self,
-            request: Request,
             data: MessageCreate,
             files: list[UploadFile] | None = None,
             current_user: UserContext = Depends(get_current_user),
@@ -744,7 +746,6 @@ class ChatService:
         data.message_id = message.id
         # Отправка через VK
         sender = SenderFactory.get_sender("vk")
-        sender.set_listener(request.app.state.vk_listener)
         sender.set_creds(creds)
         success = False
         channel_msg_id = None

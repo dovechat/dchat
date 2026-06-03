@@ -27,7 +27,7 @@ class MessageRepository(BaseRepository[Message]):
             select(self.model)
             .where(self.model.conversation_id == conversation_id)
             .options(joinedload(Message.user))
-            .order_by(self.model.created_at)
+            .order_by(self.model.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
