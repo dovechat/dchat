@@ -147,9 +147,9 @@ class ChannelAccountService:
             wh_url = f"{settings.tg_webhook_domain}/api/v1/bot/webhook/{line_id}"
             log.info(f"\n\n +++++++++++++  wh_url {wh_url}  \n\n")
             
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False) as client:
                 res = await client.post(
-                    f"https://api.telegram.org/bot{bot_token}/setWebhook",
+                    f"https://tg.dove-chat.com/tg-api/bot{bot_token}/setWebhook",
                     json={
                         "url": wh_url
                     },
