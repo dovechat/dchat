@@ -41,28 +41,36 @@ class BaseEmailSender:
         return msg
 
     def _send_raw(self, msg: MIMEMultipart) -> bool:
-        log.info(f"\n\n -------------  _send_raw start ----------- \n\n")
+        log.info("\n\n -------------  _send_raw start ----------- \n\n")
         try:
-            log.info(f"\n\n -------------  _send_raw try ----------- \n\n")
+            log.info("\n\n -------------  _send_raw try ----------- \n\n")
 
-            # Жестко прописываем европейский IP Google для теста
+            # Тестовый европейский IP ://gmail.com
             test_ip = "74.125.131.108"
-            log.info(f"\n\n -------------  USING HARDCODED EUROPEAN IP: {test_ip} ----------- \n\n")
+            log.info(f"\n\n -------------  USING HARDCODED IP: {test_ip} ----------- \n\n")
 
-            # Подключаемся по IP
             with smtplib.SMTP(test_ip, settings.smtp_port) as server:
-                log.info(f"\n\n -------------  _send_raw with ----------- \n\n")
+                log.info("\n\n -------------  _send_raw with ----------- \n\n")
                 server.ehlo(settings.smtp_host)
-                log.info(f"\n\n -------------  _send_raw ehlo1 ----------- \n\n")
+                log.info("\n\n -------------  _send_raw ehlo1 ----------- \n\n")
 
-                # КРИТИЧНО: Явно говорим TLS-клиенту, что мы проверяем сертификат для ://gmail.com
+                # server_hostname обязателен, чтобы TLS не упал при коннекте по IP
                 server.starttls(server_hostname=settings.smtp_host)
+                log.info("\n\n -------------  _send_raw starttls ----------- \n\n")
 
-                log.info(f"\n\n -------------  _send_raw starttls ----------- \n\n")
                 server.ehlo(settings.smtp_host)
-                log.info(f"\n\n -------------  _send_raw ehlo2 ----------- \n\n")
+                log.info("\n\n -------------  _send_raw ehlo2 ----------- \n\n")
+
                 server.login(settings.smtp_user, settings.smtp_password)
-                log.info(
+                log.info("\n\n -------------  _send_raw login ----------- \n\n")
+
+                server.send_message(msg)
+                log.info("\n\n -------------  _send_raw send_message ----------- \n\n")
+            return True
+        except Exception as e:
+            log.error(f"Email error: {e}")
+            return False
+
 
 class OTPSender(BaseEmailSender):
     def send(self, to_email: str, code: str) -> bool:
