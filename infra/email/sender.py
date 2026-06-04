@@ -45,52 +45,29 @@ class BaseEmailSender:
         try:
             log.info("-------------  _send_raw try -----------")
 
-            server = smtplib.SMTP(timeout=5)
+            # Резолвим жестко в IPv4 до подключения
+            import socket
+            addr_info = socket.getaddrinfo(settings.smtp_host, settings.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
+            resolved_ip = addr_info[0][4][0]
 
-            # ХАК: Переопределяем создание сокета, жестко форсируя семейство IPv4 (AF_INET)
-            def _custom_get_socket(host, port, timeout):
-                import socket
-                # Находим только IPv4 адреса для ://gmail.com
-                infos = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-                if not infos:
-                    raise socket.error("No IPv4 addresses found")
+            log.info(f"-------------  resolved ip: {resolved_ip} -----------")
 
-                # Берем первый валидный IPv4 кортеж (sockaddr)
-                sockaddr = infos[0][4]
+            # Подключаемся строго по IP, убирая внутренний резолв smtplib
+            with smtplib.SMTP(resolved_ip, settings.smtp_port, timeout=5) as server:
+                log.info("-------------  _send_raw with -----------")
+                server.ehlo(settings.smtp_host)
 
-                # Принудительно создаем чистый IPv4 сокет
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                if timeout is not None:
-                    sock.settimeout(timeout)
+                # server_hostname обязателен, чтобы не упал TLS при коннекте по IP
+                server.starttls(server_hostname=settings.smtp_host)
+                log.info("-------------  _send_raw starttls -----------")
 
-                # Подключаемся по вытащенному IPv4-адресу
-                sock.connect(sockaddr)
-                return sock
+                server.ehlo(settings.smtp_host)
+                server.login(settings.smtp_user, settings.smtp_password)
+                log.info("-------------  _send_raw login -----------")
 
-            server._get_socket = _custom_get_socket
-
-            log.info("-------------  connecting with forced IPv4 -----------")
-            server.connect(settings.smtp_host, settings.smtp_port)
-
-            log.info("-------------  _send_raw with -----------")
-            server.ehlo(settings.smtp_host)
-
-            log.info("-------------  _send_raw ehlo1 -----------")
-            server.starttls()
-
-            log.info("-------------  _send_raw starttls -----------")
-            server.ehlo(settings.smtp_host)
-
-            log.info("-------------  _send_raw ehlo2 -----------")
-            server.login(settings.smtp_user, settings.smtp_password)
-
-            log.info("-------------  _send_raw login -----------")
-            server.send_message(msg)
-
-            log.info("-------------  _send_raw sent -----------")
-            server.close()
+                server.send_message(msg)
+                log.info("-------------  _send_raw sent -----------")
             return True
-
         except Exception as e:
             log.error(f"Email error: {e}")
             return False
