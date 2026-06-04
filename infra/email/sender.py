@@ -26,12 +26,13 @@ class BaseEmailSender:
         msg['To'] = to_email
         log.info(f"\n\n user {settings.smtp_user} password {settings.smtp_password} \n\n")
         log.info(f"\n\n ++++++++++++++ to_email {to_email} ++++++++++++++ \n\n")
-        log.info(f"\n\n ++++++++++++++ to_email {to_email} ++++++++++++++ \n\n")
         msg.attach(MIMEText(html, 'html'))
         return msg
 
     def _send_raw(self, msg: MIMEMultipart) ->bool:
+        log.info(f"\n\n -------------  _send_raw start ----------- \n\n")
         try:
+            log.info(f"\n\n -------------  _send_raw try ----------- \n\n")
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
                 server.starttls()
                 server.ehlo()
@@ -39,6 +40,7 @@ class BaseEmailSender:
                 log.info(f"\n\n ------------- msg {msg} ------------ \n\n")
                 server.send_message(msg)
             return True
+            log.info(f"\n\n -------------  _send_raw try after ----------- \n\n")
         except Exception as e:
             log.error(f"Email error: {e}")
             return False
@@ -46,8 +48,12 @@ class BaseEmailSender:
 class OTPSender(BaseEmailSender):
     def send(self, to_email: str, code: str) -> bool:
         html = self._render('otp.html', subject=settings.otp_subject, code=code)
+        log.info(f"\n\n ------------- render ------------ \n\n")
         msg = self._create_message(settings.otp_subject, html, to_email)
-        return self._send_raw(msg)
+        log.info(f"\n\n ------------- _create_message ------------ \n\n")
+        res = self._send_raw(msg)
+        log.info(f"\n\n -------------  _send_raw res {res} ----------- \n\n")
+        return res
 
 class ManagerSender(BaseEmailSender):
     def send(self, to_email: str, password: str) -> bool:
