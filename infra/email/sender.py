@@ -41,36 +41,24 @@ class BaseEmailSender:
         return msg
 
     def _send_raw(self, msg: MIMEMultipart) -> bool:
+        log.info(f"\n\n -------------  _send_raw start ----------- \n\n")
         try:
-            import socket, ssl
-            # Обходим сломанный /etc/resolv.conf внутри пода
-            ip = socket.getaddrinfo(settings.smtp_host, settings.smtp_port, socket.AF_INET)[0][4][0]
-            log.info(f"Resolved IP: {ip}")
-
-            with smtplib.SMTP(ip, settings.smtp_port, timeout=5) as server:
-                server.ehlo(settings.smtp_host)
-
-                # ХАК ДЛЯ ПРОВЕРКИ СЕРТИФИКАТА:
-                # Перед стартом TLS временно подменяем имя хоста в объекте smtplib на реальный домен.
-                # Именно это поле библиотека использует внутри starttls() для проверки сертификата.
-                server.helo_resp = settings.smtp_host
-                server.local_hostname = settings.smtp_host
-
-                # Для некоторых версий Python также требуется обновить внутреннее имя хоста
-                if hasattr(server, 'host'):
-                    server.host = settings.smtp_host
-
-                context = ssl.create_default_context()
-                server.starttls(context=context)
-
-                server.ehlo(settings.smtp_host)
+            log.info(f"\n\n -------------  _send_raw try ----------- \n\n")
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+                server.ehlo()
+                log.info(f"\n\n -------------  _send_raw with ----------- \n\n")
+                server.starttls()
+                log.info(f"\n\n -------------  _send_raw starttls ----------- \n\n")
+                server.ehlo()
+                log.info(f"\n\n -------------  _send_raw ehlo ----------- \n\n")
                 server.login(settings.smtp_user, settings.smtp_password)
+                log.info(f"\n\n -------------  _send_raw login ----------- \n\n")
                 server.send_message(msg)
+                log.info(f"\n\n -------------  _send_raw send_message ----------- \n\n")
             return True
         except Exception as e:
             log.error(f"Email error: {e}")
             return False
-
 
 class OTPSender(BaseEmailSender):
     def send(self, to_email: str, code: str) -> bool:
