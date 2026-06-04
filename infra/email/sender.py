@@ -41,32 +41,21 @@ class BaseEmailSender:
         return msg
 
     def _send_raw(self, msg: MIMEMultipart) -> bool:
-        log.info("-------------  _send_raw start -----------")
         try:
-            log.info("-------------  _send_raw try -----------")
+            import socket, ssl
+            ip = socket.getaddrinfo(settings.smtp_host, settings.smtp_port, socket.AF_INET)[0][4][0]
+            log.info(f"Resolved IP: {ip}")
 
-            # Резолвим жестко в IPv4 до подключения
-            import socket
-            addr_info = socket.getaddrinfo(settings.smtp_host, settings.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
-            resolved_ip = addr_info[0][4][0]
-
-            log.info(f"-------------  resolved ip: {resolved_ip} -----------")
-
-            # Подключаемся строго по IP, убирая внутренний резолв smtplib
-            with smtplib.SMTP(resolved_ip, settings.smtp_port, timeout=5) as server:
-                log.info("-------------  _send_raw with -----------")
+            with smtplib.SMTP(ip, settings.smtp_port, timeout=5) as server:
                 server.ehlo(settings.smtp_host)
 
-                # server_hostname обязателен, чтобы не упал TLS при коннекте по IP
-                server.starttls(server_hostname=settings.smtp_host)
-                log.info("-------------  _send_raw starttls -----------")
+                # Передаем контекст с правильным именем домена напрямую в starttls
+                context = ssl.create_default_context()
+                server.starttls(context=context, check_hostname=True)
 
                 server.ehlo(settings.smtp_host)
                 server.login(settings.smtp_user, settings.smtp_password)
-                log.info("-------------  _send_raw login -----------")
-
                 server.send_message(msg)
-                log.info("-------------  _send_raw sent -----------")
             return True
         except Exception as e:
             log.error(f"Email error: {e}")
