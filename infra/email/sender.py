@@ -43,17 +43,24 @@ class BaseEmailSender:
     def _send_raw(self, msg: MIMEMultipart) -> bool:
         try:
             import socket, ssl
-            # Обходим кривой /etc/resolv.conf внутри пода
+            # Обходим сломанный /etc/resolv.conf внутри пода
             ip = socket.getaddrinfo(settings.smtp_host, settings.smtp_port, socket.AF_INET)[0][4][0]
             log.info(f"Resolved IP: {ip}")
 
             with smtplib.SMTP(ip, settings.smtp_port, timeout=5) as server:
                 server.ehlo(settings.smtp_host)
 
-                # Создаем SSL-контекст и явно привязываем к нему домен ://gmail.com
-                context = ssl.create_default_context()
+                # ХАК ДЛЯ ПРОВЕРКИ СЕРТИФИКАТА:
+                # Перед стартом TLS временно подменяем имя хоста в объекте smtplib на реальный домен.
+                # Именно это поле библиотека использует внутри starttls() для проверки сертификата.
+                server.helo_resp = settings.smtp_host
+                server.local_hostname = settings.smtp_host
 
-                # starttls возьмет server_hostname из контекста, сокет не упадет
+                # Для некоторых версий Python также требуется обновить внутреннее имя хоста
+                if hasattr(server, 'host'):
+                    server.host = settings.smtp_host
+
+                context = ssl.create_default_context()
                 server.starttls(context=context)
 
                 server.ehlo(settings.smtp_host)
