@@ -44,12 +44,17 @@ class BaseEmailSender:
         log.info(f"\n\n -------------  _send_raw start ----------- \n\n")
         try:
             log.info(f"\n\n -------------  _send_raw try ----------- \n\n")
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            infos = socket.getaddrinfo(settings.smtp_host, settings.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
+            ip = infos[0][4][0]
+            log.info(f"\n\n -------------  resolved ip {ip} ----------- \n\n")
+            with smtplib.SMTP(ip, settings.smtp_port) as server:
                 log.info(f"\n\n -------------  _send_raw with ----------- \n\n")
+                server.ehlo(settings.smtp_host)
+                log.info(f"\n\n -------------  _send_raw ehlo1 ----------- \n\n")
                 server.starttls()
                 log.info(f"\n\n -------------  _send_raw starttls ----------- \n\n")
-                server.ehlo()
-                log.info(f"\n\n -------------  _send_raw ehlo ----------- \n\n")
+                server.ehlo(settings.smtp_host)
+                log.info(f"\n\n -------------  _send_raw ehlo2 ----------- \n\n")
                 server.login(settings.smtp_user, settings.smtp_password)
                 log.info(f"\n\n -------------  _send_raw login ----------- \n\n")
                 server.send_message(msg)
