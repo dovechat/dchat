@@ -47,11 +47,12 @@ class BaseEmailSender:
 
             server = smtplib.SMTP(timeout=5)
 
-            # Корректная подмена функции создания сокета с ограничением TCP MSS под MTU
-            def _custom_get_socket(*args, **kwargs):
+            # Исправленная сигнатура: smtplib передает host, port и timeout отдельными аргументами
+            def _custom_get_socket(host, port, timeout):
                 import socket
-                sock = socket.create_connection(*args, **kwargs)
-                # Ограничиваем размер TCP-сегмента до 1400 байт (пролезет в любой VXLAN)
+                # Явно собираем кортеж для create_connection
+                sock = socket.create_connection((host, port), timeout)
+                # Режем размер TCP-сегмента под MTU 1400
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, 1400)
                 return sock
 
