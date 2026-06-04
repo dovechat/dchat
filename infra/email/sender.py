@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 class BaseEmailSender:
     def __init__(self):
-        print(f"------------- settings {settings}")
+        log.info(f"------------- settings {settings}")
         self.conf = settings
         template_dir = os.path.dirname(__file__)
         self.jinja_env = Environment(loader=FileSystemLoader(template_dir))
@@ -25,7 +25,8 @@ class BaseEmailSender:
         msg['From'] = settings.smtp_from
         msg['To'] = to_email
         log.info(f"\n\n user {settings.smtp_user} password {settings.smtp_password} \n\n")
-        print(f"\n\n ++++++++++++++ to_email {to_email} ++++++++++++++ \n\n")
+        log.info(f"\n\n ++++++++++++++ to_email {to_email} ++++++++++++++ \n\n")
+        log.info(f"\n\n ++++++++++++++ to_email {to_email} ++++++++++++++ \n\n")
         msg.attach(MIMEText(html, 'html'))
         return msg
 
@@ -35,11 +36,11 @@ class BaseEmailSender:
                 server.starttls()
                 server.ehlo()
                 server.login(settings.smtp_user, settings.smtp_password)
-                print(f"\n\n ------------- msg {msg} ------------ \n\n")
+                log.info(f"\n\n ------------- msg {msg} ------------ \n\n")
                 server.send_message(msg)
             return True
         except Exception as e:
-            print(f"Email error: {e}")
+            log.error(f"Email error: {e}")
             return False
 
 class OTPSender(BaseEmailSender):
