@@ -41,32 +41,44 @@ class BaseEmailSender:
         return msg
 
     def _send_raw(self, msg: MIMEMultipart) -> bool:
-        log.info("\n\n -------------  _send_raw start ----------- \n\n")
+        log.info("-------------  _send_raw start -----------")
         try:
-            log.info("\n\n -------------  _send_raw try ----------- \n\n")
+            log.info("-------------  _send_raw try -----------")
 
-            # Тестовый европейский IP ://gmail.com
-            test_ip = "74.125.131.108"
-            log.info(f"\n\n -------------  USING HARDCODED IP: {test_ip} ----------- \n\n")
+            # Инициализируем стандартный клиент
+            server = smtplib.SMTP(timeout=5)
 
-            with smtplib.SMTP(test_ip, settings.smtp_port) as server:
-                log.info("\n\n -------------  _send_raw with ----------- \n\n")
-                server.ehlo(settings.smtp_host)
-                log.info("\n\n -------------  _send_raw ehlo1 ----------- \n\n")
+            # ХАК: До подключения лезем в системный сокет и режем TCP MSS под MTU 1400
+            import socket
+            server._get_socket = lambda *args, **kwargs: {
+                sock := socket.create_connection(*args, **kwargs),
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, 1400),
+                sock
+            }[-1]  # inline-костыль, возвращающий настроенный сокет
 
-                # server_hostname обязателен, чтобы TLS не упал при коннекте по IP
-                server.starttls(server_hostname=settings.smtp_host)
-                log.info("\n\n -------------  _send_raw starttls ----------- \n\n")
+            # Теперь подключаемся, сокет применит ограничение размера пакетов
+            log.info("-------------  connecting with TCP_MAXSEG -----------")
+            server.connect(settings.smtp_host, settings.smtp_port)
 
-                server.ehlo(settings.smtp_host)
-                log.info("\n\n -------------  _send_raw ehlo2 ----------- \n\n")
+            log.info("-------------  _send_raw with -----------")
+            server.ehlo(settings.smtp_host)
 
-                server.login(settings.smtp_user, settings.smtp_password)
-                log.info("\n\n -------------  _send_raw login ----------- \n\n")
+            log.info("-------------  _send_raw ehlo1 -----------")
+            server.starttls()
 
-                server.send_message(msg)
-                log.info("\n\n -------------  _send_raw send_message ----------- \n\n")
+            log.info("-------------  _send_raw starttls -----------")
+            server.ehlo(settings.smtp_host)
+
+            log.info("-------------  _send_raw ehlo2 -----------")
+            server.login(settings.smtp_user, settings.smtp_password)
+
+            log.info("-------------  _send_raw login -----------")
+            server.send_message(msg)
+
+            log.info("-------------  _send_raw sent -----------")
+            server.close()
             return True
+
         except Exception as e:
             log.error(f"Email error: {e}")
             return False
