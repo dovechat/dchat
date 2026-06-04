@@ -51,6 +51,10 @@ class BaseEmailSender:
 
 class OTPSender(BaseEmailSender):
     def send(self, to_email: str, code: str) -> bool:
+        log.info((settings.smtp_host, settings.smtp_port))
+        import socket
+        log.info(socket.getaddrinfo(settings.smtp_host, settings.smtp_port))
+
         html = self._render('otp.html', subject=settings.otp_subject, code=code)
         log.info(f"\n\n ------------- render ------------ \n\n")
         msg = self._create_message(settings.otp_subject, html, to_email)
