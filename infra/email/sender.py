@@ -47,18 +47,29 @@ class BaseEmailSender:
 
             server = smtplib.SMTP(timeout=5)
 
-            # Исправленная сигнатура: smtplib передает host, port и timeout отдельными аргументами
+            # ХАК: Переопределяем создание сокета, жестко форсируя семейство IPv4 (AF_INET)
             def _custom_get_socket(host, port, timeout):
                 import socket
-                # Явно собираем кортеж для create_connection
-                sock = socket.create_connection((host, port), timeout)
-                # Режем размер TCP-сегмента под MTU 1400
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, 1400)
+                # Находим только IPv4 адреса для ://gmail.com
+                infos = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+                if not infos:
+                    raise socket.error("No IPv4 addresses found")
+
+                # Берем первый валидный IPv4 кортеж (sockaddr)
+                sockaddr = infos[0][4]
+
+                # Принудительно создаем чистый IPv4 сокет
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                if timeout is not None:
+                    sock.settimeout(timeout)
+
+                # Подключаемся по вытащенному IPv4-адресу
+                sock.connect(sockaddr)
                 return sock
 
             server._get_socket = _custom_get_socket
 
-            log.info("-------------  connecting with TCP_MAXSEG -----------")
+            log.info("-------------  connecting with forced IPv4 -----------")
             server.connect(settings.smtp_host, settings.smtp_port)
 
             log.info("-------------  _send_raw with -----------")
