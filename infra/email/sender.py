@@ -5,20 +5,9 @@ from email.mime.text import MIMEText
 import smtplib
 from core.config import settings
 
-import socket
-
-# FORCE IPv4 (FIX)
-_orig_getaddrinfo = socket.getaddrinfo
-def _ipv4_only(*args, **kwargs):
-    res = _orig_getaddrinfo(*args, **kwargs)
-    return [x for x in res if x[0] == socket.AF_INET]
-socket.getaddrinfo = _ipv4_only
-
-
 import logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
-
 
 class BaseEmailSender:
     def __init__(self):
@@ -40,12 +29,11 @@ class BaseEmailSender:
         msg.attach(MIMEText(html, 'html'))
         return msg
 
-    def _send_raw(self, msg: MIMEMultipart) -> bool:
+    def _send_raw(self, msg: MIMEMultipart) ->bool:
         log.info(f"\n\n -------------  _send_raw start ----------- \n\n")
         try:
             log.info(f"\n\n -------------  _send_raw try ----------- \n\n")
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-                server.ehlo()
                 log.info(f"\n\n -------------  _send_raw with ----------- \n\n")
                 server.starttls()
                 log.info(f"\n\n -------------  _send_raw starttls ----------- \n\n")
@@ -54,18 +42,14 @@ class BaseEmailSender:
                 server.login(settings.smtp_user, settings.smtp_password)
                 log.info(f"\n\n -------------  _send_raw login ----------- \n\n")
                 server.send_message(msg)
-                log.info(f"\n\n -------------  _send_raw send_message ----------- \n\n")
             return True
+            log.info(f"\n\n -------------  _send_raw try after ----------- \n\n")
         except Exception as e:
             log.error(f"Email error: {e}")
             return False
 
 class OTPSender(BaseEmailSender):
     def send(self, to_email: str, code: str) -> bool:
-        log.info((settings.smtp_host, settings.smtp_port))
-        import socket
-        log.info(socket.getaddrinfo(settings.smtp_host, settings.smtp_port))
-
         html = self._render('otp.html', subject=settings.otp_subject, code=code)
         log.info(f"\n\n ------------- render ------------ \n\n")
         msg = self._create_message(settings.otp_subject, html, to_email)
