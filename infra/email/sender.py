@@ -45,18 +45,18 @@ class BaseEmailSender:
         try:
             log.info("-------------  _send_raw try -----------")
 
-            # Инициализируем стандартный клиент
             server = smtplib.SMTP(timeout=5)
 
-            # ХАК: До подключения лезем в системный сокет и режем TCP MSS под MTU 1400
-            import socket
-            server._get_socket = lambda *args, **kwargs: {
-                sock := socket.create_connection(*args, **kwargs),
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, 1400),
-                sock
-            }[-1]  # inline-костыль, возвращающий настроенный сокет
+            # Корректная подмена функции создания сокета с ограничением TCP MSS под MTU
+            def _custom_get_socket(*args, **kwargs):
+                import socket
+                sock = socket.create_connection(*args, **kwargs)
+                # Ограничиваем размер TCP-сегмента до 1400 байт (пролезет в любой VXLAN)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, 1400)
+                return sock
 
-            # Теперь подключаемся, сокет применит ограничение размера пакетов
+            server._get_socket = _custom_get_socket
+
             log.info("-------------  connecting with TCP_MAXSEG -----------")
             server.connect(settings.smtp_host, settings.smtp_port)
 
