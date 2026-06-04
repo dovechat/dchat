@@ -34,11 +34,15 @@ class BaseEmailSender:
         try:
             log.info(f"\n\n -------------  _send_raw try ----------- \n\n")
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+                log.info(f"\n\n -------------  _send_raw with ----------- \n\n")
                 server.starttls()
+                log.info(f"\n\n -------------  _send_raw starttls ----------- \n\n")
                 server.ehlo()
+                log.info(f"\n\n -------------  _send_raw ehlo ----------- \n\n")
                 server.login(settings.smtp_user, settings.smtp_password)
-                log.info(f"\n\n ------------- msg {msg} ------------ \n\n")
+                log.info(f"\n\n -------------  _send_raw login ----------- \n\n")
                 server.send_message(msg)
+                log.info(f"\n\n -------------  _send_raw send_message ----------- \n\n")
             return True
             log.info(f"\n\n -------------  _send_raw try after ----------- \n\n")
         except Exception as e:
