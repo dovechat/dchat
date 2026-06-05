@@ -1,5 +1,6 @@
 import logging
 import httpx
+from core.config import settings
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
 from app.utils import get_file_from_s3
@@ -23,7 +24,7 @@ class TelegramBotSender(BaseSender):
         if not self.bot_token:
             raise ValueError("Bot token not set")
 
-        url = f"https://api.telegram.org/bot{self.bot_token}/"
+        url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/"
 
         if data.media:
             return await self._send_file(data)
@@ -32,7 +33,7 @@ class TelegramBotSender(BaseSender):
 
     async def _send_text(self, data: MessageCreate) -> dict:
         """Отправить текстовое сообщение"""
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/sendMessage"
         payload = {
             "chat_id": data.phone,
             "text": data.text
@@ -51,10 +52,10 @@ class TelegramBotSender(BaseSender):
             file_bytes, filename = await get_file_from_s3(m["id"])
             mime_type = m.get("mime_type")
             if mime_type and mime_type.startswith('image/'):
-                url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+                url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/sendPhoto"
                 files = {'photo': (filename, file_bytes, mime_type)}
             else:
-                url = f"https://api.telegram.org/bot{self.bot_token}/sendDocument"
+                url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/sendDocument"
                 files = {'document': (filename, file_bytes, mime_type or 'application/octet-stream')}
 
             payload = {
