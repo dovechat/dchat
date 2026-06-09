@@ -31,8 +31,12 @@ class TelegramBotSender(BaseSender):
         else:
             return await self._send_text(data)
 
+    def extract_msg_id(self, result) -> str | None:
+        return str(result.get("message_id")) if result else None
+
     async def _send_text(self, data: MessageCreate) -> dict:
         """Отправить текстовое сообщение"""
+        log.info(f"\n\n send TEXT")
         url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/sendMessage"
         payload = {
             "chat_id": data.phone,
@@ -47,6 +51,7 @@ class TelegramBotSender(BaseSender):
             raise Exception(f"Telegram API error: {result}")
 
     async def _send_file(self, data: MessageCreate) -> dict:
+        log.info(f"\n\n send FILE")
         result = None
         for m in data.media:
             file_bytes, filename = await get_file_from_s3(m["id"])
@@ -62,6 +67,8 @@ class TelegramBotSender(BaseSender):
                 'chat_id': data.phone,
                 'caption': data.text
             }
+
+            log.info(f"\n\n +++++++++++++ TelegramBotSender.send_file url {url} payload {payload} \n\n")
 
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, data=payload, files=files)

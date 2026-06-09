@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 from fastapi import HTTPException, WebSocket
 from typing import Dict, List
@@ -6,6 +7,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
 from core.database import get_db
+from core.redis import rdb
 from models.lines import ChannelAccount
 from models.messages import Conversation
 from repo.user import UserRepository
@@ -93,40 +95,13 @@ class ConnectionManager:
 
     async def send_new_message(self, conversation_id: str, message_data: dict):
         log.info(f"++++++++ websocket manager send_new_message message_data {message_data}")
-        log.info(f"+++++++ websocket manager self.active_connections {self.active_connections} conversation_id {conversation_id}")
         conversation_id = str(conversation_id)
-        '''
-        if conv and conv.channel_type != 'telegram_bot':
-            if conversation_id not in self.active_connections:
-                log.error(f"! --- ERROR: websocket manager conversation_id not in self.active_connections")
-                return
-        '''
-        # Рассылаем всем соединениям
-        log.info(f"\n\n +++++++++ Sending new_message to conv {conversation_id}: {message_data} \n\n ")
-        if self.active_connections and conversation_id in self.active_connections:
-            for ws in self.active_connections[conversation_id][:]:  # копия списка
-                try:
-                    await ws.send_json({
-                        'type': 'new_message',
-                        'data': message_data
-                    })
-                except Exception as e:
-                    log.error(f"send_new_message error for {conversation_id}: {e}")
-                    await self.disconnect(conversation_id, ws)
-            log.info(f"\n\n ---------- Sending new_message to conv {conversation_id}: {message_data} \n\n ")
+        await rdb.publish(f"ws:new_message:{conversation_id}", json.dumps(message_data))
 
     async def send_message_status(self, conversation_id: str, data: dict):
-        if conversation_id not in self.active_connections:
-            return
-        for ws in self.active_connections[conversation_id][:]:
-            try:
-                log.info(f"===== WebsockerManager.send_message_status data {data}")
-                await ws.send_json({
-                    'type': 'message_status',
-                    'data': data
-                })
-            except Exception as e:
-                log.error(f"send_message_status error: {e}")
+        conversation_id = str(conversation_id)
+        log.info(f"===== WebsocketManager.send_message_status data {data}")
+        await rdb.publish(f"ws:message_status:{conversation_id}", json.dumps(data))
 
 
     async def connect_tenant(self, websocket: WebSocket, tenant_id: str):

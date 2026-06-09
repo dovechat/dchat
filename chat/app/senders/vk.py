@@ -13,6 +13,11 @@ class VKSender(BaseSender):
         self.listener = None
         self.creds = None
 
+    def extract_msg_id(self, result) -> str | None:
+        if not result:
+            return None
+        return str(result) if isinstance(result, int) else result.get("message_id")
+
     def set_listener(self, listener):
         self.listener = listener
 

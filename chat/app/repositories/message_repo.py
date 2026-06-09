@@ -26,13 +26,13 @@ class MessageRepository(BaseRepository[Message]):
         stmt = (
             select(self.model)
             .where(self.model.conversation_id == conversation_id)
-            .options(joinedload(Message.user))
+            .options(joinedload(Message.user), joinedload(Message.media))
             .order_by(self.model.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
         result = await self.session.execute(stmt)
-        res = list(result.scalars().all())
+        res = list(result.unique().scalars().all())
         return res
 
     async def get_last_message(

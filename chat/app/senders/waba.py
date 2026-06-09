@@ -11,6 +11,11 @@ class WabaSender(BaseSender):
         self.listener = None
         self.creds = None
 
+    def extract_msg_id(self, result) -> str | None:
+        if not result:
+            return None
+        return result.get("messages", [{}])[0].get("id")
+
     def set_listener(self, listener):
         self.listener = listener
 

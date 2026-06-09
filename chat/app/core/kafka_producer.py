@@ -39,6 +39,7 @@ class KafkaEventProducer:
             text: str,
             user_id: uuid.UUID,
             user_email: str,
+            message_id: int,
             files: list[UploadFile] | None = None,
     ) -> None:
         topic = CHANNEL_TOPICS.get(channel_type)
@@ -67,6 +68,7 @@ class KafkaEventProducer:
             "user_id": str(user_id),
             "user_email": user_email,
             "channel_type": channel_type,
+            "message_id": message_id,
         }
 
         if not self.producer:

@@ -321,7 +321,7 @@ class TelegramListener:
         """Отправить файл из S3 по media_id"""
         log.info(f"------------------- TelegramListener send_file_user start")
         conversation_id = str(data.conversation_id)
-        filename = data.raw_content.get("file_name")
+        filename = data.raw_content.get("file_name") if data.raw_content else None
         client = self.clients.get(conversation_id)
         
         if not client:

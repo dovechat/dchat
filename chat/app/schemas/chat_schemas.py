@@ -17,7 +17,7 @@ class ConversationCreate(BaseModel):
     crm_chat_id: str
     client_phone: str | None = None
     meta: dict | None = None
-
+    
 
 class MessageCreate(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
@@ -29,7 +29,7 @@ class MessageCreate(BaseModel):
     text: str | None = None
     media: list[dict] | None = None  # [{"file_name": ..., "mime_type": ...}]
     raw_content: dict | None = None
-    status: MessageStatus = "sent"
+    status: MessageStatus = "sent"   
 
 
 class MediaResponse(BaseModel):

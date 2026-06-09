@@ -11,7 +11,6 @@ log = logging.getLogger(__name__)
 
 class BaseEmailSender:
     def __init__(self):
-        log.info(f"------------- settings {settings}")
         self.conf = settings
         template_dir = os.path.dirname(__file__)
         self.jinja_env = Environment(loader=FileSystemLoader(template_dir))

@@ -4,6 +4,9 @@ from  app.schemas.chat_schemas import MessageCreate
 class BaseSender(ABC):
     """Базовый класс для отправки сообщений в разные каналы"""
 
+    def extract_msg_id(self, result) -> str | None:
+        return None
+
     @abstractmethod
     async def send(self, data: MessageCreate) -> dict:
         """Отправить текстовое сообщение"""

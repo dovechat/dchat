@@ -19,8 +19,8 @@ from app.schemas.chat_schemas import (
     CrmMessageOut,
     LineResponse,
     LineWithChannelsResponse,
-    MessageResponse,
     MessageCreate,
+    MessageResponse,
 )
 from models.tenants import User
 
@@ -37,6 +37,80 @@ def get_bot_service(db: AsyncSession = Depends(get_db)) -> ChatService:
 
 def get_line_service(db: AsyncSession = Depends(get_db)) -> LineService:
     return LineService(db)
+
+
+async def _enqueue_outgoing(
+    channel_type: str,
+    data: MessageCreate,
+    files: list[UploadFile],
+    current_user: UserContext,
+    chat_service: ChatService,
+) -> MessageResponse:
+    data.media = []
+    _, message = await chat_service.conv_msg(data, current_user)
+    await kafka_producer.send_message(
+        channel_type=channel_type,
+        conversation_id=data.conversation_id,
+        phone=data.phone,
+        text=data.text,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        message_id=message.id,
+        files=files,
+    )
+    log.info(f"_enqueue_outgoing channel_type={channel_type} message_id={message.id}")
+    return MessageResponse.model_validate(message)
+
+
+@router.post("/messages/tgbot", response_model=MessageResponse)
+async def create_message_tgbot(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await _enqueue_outgoing("telegram_bot", MessageCreate.parse_raw(data), files, current_user, chat_service)
+
+
+@router.post("/messages/tguser", response_model=MessageResponse)
+async def create_message_tguser(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await _enqueue_outgoing("telegram_user", MessageCreate.parse_raw(data), files, current_user, chat_service)
+
+
+@router.post("/messages/whatsapp/green", response_model=MessageResponse)
+async def create_message_whatsapp_green(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await _enqueue_outgoing("whatsapp_green", MessageCreate.parse_raw(data), files, current_user, chat_service)
+
+
+@router.post("/messages/waba", response_model=MessageResponse)
+async def create_message_waba(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await _enqueue_outgoing("waba", MessageCreate.parse_raw(data), files, current_user, chat_service)
+
+
+@router.post("/messages/vk", response_model=MessageResponse)
+async def create_message_vk(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await _enqueue_outgoing("vk", MessageCreate.parse_raw(data), files, current_user, chat_service)
+
 
 
 @router.patch("/conversations/{conversation_id}/status")
@@ -119,100 +193,6 @@ async def create_conversation(
     )
 
 
-@router.post("/messages/tguser", response_model=dict)
-async def create_message_tguser(
-    data: str = Form(...),
-    files: list[UploadFile] = File(default=[]),
-    current_user: UserContext = Depends(get_current_user),
-):
-    message_data = MessageCreate.parse_raw(data)
-    await kafka_producer.send_message(
-        channel_type="telegram_user",
-        conversation_id=message_data.conversation_id,
-        phone=message_data.phone,
-        text=message_data.text,
-        user_id=current_user.id,
-        user_email=current_user.email,
-        files=files,
-    )
-    return {"status": "ok"}
-
-@router.post("/messages/tgbot", response_model=MessageResponse)
-async def create_message_tgbot(
-    data: str = Form(...),
-    files: list[UploadFile] = File(default=[]),
-    current_user: UserContext = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service),
-):
-    message_data = MessageCreate.parse_raw(data)
-    _, message = await chat_service.conv_msg(message_data, current_user)
-    await kafka_producer.send_message(
-        channel_type="telegram_bot",
-        conversation_id=message_data.conversation_id,
-        phone=message_data.phone,
-        text=message_data.text,
-        user_id=current_user.id,
-        user_email=current_user.email,
-        files=files,
-    )
-    return MessageResponse.model_validate(message)
-
-@router.post("/messages/whatsapp/green", response_model=dict)
-async def create_message_whatsapp_green(
-    data: str = Form(...),
-    files: list[UploadFile] = File(default=[]),
-    current_user: UserContext = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
-):
-    message_data = MessageCreate.parse_raw(data)
-    return await chat_service.create_msg_whatsapp_green(
-        data=message_data,
-        files=files,
-        current_user=current_user,
-    )
-    return {"status": "ok"}
-
-
-@router.post("/messages/waba", response_model=dict)
-async def create_message_waba(
-    data: str = Form(...),
-    files: list[UploadFile] = File(default=[]),
-    current_user: UserContext = Depends(get_current_user),
-):
-    message_data = MessageCreate.parse_raw(data)
-    await kafka_producer.send_message(
-        channel_type="waba",
-        conversation_id=message_data.conversation_id,
-        phone=message_data.phone,
-        text=message_data.text,
-        user_id=current_user.id,
-        user_email=current_user.email,
-        files=files,
-    )
-    return {"status": "ok"}
-
-
-
-@router.post("/messages/vk", response_model=dict)
-async def create_message_vk(
-    data: str = Form(...),
-    files: list[UploadFile] = File(default=[]),
-    current_user: UserContext = Depends(get_current_user),
-):
-    message_data = MessageCreate.parse_raw(data)
-    await kafka_producer.send_message(
-        channel_type="vk",
-        conversation_id=message_data.conversation_id,
-        phone=message_data.phone,
-        text=message_data.text,
-        user_id=current_user.id,
-        user_email=current_user.email,
-        files=files,
-    )
-    return {"status": "ok"}
-
-
-
 @router.post("/bot/webhook/{line_id}")
 async def telegram_bot_webhook(
     line_id: uuid.UUID,
@@ -293,3 +273,103 @@ async def crm_robot_send(
     chat_service: ChatService = Depends(get_chat_service),
 ):
     return await chat_service.robot_send(data)
+
+
+
+
+
+'''
+@router.post("/messages/tguser", response_model=dict)
+async def create_message_tguser(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+):
+    message_data = MessageCreate.parse_raw(data)
+    await kafka_producer.send_message(
+        channel_type="telegram_user",
+        conversation_id=message_data.conversation_id,
+        phone=message_data.phone,
+        text=message_data.text,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        files=files,
+    )
+    return {"status": "ok"}
+
+@router.post("/messages/tgbot", response_model=MessageResponse)
+async def create_message_tgbot(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    message_data = MessageCreate.parse_raw(data)
+    message_data.media = []
+    _, message = await chat_service.conv_msg(message_data, current_user)
+    await kafka_producer.send_message(
+        channel_type="telegram_bot",
+        conversation_id=message_data.conversation_id,
+        phone=message_data.phone,
+        text=message_data.text,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        message_id=message.id,
+        files=files,
+    )
+    return MessageResponse.model_validate(message)
+
+@router.post("/messages/whatsapp/green", response_model=dict)
+async def create_message_whatsapp_green(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    message_data = MessageCreate.parse_raw(data)
+    return await chat_service.create_msg_whatsapp_green(
+        data=message_data,
+        files=files,
+        current_user=current_user,
+    )
+    return {"status": "ok"}
+
+
+@router.post("/messages/waba", response_model=dict)
+async def create_message_waba(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+):
+    message_data = MessageCreate.parse_raw(data)
+    await kafka_producer.send_message(
+        channel_type="waba",
+        conversation_id=message_data.conversation_id,
+        phone=message_data.phone,
+        text=message_data.text,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        files=files,
+    )
+    return {"status": "ok"}
+
+
+
+@router.post("/messages/vk", response_model=dict)
+async def create_message_vk(
+    data: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    current_user: UserContext = Depends(get_current_user),
+):
+    message_data = MessageCreate.parse_raw(data)
+    await kafka_producer.send_message(
+        channel_type="vk",
+        conversation_id=message_data.conversation_id,
+        phone=message_data.phone,
+        text=message_data.text,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        files=files,
+    )
+    return {"status": "ok"}
+'''

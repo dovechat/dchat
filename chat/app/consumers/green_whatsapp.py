@@ -24,13 +24,16 @@ class GreenWhatsAppConnection:
         self.api_token = api_token
 
     def api_url(self):
-        return f"https://api.green-api.com/waInstance{self.id_instance}"
+        return f"https://7103.api.greenapi.com/waInstance{self.id_instance}"
+
+    def media_url(self):
+        return f"https://7103.api.greenapi.com/waInstance{self.id_instance}"
 
     def send_text_url(self):
         return f"{self.api_url()}/sendMessage/{self.api_token}"
 
     def send_file_url(self):
-        return f"{self.api_url()}/sendFileByUrl/{self.api_token}"
+        return f"{self.media_url()}/sendFileByUrl/{self.api_token}"
 
     async def send(self, url, payload):
         log.info(f"\n\n ************ GreenWhatsAppConnection.send url {url} payload {payload} \n\n")
@@ -62,6 +65,7 @@ class GreenWhatsAppConnection:
             "fileName": file_name,
             "caption": caption
         }
+        log.info(f"send_file url={url} file_url={file_url} chat_id={chat_id}")
         return await self.send(url, payload)
 
 
@@ -195,7 +199,6 @@ class GreenWhatsAppListener:
         state = payload.get("stateInstance")
         conn_status = state
         error_reason = ''
-        log.info(f"*** GreenWhatsAppListener._handle_instance_state state {state}")
         if state in ["blocked", "sleepMode", "notAuthorized"]:
             log.info(f"!!! --- ERROR --- GreenWhatsAppListener._handle_instance_state state {state}")
             await notify_connection_error(line_id, "whatsapp_green")
@@ -209,16 +212,22 @@ class GreenWhatsAppListener:
         else:
             return
 
+        log.info(f"*** before get_session line_id={line_id} conn_status={conn_status}")
         async with get_session() as db:
-            repo = ChannelAccountRepository(db)
-            await repo.update_connection_status(
-                line_id=line_id,
-                status=conn_status,
-                channel_type="whatsapp_green",
-                connection_error=error_reason
-            )
-            log.info(f"*** GreenWhatsAppListener._handle_instance_state end {state}")
-            await notify_connection_error(line_id, "whatsapp_green",db)
+            try:
+                repo = ChannelAccountRepository(db)
+                await repo.update_connection_status(
+                    line_id=line_id,
+                    status=conn_status,
+                    channel_type="whatsapp_green",
+                    connection_error=error_reason
+                )
+                await notify_connection_error(line_id, "whatsapp_green",db)
+                log.info(f"*** GreenWhatsAppListener._handle_instance_state end try")
+            except Exception as e:
+                log.error(f"*** GreenWhatsAppListener._handle_instance_state ERROR: {e}")
+                raise
+
 
     async def send_message(self, line_id: str, chat_id: str, text: str) -> dict:
         """Отправить сообщение (вызывается из chat_service)"""

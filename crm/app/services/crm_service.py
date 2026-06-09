@@ -227,7 +227,7 @@ class CrmService:
 
             if robot_code == "dovechat_check_account":
                 return_properties = {
-                    "exists": {"Name": "Зарегистрирован", "Type": "string", "Multiple": "N"},
+                    "exists": {"Name": "Зарегистрирован", "Type": "bool", "Multiple": "N"},
                     "user_id": {"Name": "ID пользователя", "Type": "string", "Multiple": "N"},
                     "error": {"Name": "Ошибка", "Type": "string", "Multiple": "N"},
                 }
@@ -691,6 +691,7 @@ class CrmService:
 
         if robot_code == "dovechat_check_account":
             return_values = await self._robot_check_account(phone, line_id)
+            log.info(f"robot dovechat_check_account return_values {return_values}")
         else:
             return_values = await self._robot_send(robot_code, data, conn, line_id, phone)
 
@@ -774,26 +775,53 @@ class CrmService:
 
     async def _robot_check_account(self, phone: str, line_id: uuid.UUID) -> dict:
         from models.lines import ChannelType
+        res = None
         accounts = await self._uow.channel_accounts.get_multi(
             filters={"line_id": line_id, "channel_type": ChannelType.telegram_user},
             limit=1,
         )
-        if not accounts or not accounts[0].session_string:
-            log.error(f"_robot_check_account no telegram_user account for line_id={line_id}")
-            return {"exists": "нет", "user_id": "", "error": "Нет активного Telegram User аккаунта"}
-        session_string = accounts[0].session_string
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    "http://tg-connector.dchat.svc.cluster.local:8000/prod/check-phone",
-                    json={"phone": phone, "session_string": session_string},
-                    timeout=15,
-                )
-                log.info(f"_robot_check_account resp: {resp.status_code} {resp.text}")
-                result = resp.json()
-            exists = "да" if result.get("exists") else "нет"
-            user_id = str(result.get("user_id") or "")
-            return {"exists": exists, "user_id": user_id, "error": ""}
-        except Exception as e:
-            log.error(f"_robot_check_account failed: {e}")
-            return {"exists": "нет", "user_id": "", "error": str(e)}
+        if accounts and accounts[0].session_string:
+            session_string = accounts[0].session_string
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(
+                        "http://tg-connector.dchat.svc.cluster.local:8000/prod/check-phone",
+                        json={"phone": phone, "session_string": session_string},
+                        timeout=15,
+                    )
+                    log.info(f"_robot_check_account resp: {resp.status_code} {resp.text}")
+                    result = resp.json()
+                exists = "Y" if result.get("exists") else "N"
+                user_id = str(result.get("user_id") or "")
+                res = {"exists": exists, "user_id": user_id, "error": ""}
+            except Exception as e:
+                log.error(f"_robot_check_account failed: {e}")
+                res = {"exists": "N", "user_id": "", "error": str(e)}
+        else:
+            wa_accounts = await self._uow.channel_accounts.get_multi(
+                filters={"line_id": line_id, "channel_type": ChannelType.whatsapp_green},
+                limit=1,
+            )
+            if not wa_accounts:
+                log.error(f"_robot_check_account no channel account for line_id={line_id}")
+                res = {"exists": "N", "user_id": "", "error": "Нет активного канала"}
+            else:
+                from infra.crypto import decrypt
+                creds = json.loads(decrypt(wa_accounts[0].credentials_encrypted["encrypted_data"]))
+                id_instance = creds.get("id_instance")
+                api_token = creds.get("api_token")
+                try:
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(
+                            f"https://api.green-api.com/waInstance{id_instance}/checkWhatsapp/{api_token}",
+                            json={"phoneNumber": int(phone)},
+                            timeout=15,
+                        )
+                        log.info(f"_robot_check_account wa resp: {resp.status_code} {resp.text}")
+                        result = resp.json()
+                    exists = "Y" if result.get("existsWhatsapp") else "N"
+                    res = {"exists": exists, "user_id": "", "error": ""}
+                except Exception as e:
+                    log.error(f"_robot_check_account wa failed: {e}")
+                    res = {"exists": "N", "user_id": "", "error": str(e)}
+        return {"exists": "Y" if res["exists"] == "Y" else "N"}

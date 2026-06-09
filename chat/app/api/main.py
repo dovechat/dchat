@@ -1,4 +1,5 @@
 """Main FastAPI application for Chat service."""
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -15,6 +16,7 @@ from app.consumers.vk import VkListener
 from app.core.kafka_producer import kafka_producer
 from contextlib import asynccontextmanager
 from core.database import get_db
+from app.core.redis_subscriber import redis_subscriber
 from api.auth import public_router, private_router
 from api.tenant import tenant_router
 from api.lines import line_router
@@ -73,6 +75,7 @@ async def startup():
     app.state.green_listener = GreenWhatsAppListener()
     app.state.waba_listener = WabaListener()
     app.state.vk_listener = VkListener()
+    asyncio.create_task(redis_subscriber())
 
 prefix = "/v1"
 app.include_router(public_router, prefix=prefix)

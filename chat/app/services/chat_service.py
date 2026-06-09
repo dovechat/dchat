@@ -54,6 +54,96 @@ class ChatService:
         self.line_repo = LineRepository(db)
         self.storage = StorageService()
 
+    async def _init_sender(
+            self,
+            channel_type: str,
+            conv_id: uuid.UUID,
+            tg_listener=None,
+    ):
+        sender = SenderFactory.get_sender(channel_type)
+        if channel_type == "telegram_user":
+            sender.set_listener(tg_listener)
+            return sender
+        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(conv_id)
+        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+        if channel_type == "telegram_bot":
+            sender.set_bot_token(creds["bot_token"])
+        else:
+            sender.set_creds(creds)
+        log.info(f"_init_sender channel_type={channel_type} conv_id={conv_id}")
+        return sender
+
+    async def _process_queue_outgoing(
+            self,
+            channel_type: str,
+            data: MessageCreate,
+            current_user: UserContext,
+            tg_listener=None,
+    ) -> MessageResponse:
+        message = await self.msg_repo.get_by_id(data.message_id)
+
+        conv = await self.conv_repo.get_by_id(data.conversation_id)
+
+        if data.media:
+            for m in data.media:
+                try:
+                    await self.media_repo.create(message_id=message.id, **m)
+                except Exception:
+                    await self.db.rollback()
+            await self.db.commit()
+            await self.db.refresh(message, attribute_names=["media"])
+
+        await manager.send_new_message(str(data.conversation_id), {
+            "id": str(message.id),
+            "text": message.text,
+            "direction": "outbound",
+            "created_at": message.created_at.isoformat(),
+            "user_id": str(current_user.id),
+            "user_email": current_user.email,
+            "status": "sent",
+            "media": data.media or [],
+        })
+
+        sender = await self._init_sender(channel_type, data.conversation_id, tg_listener)
+        result = None
+        success = False
+        try:
+            result = await sender.send(data)
+            success = bool(result)
+            log.info(f"_process_queue_outgoing sent channel_type={channel_type} result={result}")
+        except Exception as e:
+            log.error(f"_process_queue_outgoing send failed channel_type={channel_type}: {e}")
+            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
+                await notify_connection_error(conv.line_id, channel_type, self.db)
+
+        await self._finalize_message(
+            message=message,
+            conversation_id=data.conversation_id,
+            channel_type=channel_type,
+            data=data,
+            current_user=current_user,
+            success=success,
+            channel_msg_id=sender.extract_msg_id(result),
+            raw_content=result if isinstance(result, dict) else None,
+        )
+        return MessageResponse.model_validate(message)
+
+    async def create_msg_tgbot(self, data, files=[], current_user=None):
+        return await self._process_queue_outgoing("telegram_bot", data, current_user)
+
+    async def create_msg_tguser(self, data, files=[], current_user=None, listener=None):
+        return await self._process_queue_outgoing("telegram_user", data, current_user, tg_listener=listener)
+
+    async def create_msg_whatsapp_green(self, data, files=[], current_user=None):
+        return await self._process_queue_outgoing("whatsapp_green", data, current_user)
+
+    async def create_msg_waba(self, data, files=[], current_user=None):
+        return await self._process_queue_outgoing("waba", data, current_user)
+
+    async def create_msg_vk(self, data, files=[], current_user=None):
+        return await self._process_queue_outgoing("vk", data, current_user)
+
+
     async def get_conversations(
             self,
             user_id: uuid.UUID,
@@ -408,6 +498,7 @@ class ChatService:
             return [self.clean_raw_content(i) for i in obj]
         return obj
 
+    '''
     async def create_msg_tguser(
             self,
             data: MessageCreate,
@@ -502,7 +593,16 @@ class ChatService:
             data.media = media_items
 
         # Сохраняем сообщение в БД
-        _, message = await self.conv_msg(data, current_user)
+        # _, message = await self.conv_msg(data, current_user)
+        message = await self.msg_repo.get_by_id(data.message_id)
+        if data.media:
+            for m in data.media:
+                try:
+                    await self.media_repo.create(message_id=message.id, **m)
+                except Exception:
+                    await self.db.rollback()
+            await self.db.commit()
+            await self.db.refresh(message, attribute_names=["media"])
 
         # Первый пинок (новое сообщение)
         await manager.send_new_message(str(data.conversation_id), {
@@ -526,6 +626,7 @@ class ChatService:
         creds_enc = channel_acc.credentials_encrypted.get("encrypted_data")
         creds_str = decrypt(creds_enc)
         bot_token = json.loads(creds_str)["bot_token"]
+        log.info(f"bot_token {bot_token}")
 
         # Получаем сендер
         sender = SenderFactory.get_sender("telegram_bot")
@@ -774,7 +875,7 @@ class ChatService:
         )
 
         return MessageResponse.model_validate(message)
-
+    '''
 
 
 

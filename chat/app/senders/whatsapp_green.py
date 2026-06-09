@@ -13,6 +13,9 @@ class WhatsAppGreenSender(BaseSender):
     def set_creds(self, creds: dict):
         self.creds = creds
 
+    def extract_msg_id(self, result) -> str | None:
+        return result.get("idMessage") if result else None
+
     async def send(self, data: MessageCreate) -> dict:
         conn = GreenWhatsAppConnection(
             id_instance=self.creds["id_instance"],
@@ -25,7 +28,8 @@ class WhatsAppGreenSender(BaseSender):
         if data.media:
             results = []
             for m in data.media:
-                file_url = f"{settings.s3_external_url}{m['id']}"
+                file_url = f"{settings.s3_external_url}{settings.s3_bt_bucket}/{m['id']}"
+                # file_url = "https://thumbnail.imgbin.com/0/20/18/imgbin-computer-icons-50x50-voicemail-message-box-WvsiFFj0e6tvNm4vSdsU9U0r4_t.jpg"
                 result = await conn.send_file(chat_id, file_url, data.text, file_name=m.get('file_name', 'file'))
                 results.append(result)
             return results[-1] if results else None

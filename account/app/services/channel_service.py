@@ -52,9 +52,10 @@ class ChannelAccountService:
         """
         # TODO: Use cryptography library
         if encrypted and "encrypted_data" in encrypted:
-            log.info(f"************* _decrypt_credentials encrypted {encrypted} {type(encrypted['encrypted_data'])}")
+            # log.info(f"************* _decrypt_credentials encrypted {encrypted} {type(encrypted['encrypted_data'])}")
             creds_js = decrypt(encrypted["encrypted_data"])
             creds = json.loads(creds_js)
+            # log.info(f"************* _decrypt_credentials encrypted creds {creds} ")
             return creds
         return {}
 
@@ -118,7 +119,7 @@ class ChannelAccountService:
                 expires_at=account.expires_at.isoformat() if account.expires_at else None,
                 connection_status=account.connection_status,  # добавить
             )
-            log.info(f"\n\n --------- ChannelAccountService.get_accounts cha_resp {cha_resp} \n\n")
+            # log.info(f"\n\n --------- ChannelAccountService.get_accounts cha_resp {cha_resp} \n\n")
             result.append(cha_resp)
         res = sorted(result, key=lambda x: x.channel_type)
         return res
@@ -303,6 +304,10 @@ class ChannelAccountService:
 
         token = decrypt(instance.token)
 
+        if id_instance and api_token:
+            await self._set_green_webhook(line_id, id_instance, token)
+            log.info("Webhook set")
+
         # Сохраняем credentials
         credentials = {"id_instance": id_instance, "api_token": token}
         encrypted = self._encrypt_credentials(credentials)
@@ -315,10 +320,6 @@ class ChannelAccountService:
         if 'instance' in locals() and instance and not instance.allocated_to_line_id:
             await self.instance_repo.allocate_instance(instance, line_id)
             log.info(f"Instance {instance.id} allocated to line {line_id}")
-
-        # Устанавливаем вебхук
-        await self._set_green_webhook(line_id, id_instance, token)
-        log.info("Webhook set")
 
         log.info("=== update_whatsapp_green END")
         return ChannelAccountResponse(
@@ -357,15 +358,7 @@ class ChannelAccountService:
 
         state = {}
         state["pending_instance_id"] = str(instance.id)
-        await self.channel_repo.update_account(account, state_json=state)
-
-        '''
-        if instance.external_id == "7103547230" and not instance.token:
-            token = encrypt("8a531316aee0453e8b68a4975f32b5f59919fc4a177e4e919a")
-            instance.token = token
-            log.debug(f"channel_service connect_whatsapp_green token {token}")
-            await self.instance_repo.update(instance)
-        '''
+        await self.channel_repo.update_account(account, state_json=state, connection_status='disconnected')
 
         if instance.token is not None:
             token = decrypt(instance.token)
@@ -386,7 +379,7 @@ class ChannelAccountService:
 
         log.info(f"******** channel_service connect_whatsapp_green return qr")
 
-        return {"qr": qr}
+        return {"qr": qr, "id_instance": instance.external_id, "api_token": token}
 
 
     async def _set_green_webhook(self, line_id, id_instance, api_token):
@@ -419,23 +412,21 @@ class ChannelAccountService:
             raise HTTPException(status_code=status, detail=msg)
 
     async def get_qr_from_green(self, id_instance: str, api_token: str) -> str:
-        log.info(f"----------------- id_instance {id_instance} api_token {api_token} ")
-        green_wh_url =  f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
+        log.info(f"get_qr_from_green id_instance={id_instance}")
+        url = f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
         async with httpx.AsyncClient() as client:
             try:
-                    res = await client.get(
-                        green_wh_url
-                    )
-                    res.raise_for_status()
-                    data = res.json()
-                    log.info(f"----------------- data {data} ")
-                    if data.get("type") == "qrCode":
-                        return data["message"]  # base64
-                    raise HTTPException(400, "Failed to get QR")
+                res = await client.get(url, timeout=30)
             except httpx.ReadTimeout:
-                log.error(f"!!! --- ERROR: Send green QR request timeout  {green_wh_url} request returns timeout ")
-            except Exception as e:
-                log.error(f"!!! --- ERROR: Send green QR request {e} status_code {res.status_code} {res.json()}")
+                raise HTTPException(408, detail="Таймаут подключения к WhatsApp")
+            res.raise_for_status()
+            data = res.json()
+            log.info(f"get_qr_from_green response {data}")
+            if data.get("type") == "qrCode":
+                return data["message"]  # base64
+            msg = data.get("message", "Failed to get QR")
+            log.error(f"get_qr_from_green error {data}")
+            raise HTTPException(400, detail=msg)
 
     async def update_waba(
             self,
