@@ -62,6 +62,19 @@ async def _enqueue_outgoing(
     return MessageResponse.model_validate(message)
 
 
+@router.post("/internal/crm-outgoing")
+async def crm_outgoing(
+    data: str = Form(...),
+    channel_type: str = Form(...),
+    user_id: uuid.UUID = Form(...),
+    user_email: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    current_user = UserContext(id=user_id, email=user_email, role="user", member="owner")
+    msg = MessageCreate.model_validate_json(data)
+    return await _enqueue_outgoing(channel_type, msg, files, current_user, chat_service)
+
 @router.post("/messages/tgbot", response_model=MessageResponse)
 async def create_message_tgbot(
     data: str = Form(...),
@@ -257,14 +270,6 @@ async def crm_incoming(
     chat_service: ChatService = Depends(get_chat_service),
 ):
     return await chat_service.save_crm_incoming(data)
-
-
-@router.post("/internal/crm-outgoing")
-async def crm_outgoing(
-    data: CrmMessageOut,
-    chat_service: ChatService = Depends(get_chat_service),
-):
-    return await chat_service.start_crm_outgoing(data)
 
 
 @router.post("/internal/crm-robot-send")

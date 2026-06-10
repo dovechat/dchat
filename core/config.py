@@ -85,6 +85,13 @@ class Settings(BaseSettings):
         "dovechat_whatsapp_green": "DoveChat WA",
         "dovechat_waba": "DoveChat WABA",
     }
+    BITRIX_CONNECTOR_CHANNEL_MAP: dict = {
+        "dovechat_telegram_bot": "telegram_bot",
+        "dovechat_telegram_user": "telegram_user",
+        "dovechat_vk": "vk",
+        "dovechat_whatsapp_green": "whatsapp_green",
+        "dovechat_waba": "waba",
+    }
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

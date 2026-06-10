@@ -26,6 +26,8 @@
 <script>
 BX24.init(function() {});
 
+var params = new URLSearchParams(location.search);
+var hostUrl = params.get('HOST_URL') || sessionStorage.getItem('host_url') || '';
 var bxAuth = JSON.parse(sessionStorage.getItem('bx_auth') || '{}');
 var lines = JSON.parse(sessionStorage.getItem('lines') || '[]');
 
@@ -48,7 +50,7 @@ async function connect(lineId, btn) {
   btn.textContent = 'Подключение...';
 
   try {
-    var resp = await fetch('/crm/api/v1/install/bitrix/connect', {
+    var resp = await fetch(hostUrl + '/crm/api/v1/install/bitrix/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ line_id: lineId, bx_auth: bxAuth }),
@@ -62,7 +64,7 @@ async function connect(lineId, btn) {
       return;
     }
     sessionStorage.setItem('connected_line', data.line_name);
-    location.href = '/crm/html/success.html';
+    location.href = hostUrl + '/crm/html/success.html';
   } catch(e) {
     err.textContent = 'Ошибка подключения к серверу';
     err.style.display = 'block';

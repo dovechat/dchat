@@ -86,6 +86,7 @@ class BotService:
             raw_content=raw_content,
             user_id=None
         )
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*    db_message {db_message} \n\n ")
         if media_id:
             await self.media_repo.create(message_id=db_message.id, id=media_id, file_name=file_name,
                                          mime_type=mime_type)
@@ -102,6 +103,8 @@ class BotService:
             "created_at": db_message.created_at.isoformat(),
             "phone": str(chat_id)
         }
+
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*    ws_message {ws_message} \n\n ")
 
         if media_id:
             ws_message["media"] = [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}]
@@ -120,14 +123,18 @@ class BotService:
                     }
                 )
 
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*    is_new {is_new} \n\n ")
+
         await manager.send_new_message(str(conversation.id), ws_message)
         log.info(f"send_new_message done")
 
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*    crm before \n\n ")
         try:
             from crm.app.services.crm_service import CrmService
             from crm.app.core.uow import CrmUnitOfWork
             crm_uow = CrmUnitOfWork(self.db)
             crm_service = CrmService(crm_uow)
+            log.info(f"\n\n *-**-*-*-*-*-*-*-*    before bx_chat_id  \n\n ")
             bx_chat_id = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
                 conversation_id=conversation.id,
@@ -137,10 +144,14 @@ class BotService:
                 message_id=str(db_message.id),
                 media=[{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "file_size": file_size}] if media_id else []
             )
+            log.info(f"\n\n *-**-*-*-*-*-*-*-*    bx_chat_id {bx_chat_id} \n\n ")
             if bx_chat_id:
                 await self.conv_repo.update(conversation, crm_chat_id=bx_chat_id)
+                log.info(f"\n\n *-**-*-*-*-*-*-*-*  if  bx_chat_id  \n\n ")
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
+
+        log.info(f"\n\n *-**-*-*-*-*-*-*-*    crm after \n\n ")
 
         return {"ok": True}
 

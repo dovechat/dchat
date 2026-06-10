@@ -2,6 +2,7 @@
 import logging
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse
+from fastapi.templating import Jinja2Templates
 import os
 
 from app.core.dependencies import get_crm_service
@@ -13,10 +14,15 @@ install_router = APIRouter(prefix="/install", tags=["install"])
 static_router = APIRouter(prefix="/html", tags=["html"])
 
 HTML_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "html")
+templates = Jinja2Templates(directory=HTML_DIR)
 
 @install_router.get("/bitrix")
 async def bitrix_placement_get(request: Request):
-    return FileResponse(os.path.join(HTML_DIR, "login.html"))
+    from core.config import settings
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "host_url": settings.host_url},
+    )
 
 @install_router.post("/bitrix")
 async def bitrix_placement_post(

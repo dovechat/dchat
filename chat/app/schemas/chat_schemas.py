@@ -29,7 +29,7 @@ class MessageCreate(BaseModel):
     text: str | None = None
     media: list[dict] | None = None  # [{"file_name": ..., "mime_type": ...}]
     raw_content: dict | None = None
-    status: MessageStatus = "sent"   
+    status: MessageStatus = "sent" 
 
 
 class MediaResponse(BaseModel):
@@ -141,6 +141,8 @@ class CrmMessageIn(BaseModel):
     text: str
     raw_content: dict = {}
     media: list[dict] = []
+    user_id: uuid.UUID
+    user_email: str
 
 class CrmMessageOut(BaseModel):
     line_id: uuid.UUID

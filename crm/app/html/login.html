@@ -44,11 +44,13 @@ var bxAuth = {};
 var jwtToken = '';
 console.log('script loaded, hostname:', location.hostname, 'href:', location.href);
 var params = new URLSearchParams(location.search);
+var hostUrl = '{{ host_url }}';
 var bxAuth = {
     access_token: params.get('ACCESS_TOKEN') || '',
     refresh_token: params.get('REFRESH_TOKEN') || '',
     member_id: params.get('MEMBER_ID') || '',
     domain: params.get('DOMAIN') || location.hostname,
+    connector: params.get('CONNECTOR') || '',
     bx_line_id: '',
 };
 BX24.init(function() {
@@ -67,7 +69,7 @@ async function doLogin() {
   btn.textContent = 'Вход...';
 
   try {
-    var resp = await fetch('/crm/api/v1/install/bitrix/auth', {
+    var resp = await fetch(hostUrl + '/crm/api/v1/install/bitrix/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email, password: password, bx_auth: bxAuth }),
@@ -112,7 +114,7 @@ async function selectTenant(tenantId) {
   var err = document.getElementById('error');
   err.style.display = 'none';
   try {
-    var resp = await fetch('/crm/api/v1/install/bitrix/select-tenant', {
+    var resp = await fetch(hostUrl + '/crm/api/v1/install/bitrix/select-tenant', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jwt_token: jwtToken, tenant_id: tenantId, bx_auth: bxAuth }),
@@ -124,8 +126,9 @@ async function selectTenant(tenantId) {
       return;
     }
     sessionStorage.setItem('bx_auth', JSON.stringify(bxAuth));
+    sessionStorage.setItem('host_url', hostUrl);
     sessionStorage.setItem('lines', JSON.stringify(data.lines));
-    location.href = '/crm/html/lines.html';
+    location.href = hostUrl + '/crm/html/lines.html?HOST_URL=' + encodeURIComponent(hostUrl);
   } catch(e) {
     err.textContent = 'Ошибка подключения к серверу';
     err.style.display = 'block';

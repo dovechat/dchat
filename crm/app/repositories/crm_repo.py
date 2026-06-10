@@ -17,6 +17,13 @@ class CrmConnectionRepository(BaseRepository[CrmConnection]):
         )
         return rows[0] if rows else None
 
+    async def get_by_member_and_connector(self, member_id: str, connector_id: str) -> CrmConnection | None:
+        rows = await self.get_multi(
+            filters={"member_id": member_id, "connector_id": connector_id, "is_active": True},
+            limit=1,
+        )
+        return rows[0] if rows else None
+
     async def get_by_member_id(self, member_id: str) -> CrmConnection | None:
         rows = await self.get_multi(
             filters={"member_id": member_id, "is_active": True},
