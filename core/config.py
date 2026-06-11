@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     TOPICS: list = [k + "_outgoing"  for k in CHANNELS]
     BITRIX_CONNECTOR_MAP: dict = {k: "dovechat_" + k for k in CHANNELS}
     BITRIX_CONNECTOR_CHANNEL_MAP: dict = {"dovechat_" +  k: k for k in CHANNELS}
-    CHANNEL_HANDLERS: dict = {k: "create_" + k for k in CHANNELS}
+    CHANNEL_HANDLERS: dict = {k: "create_msg_" + k for k in CHANNELS}
 
     @property
     def cors_origins_list(self) -> list[str]:
