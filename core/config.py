@@ -79,6 +79,7 @@ class Settings(BaseSettings):
         "waba",
         "vk",
     ]
+
     BITRIX_CONNECTOR_NAMES: dict = {
         "dovechat_telegram_bot": "DoveChat TgBot",
         "dovechat_telegram_user": "DoveChat TgUser",
@@ -86,6 +87,8 @@ class Settings(BaseSettings):
         "dovechat_whatsapp_green": "DoveChat WA",
         "dovechat_waba": "DoveChat WABA",
     }
+
+    TOPICS: list = [k + "_outgoing"  for k in CHANNELS]
     BITRIX_CONNECTOR_MAP: dict = {k: "dovechat_" + k for k in CHANNELS}
     BITRIX_CONNECTOR_CHANNEL_MAP: dict = {"dovechat_" +  k: k for k in CHANNELS}
     CHANNEL_HANDLERS: dict = {k: "create_" + k for k in CHANNELS}

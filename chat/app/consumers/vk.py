@@ -201,10 +201,6 @@ class VkListener:
             log.warning(f"Conversation not found for line {line_id}, from_id {from_id}")
             return
 
-        media_id = None
-        file_name = None
-        mime_type = None
-
         media_items = []
 
         for att in attachments:

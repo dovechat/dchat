@@ -16,25 +16,8 @@ from schemas.auth_schemas import UserContext
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
 
-TOPICS = [
-    "telegram_bot_outgoing",
-    "telegram_user_outgoing",
-    "vk_outgoing",
-    "waba_outgoing",
-    "whatsapp_green_outgoing",
-]
-
 DLT_TOPIC = "outgoing_dlt"
 MAX_RETRIES = 5
-
-CHANNEL_HANDLERS = {
-    "telegram_bot": "create_msg_tgbot",
-    "telegram_user": "create_msg_tguser",
-    "vk": "create_msg_vk",
-    "waba": "create_msg_waba",
-    "whatsapp_green": "create_msg_whatsapp_green",
-}
-
 
 async def process_message(
     event_data: dict,
@@ -55,7 +38,7 @@ async def process_message(
         id=uuid.UUID(event_data["user_id"]),
         email=event_data["user_email"],
     )
-    handler = getattr(chat_service, CHANNEL_HANDLERS[channel_type])
+    handler = getattr(chat_service, settings.CHANNEL_HANDLERS[channel_type])
     kwargs = dict(data=data, files=[], current_user=current_user)
     if channel_type == "telegram_user":
         kwargs["listener"] = tg_listener
@@ -66,7 +49,7 @@ async def start_consumer():
     tg_listener = TelegramListener()
 
     consumer = AIOKafkaConsumer(
-        *TOPICS,
+        *settings.TOPICS,
         bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id="outgoing-consumer-group",
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),

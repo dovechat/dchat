@@ -28,6 +28,7 @@ async def process_dlt_message(
 ):
     channel_type = event_data.get("channel_type")
     data = MessageCreate(
+        message_id=event_data.get("message_id"),
         conversation_id=uuid.UUID(event_data["conversation_id"]),
         direction=MessageDirection.outbound,
         phone=event_data["phone"],
@@ -94,8 +95,7 @@ async def start_dlt_consumer():
                 log.info(f"DLT retry attempt={attempt} conversation_id={event_data.get('conversation_id')}")
 
                 async with get_session() as db:
-                    uow = ChatUoW(db)
-                    chat_service = ChatService(uow)
+                    chat_service = ChatService(db)
                     try:
                         await process_dlt_message(event_data, chat_service, tg_listener)
                         await consumer.commit()
