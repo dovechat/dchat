@@ -37,17 +37,18 @@ class CrmService:
             client_name: str,
             text: str,
             message_id: str,
+            channel_type: str,
             media: list[dict] = [],
     ) -> str | None:
         log.info("start send_to_crm")
-        conn = await self._uow.crm_connections.get_by_tenant(tenant_id)
+        conn = await self._uow.crm_connections.get_by_tenant_and_channel(tenant_id, channel_type)
         log.info(f"send_to_crm conn {conn}")
         if not conn:
             return
 
         log.info(f"send_to_crm conn2 {conn}")
         provider = get_provider(conn)
-        link = await self._uow.crm_dialog_links.get_by_conversation(conversation_id, conn.id)
+        link = await self._uow.crm_dialog_links.get_by_conversation(conversation_id)
         crm_chat_id = link.crm_chat_id if link else None
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
@@ -520,14 +521,19 @@ class CrmService:
         reg_result = await bx.register_connector(connector_id)
         log.info(f"register_connector result: {reg_result}")
 
-        crm_line_id = bx_auth.get("bx_line_id") or await bx.create_open_line(line.name)
-        log.info(f"connect_line crm_line_id={crm_line_id!r}")
+        conn = await self._uow.crm_connections.get_by_member_and_connector(member_id, connector_id)
+        crm_line_id = (
+                bx_auth.get("bx_line_id")
+                or (conn.crm_line_id if conn else None)
+                or await bx.create_open_line(line.name)
+        )
+        log.info(
+            f"connect_line crm_line_id={crm_line_id!r} member_id={member_id} connector_id={connector_id} conn={conn}"
+        )
 
         await bx.link_connector(crm_line_id, connector_id)
         await bx.activate_connector(crm_line_id, connector_id)
-        log.info(f"activate_connector connector_id={connector_id}")
 
-        conn = await self._uow.crm_connections.get_by_member_and_connector(member_id, connector_id)
         if conn:
             await self._uow.crm_connections.update(
                 conn,

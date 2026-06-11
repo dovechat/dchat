@@ -142,6 +142,7 @@ class BotService:
                 client_name=chat.get("first_name") or "",
                 text=text or "",
                 message_id=str(db_message.id),
+                channel_type="telegram_bot",
                 media=[{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "file_size": file_size}] if media_id else []
             )
             log.info(f"\n\n *-**-*-*-*-*-*-*-*    bx_chat_id {bx_chat_id} \n\n ")

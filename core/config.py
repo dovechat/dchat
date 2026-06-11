@@ -71,13 +71,14 @@ class Settings(BaseSettings):
     BITRIX_CLIENT_ID: str = "local.6a11925fa39594.77018871"
     BITRIX_CLIENT_SECRET: str = "x1W6xLDK1YElQhc2FjCZ3AkinJtahY3teWpO1jCzqO4kuEUsOl"
     BITRIX_APPLICATION_TOKEN: str = "84b9dd8be3f401e8764e2dd82365361b"
-    BITRIX_CONNECTOR_MAP: dict = {
-        "telegram_bot": "dovechat_telegram_bot",
-        "telegram_user": "dovechat_telegram_user",
-        "vk": "dovechat_vk",
-        "whatsapp_green": "dovechat_whatsapp_green",
-        "waba": "dovechat_waba",
-    }
+    
+    CHANNELS: list = [
+        "telegram_bot",
+        "telegram_user",
+        "whatsapp_green",
+        "waba",
+        "vk",
+    ]
     BITRIX_CONNECTOR_NAMES: dict = {
         "dovechat_telegram_bot": "DoveChat TgBot",
         "dovechat_telegram_user": "DoveChat TgUser",
@@ -85,13 +86,10 @@ class Settings(BaseSettings):
         "dovechat_whatsapp_green": "DoveChat WA",
         "dovechat_waba": "DoveChat WABA",
     }
-    BITRIX_CONNECTOR_CHANNEL_MAP: dict = {
-        "dovechat_telegram_bot": "telegram_bot",
-        "dovechat_telegram_user": "telegram_user",
-        "dovechat_vk": "vk",
-        "dovechat_whatsapp_green": "whatsapp_green",
-        "dovechat_waba": "waba",
-    }
+    BITRIX_CONNECTOR_MAP: dict = {k: "dovechat_" + k for k in CHANNELS}
+    BITRIX_CONNECTOR_CHANNEL_MAP: dict = {"dovechat_" +  k: k for k in CHANNELS}
+    CHANNEL_HANDLERS: dict = {k: "create_" + k for k in CHANNELS}
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

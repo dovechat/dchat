@@ -21,15 +21,6 @@ DLT_GROUP_ID = "outgoing-dlt-group"
 MAX_RETRIES = 3
 RETRY_INTERVAL = 60
 
-CHANNEL_HANDLERS = {
-    "telegram_bot": "create_msg_tgbot",
-    "telegram_user": "create_msg_tguser",
-    "vk": "create_msg_vk",
-    "waba": "create_msg_waba",
-    "whatsapp_green": "create_msg_whatsapp_green",
-}
-
-
 async def process_dlt_message(
     event_data: dict,
     chat_service: ChatService,
@@ -48,7 +39,7 @@ async def process_dlt_message(
         id=uuid.UUID(event_data["user_id"]),
         email=event_data["user_email"],
     )
-    handler = getattr(chat_service, CHANNEL_HANDLERS[channel_type])
+    handler = getattr(chat_service, settings.CHANNEL_HANDLERS[channel_type])
     kwargs = dict(data=data, files=[], current_user=current_user)
     if channel_type == "telegram_user":
         kwargs["listener"] = tg_listener

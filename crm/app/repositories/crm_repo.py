@@ -37,6 +37,12 @@ class CrmConnectionRepository(BaseRepository[CrmConnection]):
         )
         return rows[0] if rows else None
 
+    async def get_by_tenant_and_channel(self, tenant_id: uuid.UUID, channel_type: str) -> CrmConnection | None:
+        rows = await self.get_multi(
+            filters={"tenant_id": tenant_id, "channel_type": channel_type, "is_active": True},
+            limit=1,
+        )
+        return rows[0] if rows else None
 
 
 class CrmDialogLinkRepository(BaseRepository[CrmDialogLink]):
@@ -44,15 +50,11 @@ class CrmDialogLinkRepository(BaseRepository[CrmDialogLink]):
         super().__init__(CrmDialogLink, session)
 
     async def get_by_conversation(
-        self,
-        conversation_id: uuid.UUID,
-        crm_connection_id: uuid.UUID,
+            self,
+            conversation_id: uuid.UUID,
     ) -> CrmDialogLink | None:
         rows = await self.get_multi(
-            filters={
-                "conversation_id": conversation_id,
-                "crm_connection_id": crm_connection_id,
-            },
+            filters={"conversation_id": conversation_id},
             limit=1,
         )
         return rows[0] if rows else None

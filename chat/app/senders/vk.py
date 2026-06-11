@@ -14,6 +14,7 @@ class VKSender(BaseSender):
         self.creds = None
 
     def extract_msg_id(self, result) -> str | None:
+        log.info(f"VK extract_msg_id result={result} type={type(result)}")
         if not result:
             return None
         return str(result) if isinstance(result, int) else result.get("message_id")
@@ -30,6 +31,8 @@ class VKSender(BaseSender):
         conn = VkConnection(access_token=self.creds["access_token"])
 
         clean_phone = data.phone.lstrip('+')
+
+        log.info(f"peer_id={int(clean_phone)}")
         
         if data.media:
             attachments = []
@@ -52,4 +55,4 @@ class VKSender(BaseSender):
                 "random_id": data.message_id
             })
         else:
-            return await conn.send_message(clean_phone, data.text, random_id=data.message_id)
+            return await conn.send_message(int(clean_phone), data.text, random_id=data.message_id)

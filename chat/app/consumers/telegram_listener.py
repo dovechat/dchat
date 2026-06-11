@@ -304,6 +304,7 @@ class TelegramListener:
         if not data.phone:
             data.phone = me.phone
 
+
         try:
             entity = await client.get_entity(data.phone)
             log.info(
@@ -472,6 +473,37 @@ class TelegramListener:
         except Exception as e:
             log.error(f"Failed: {e}", exc_info=True)
             raise
+
+        sender = event.message.sender
+        client_name = (
+            f"{getattr(sender, 'first_name', '') or ''} "
+            f"{getattr(sender, 'last_name', '') or ''}"
+        ).strip()
+
+        try:
+            from crm.app.services.crm_service import CrmService
+            from crm.app.core.uow import CrmUnitOfWork
+            crm_uow = CrmUnitOfWork(db)
+            crm_service = CrmService(crm_uow)
+            conv = await service.conv_repo.get_by_id(conversation_id)
+            line = await crm_uow.lines.get_by_id(conv.line_id)
+            bx_chat_id = await crm_service.send_to_crm(
+                tenant_id=line.tenant_id,
+                conversation_id=conv.id,
+                client_phone=peer_phone,
+                client_name=client_name,
+                text=event.message.text or "",
+                message_id=str(message.id),
+                channel_type="telegram_user",
+                media=[{"id": str(media_id), "file_name": file_name, "mime_type": mime_type,
+                        "file_size": 0}] if media_id else [],
+            )
+            log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+            if bx_chat_id:
+                await service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
+        except Exception as e:
+            log.error(f"CRM send_to_crm failed: {e}")
+
 
 
     async def _flush_album(self, mgid: str, event):

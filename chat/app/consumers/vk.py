@@ -39,6 +39,7 @@ class VkConnection:
             resp.raise_for_status()
             result = resp.json()
             if result.get("error"):
+                log.error(f"VK API error full: {result['error']}")
                 raise ValueError(f"VK API error: {result['error']['error_msg']}")
             return result.get("response")
 
@@ -99,6 +100,11 @@ class VkListener:
                 chat_service = ChatService(db)
                 return await self._handle_incoming_message(line_id, payload, chat_service)
         elif event_type == "message_reply":
+            from_id = payload.get("object", {}).get("from_id", 0)
+            if from_id > 0:
+                async with get_session() as db:
+                    chat_service = ChatService(db)
+                    return await self._handle_incoming_message(line_id, payload, chat_service)
             return await self.vk_handle_reply(line_id, payload)
         elif event_type == "confirmation":
             return await self.vk_confirm(line_id)
@@ -239,6 +245,29 @@ class VkListener:
             ws_message["media"] = media_items
 
         await manager.send_new_message(conv.id, ws_message)
+
+        async with get_session() as db:
+            try:
+                from crm.app.services.crm_service import CrmService
+                from crm.app.core.uow import CrmUnitOfWork
+                crm_uow = CrmUnitOfWork(db)
+                crm_service = CrmService(crm_uow)
+                line = await crm_uow.lines.get_by_id(line_id)
+                bx_chat_id = await crm_service.send_to_crm(
+                    tenant_id=line.tenant_id,
+                    conversation_id=conv.id,
+                    client_phone=phone,
+                    client_name="",
+                    text=text or "",
+                    message_id=msg_id,
+                    channel_type="vk",
+                    media=media_items,
+                )
+                log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+                if bx_chat_id:
+                    await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
+            except Exception as e:
+                log.error(f"CRM send_to_crm failed: {e}")
         return 'ok'
 
     async def _download_file(self, url: str) -> bytes:

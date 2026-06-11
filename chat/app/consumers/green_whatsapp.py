@@ -3,6 +3,7 @@ import httpx
 import uuid
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
 from core.database import get_db
 from app.repositories.chat_repo import ChatRepository
@@ -90,7 +91,7 @@ class GreenWhatsAppListener:
             async with get_session() as db:
                 log.info(f"--- get session db {db}")
                 chat_service = ChatService(db)
-                await self._handle_incoming_message(line_id, payload, chat_service)
+                await self._handle_incoming_message(line_id, payload, chat_service, db)
         elif event_type == "outgoingMessageStatus":
             await self._handle_message_status(line_id, payload)
         elif event_type == "stateInstanceChanged":
@@ -98,7 +99,7 @@ class GreenWhatsAppListener:
         else:
             log.warning(f"Unhandled webhook type: {event_type}")
 
-    async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService"):
+    async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession):
         """Обработка входящего сообщения"""
         log.info(f"\n\n --------- _handle_incoming_message payload {payload}")
         message_data = payload.get("messageData", {})
@@ -170,6 +171,32 @@ class GreenWhatsAppListener:
             ]
 
         await manager.send_new_message(conv.id, ws_message)
+
+        try:
+            from crm.app.services.crm_service import CrmService
+            from crm.app.core.uow import CrmUnitOfWork
+            from sqlalchemy.ext.asyncio import AsyncSession
+            crm_uow = CrmUnitOfWork(db)
+            crm_service = CrmService(crm_uow)
+            line = await crm_uow.lines.get_by_id(line_id)
+            sender_name = sender_data.get("senderName", "")
+            bx_chat_id = await crm_service.send_to_crm(
+                tenant_id=line.tenant_id,
+                conversation_id=conv.id,
+                client_phone=phone,
+                client_name=sender_name,
+                text=text or "",
+                message_id=str(message.id),
+                channel_type="whatsapp_green",
+                media=[{"id": str(media_id), "file_name": original_file_name, "mime_type": mime_type,
+                        "file_size": 0}] if media_id else [],
+            )
+            log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+            if bx_chat_id:
+                await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
+        except Exception as e:
+            log.error(f"CRM send_to_crm failed: {e}")
+
 
     async def _handle_message_status(self, line_id: str, payload: dict):
         external_id = payload.get("idMessage")
