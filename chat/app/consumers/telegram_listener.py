@@ -85,7 +85,7 @@ class TelegramConnection:
             StringSession(session_string),
             settings.tg_api_id,
             settings.tg_api_hash,
-            proxy=(socks.SOCKS5, settings.tg_proxy_host, int(settings.tg_proxy_port)),
+            proxy={"proxy_type": socks.SOCKS5, "addr": settings.tg_proxy_host, "port": settings.tg_proxy_port},
             auto_reconnect=True,
             connection_retries=5,
             retry_delay=1
