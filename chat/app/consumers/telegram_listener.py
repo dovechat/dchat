@@ -3,6 +3,7 @@ import httpx
 import json
 import logging
 import os
+import socks
 import uuid
 
 from contextlib import asynccontextmanager
