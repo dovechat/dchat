@@ -82,22 +82,31 @@ class TelegramConnection:
             StringSession(session_string),
             settings.tg_api_id,
             settings.tg_api_hash,
+            proxy=(socks.SOCKS5, settings.tg_proxy_host, settings.tg_proxy_port),
             auto_reconnect=True,
             connection_retries=5,
             retry_delay=1
         )
 
+        log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
+
         await self.client.connect()
+        
+        log.info(f"+++++++++ Connecting to Telegram self.client after connect")
 
         if not await self.client.is_user_authorized():
             raise ValueError(f"Not authorized for {self.my_phone}")
+
+        log.info(f"+++++++++ Connecting to Telegram self.client after is_user_authorized")
 
         @self.client.on(events.NewMessage)
         async def handler(event):
             await self._handle_message(event)
 
+        log.info(f"+++++++++ Connecting to Telegram self.client after @self.client.on")
+
         self._running = True
-        log.info(f"+++++++++ Connected: {self.conversation_id} (client: {self.client is not None})")
+        log.info(f"+++++++++ !!! Connected: {self.conversation_id} (client: {self.client is not None})")
 
         async with get_session() as db:
             line_repo = LineRepository(db)
@@ -111,6 +120,7 @@ class TelegramConnection:
             self.line_name = line.name
             log.info(f"+++++++++ Update connection status in db: after)")
 
+        log.info(f"+++++++++ !!! Connected: after change status")
 
     async def disconnect(self):
         log.info(f"Disconnecting {self.conversation_id}")
