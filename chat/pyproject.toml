@@ -27,6 +27,7 @@ redis = "^7.1.0"
 loguru = "^0.7.3"
 telethon = "^1.42.0"
 minio = "^7.2.20"
+pysocks = "^1.7.1"
 
 
 [tool.poetry.group.dev.dependencies]
