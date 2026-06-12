@@ -79,6 +79,8 @@ class TelegramConnection:
         if not session_string:
             raise ValueError(f"No session for {self.my_phone}")
 
+        log.info(f"\n\n +++++++++ Connecting to Telegram settings.tg_proxy_host {settings.tg_proxy_host} settings.tg_proxy_host {settings.tg_proxy_port} \n\n ")
+
         self.client = TelegramClient(
             StringSession(session_string),
             settings.tg_api_id,
