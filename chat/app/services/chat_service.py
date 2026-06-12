@@ -128,10 +128,10 @@ class ChatService:
         )
         return MessageResponse.model_validate(message)
 
-    async def create_msg_tgbot(self, data, files=[], current_user=None):
+    async def create_msg_telegram_bot(self, data, files=[], current_user=None):
         return await self._process_queue_outgoing("telegram_bot", data, current_user)
 
-    async def create_msg_tguser(self, data, files=[], current_user=None, listener=None):
+    async def create_msg_telegram_user(self, data, files=[], current_user=None, listener=None):
         return await self._process_queue_outgoing("telegram_user", data, current_user, tg_listener=listener)
 
     async def create_msg_whatsapp_green(self, data, files=[], current_user=None):
