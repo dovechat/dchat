@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     tg_bot_send_url: str = ""
     tg_proxy_host: str = ""
     tg_proxy_port: str = ""
+    tg_proxy_secret: str = ""
     vk_webhook_domain: str = ""
     notification_bot_token: str = ""
     low_balance_warn_days: tuple[int, ...]  = (5, 3)
