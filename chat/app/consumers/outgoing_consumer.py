@@ -45,8 +45,9 @@ async def process_message(
     await handler(**kwargs)
 
 
-async def start_consumer():
-    tg_listener = TelegramListener()
+async def start_consumer(tg_listener: TelegramListener | None = None):
+    if tg_listener is None:
+        tg_listener = TelegramListener()
 
     consumer = AIOKafkaConsumer(
         *settings.TOPICS,

@@ -10,6 +10,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from .v1.chat import router as chat_router
 from .v1.websocket import router as websocket_router
 from app.consumers.green_whatsapp import GreenWhatsAppListener
+from app.consumers.outgoing_consumer import start_consumer
 from app.consumers.waba import WabaListener
 from app.consumers.telegram_listener import TelegramListener
 from app.consumers.vk import VkListener
@@ -76,6 +77,7 @@ async def startup():
     app.state.waba_listener = WabaListener()
     app.state.vk_listener = VkListener()
     asyncio.create_task(redis_subscriber())
+    asyncio.create_task(start_consumer(tg_listener=app.state.listener))
 
 prefix = "/v1"
 app.include_router(public_router, prefix=prefix)
