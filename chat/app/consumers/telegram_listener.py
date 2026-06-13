@@ -109,6 +109,11 @@ class TelegramConnection:
         log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
 
         await self.client.connect()
+        await self.client.disconnect()
+        await asyncio.sleep(1)
+        await self.client.connect()
+
+        await self.client.connect()
         
         log.info(f"+++++++++ Connecting to Telegram self.client after connect")
 
@@ -407,14 +412,17 @@ class TelegramListener:
         log.info(f"------ TelegramListener._listen_task connection {connection}")
 
         # Сначала подключаемся синхронно
-        try:
-            await connection.connect()
-            log.info(f"----**---- Connected successfully for {conversation_id}")
-            self.clients[conversation_id] = connection.client
-            log.info(f"----**---- Connected successfully self.clients {self.clients}")
-        except Exception as e:
-            log.error(f"----**----  Failed to connect for {conversation_id}: {e}")
-            return
+        if conversation_id in self.clients and self.clients[conversation_id].is_connected():
+            log.info(f"Client already connected for {conversation_id}, reusing")
+            connection.client = self.clients[conversation_id]
+        else:
+            try:
+                await connection.connect()
+                log.info(f"----**---- Connected successfully for {conversation_id}")
+                self.clients[conversation_id] = connection.client
+            except Exception as e:
+                log.error(f"----**----  Failed to connect for {conversation_id}: {e}")
+                return
 
         log.info(f"------ TelegramListener._listen_task start sync")
 

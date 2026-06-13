@@ -24,7 +24,8 @@ from api.lines import line_router
 from .v1.webhooks import router as webhooks_router
 
 import logging
-logging.getLogger("fastapi").setLevel(logging.DEBUG)
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 from api.app_start import start
 
@@ -60,9 +61,9 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logging.error(f"422 Validation Error for request {request.method} {request.url}")
-    logging.error(f"Request body: {exc.body}")
-    logging.error(f"Errors: {exc.errors()}")
+    log.error(f"422 Validation Error for request {request.method} {request.url}")
+    log.error(f"Request body: {exc.body}")
+    log.error(f"Errors: {exc.errors()}")
     # Возвращаем стандартный ответ, чтобы не ломать клиента
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -78,6 +79,15 @@ async def startup():
     app.state.vk_listener = VkListener()
     asyncio.create_task(redis_subscriber())
     asyncio.create_task(start_consumer(tg_listener=app.state.listener))
+
+@app.on_event("shutdown")
+async def shutdown():
+    for conv_id, client in app.state.listener.clients.items():
+        try:
+            await client.disconnect()
+            log.info(f"Disconnected TG client for {conv_id}")
+        except Exception as e:
+            log.error(f"Error disconnecting {conv_id}: {e}")
 
 prefix = "/v1"
 app.include_router(public_router, prefix=prefix)
