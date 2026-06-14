@@ -82,12 +82,16 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    for conv_id, client in app.state.listener.clients.items():
-        try:
-            await client.disconnect()
-            log.info(f"Disconnected TG client for {conv_id}")
-        except Exception as e:
-            log.error(f"Error disconnecting {conv_id}: {e}")
+    listener = app.state.listener
+    for conv_id in list(listener.tasks.keys()):
+        client = listener.clients.get(conv_id)
+        if client:
+            try:
+                await client.disconnect()
+                log.info(f"Disconnected TG client for {conv_id}")
+            except Exception as e:
+                log.error(f"Error disconnecting {conv_id}: {e}")
+        await listener.stop_listening(conv_id)
 
 prefix = "/v1"
 app.include_router(public_router, prefix=prefix)
