@@ -606,11 +606,13 @@ class CrmService:
             refresh_token = data.get("REFRESH_ID", "")
             member_id = data.get("member_id", "")
             connector = ""
+            line = ""
             placement_options = data.get("PLACEMENT_OPTIONS", "")
             if placement_options:
                 try:
                     opts = json.loads(placement_options)
                     connector = opts.get("CONNECTOR", "")
+                    line = opts.get("LINE", "")
                 except Exception:
                     pass
             return RedirectResponse(
@@ -620,6 +622,7 @@ class CrmService:
                     f"&REFRESH_TOKEN={refresh_token}"
                     f"&MEMBER_ID={member_id}"
                     f"&CONNECTOR={connector}"
+                    f"&LINE={line}"
                 ),
                 status_code=303,
             )

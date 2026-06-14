@@ -51,7 +51,7 @@ var bxAuth = {
     member_id: params.get('MEMBER_ID') || '',
     domain: params.get('DOMAIN') || location.hostname,
     connector: params.get('CONNECTOR') || '',
-    bx_line_id: '',
+    bx_line_id: params.get('LINE') || '',
 };
 BX24.init(function() {
     if (BX24.placement.info().placement !== 'SETTING_CONNECTOR') {
