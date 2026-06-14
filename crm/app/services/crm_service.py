@@ -531,8 +531,10 @@ class CrmService:
             f"connect_line crm_line_id={crm_line_id!r} member_id={member_id} connector_id={connector_id} conn={conn}"
         )
 
-        await bx.link_connector(crm_line_id, connector_id)
-        await bx.activate_connector(crm_line_id, connector_id)
+        link_result = await bx.link_connector(crm_line_id, connector_id)
+        log.info(f"link_connector result: {link_result}")
+        activate_result = await bx.activate_connector(crm_line_id, connector_id)
+        log.info(f"activate_connector result: {activate_result}")
 
         if conn:
             await self._uow.crm_connections.update(
