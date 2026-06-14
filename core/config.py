@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # API
     host_url: str = "http://localhost"
-    proxy_url: str = "http://localhost""
+    proxy_url: str = "http://localhost"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
 
