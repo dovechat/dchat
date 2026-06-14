@@ -40,7 +40,7 @@ class CrmService:
             channel_type: str,
             media: list[dict] = [],
     ) -> str | None:
-        log.info("start send_to_crm")
+        log.info(f"start send_to_crm tenant_id {tenant_id} channel_type {channel_type}")
         conn = await self._uow.crm_connections.get_by_tenant_and_channel(tenant_id, channel_type)
         log.info(f"send_to_crm conn {conn}")
         if not conn:
