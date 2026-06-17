@@ -39,3 +39,16 @@ async def bitrix_install():
 <body><script>BX24.init(function(){ BX24.installFinish(); });</script></body>
 </html>"""
     return HTMLResponse(content=html)
+
+
+@webhooks_router.post("/bitrix/check-wa-tg")
+async def bitrix_check_wa_tg(
+    request: Request,
+    crm_service: CrmService = Depends(get_crm_service),
+):
+    body = await request.body()
+    from urllib.parse import parse_qs
+    parsed = parse_qs(body.decode())
+    data = {k: v[0] for k, v in parsed.items()}
+    log.info(f"bitrix_check_wa_tg data: {data}")
+    return await crm_service.check_wa_tg(data)

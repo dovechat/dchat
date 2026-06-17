@@ -907,3 +907,149 @@ class CrmService:
                     log.error(f"_robot_check_account wa failed: {e}")
                     res = {"exists": "N", "user_id": "", "error": str(e)}
         return {"exists": "Y" if res["exists"] == "Y" else "N"}
+
+    async def check_wa_tg(self, data: dict) -> dict:
+        from crm.app.services.providers.bitrix.client import BitrixClient
+        from infra.crypto import decrypt, encrypt
+        from core.config import settings
+
+        member_id = data.get("auth[member_id]")
+        deal_id = data.get("data[FIELDS][ID]")
+        domain = data.get("auth[domain]")
+
+        if not all([member_id, deal_id, domain]):
+            log.error(f"check_wa_tg missing fields: {data}")
+            return {"status": "error"}
+
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        if not conn:
+            log.error(f"check_wa_tg no conn for member_id={member_id}")
+            return {"status": "error"}
+
+        try:
+            refreshed = await BitrixClient.refresh_tokens(
+                domain=domain,
+                refresh_token=decrypt(conn.refresh_token_enc),
+                client_id=settings.BITRIX_CLIENT_ID,
+                client_secret=settings.BITRIX_CLIENT_SECRET,
+            )
+            access_token = refreshed["access_token"]
+            await self._uow.crm_connections.update(
+                conn,
+                access_token_enc=encrypt(refreshed["access_token"]),
+                refresh_token_enc=encrypt(refreshed["refresh_token"]),
+            )
+        except Exception as e:
+            log.error(f"check_wa_tg token refresh failed: {e}")
+            access_token = decrypt(conn.access_token_enc)
+
+        bx = BitrixClient(domain=domain, access_token=access_token)
+
+        try:
+            deal = await bx.call("crm.deal.get", {"id": deal_id})
+            contact_id = deal.get("result", {}).get("CONTACT_ID")
+            if not contact_id or contact_id == "0":
+                log.warning(f"check_wa_tg no contact for deal_id={deal_id}")
+                return {"status": "no_contact"}
+            contact = await bx.call("crm.contact.get", {"id": contact_id})
+            phones = contact.get("result", {}).get("PHONE", [])
+            phone = phones[0].get("VALUE") if phones else None
+            log.info(f"check_wa_tg deal_id={deal_id} contact_id={contact_id} phone={phone}")
+        except Exception as e:
+            log.error(f"check_wa_tg crm fetch failed: {e}")
+            return {"status": "error"}
+
+        if not phone:
+            log.warning(f"check_wa_tg no phone contact_id={contact_id}")
+            return {"status": "no_phone"}
+
+        phone = phone.replace("+", "").replace(" ", "").replace("-", "")
+        result = await self._robot_check_account(phone, conn.line_id)
+        exists = result.get("exists") == "Y"
+        status_text = "Есть в мессенджере" if exists else "Нет в мессенджере"
+
+        try:
+            await bx.call(
+                "crm.deal.update",
+                {"id": deal_id, "fields": {"UF_CRM_1781704941990": status_text}},
+                use_json=True,
+            )
+            log.info(f"check_wa_tg updated deal_id={deal_id} status={status_text}")
+        except Exception as e:
+            log.error(f"check_wa_tg deal update failed: {e}")
+
+        return {"status": "ok", "exists": exists}
+
+    
+    
+    async def check_wa_tg(self, data: dict) -> dict:
+        from crm.app.services.providers.bitrix.client import BitrixClient
+        from infra.crypto import decrypt, encrypt
+        from core.config import settings
+    
+        member_id = data.get("auth[member_id]")
+        deal_id = data.get("data[FIELDS][ID]")
+        domain = data.get("auth[domain]")
+    
+        if not all([member_id, deal_id, domain]):
+            log.error(f"check_wa_tg missing fields: {data}")
+            return {"status": "error"}
+    
+        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        if not conn:
+            log.error(f"check_wa_tg no conn for member_id={member_id}")
+            return {"status": "error"}
+    
+        try:
+            refreshed = await BitrixClient.refresh_tokens(
+                domain=domain,
+                refresh_token=decrypt(conn.refresh_token_enc),
+                client_id=settings.BITRIX_CLIENT_ID,
+                client_secret=settings.BITRIX_CLIENT_SECRET,
+            )
+            access_token = refreshed["access_token"]
+            await self._uow.crm_connections.update(
+                conn,
+                access_token_enc=encrypt(refreshed["access_token"]),
+                refresh_token_enc=encrypt(refreshed["refresh_token"]),
+            )
+        except Exception as e:
+            log.error(f"check_wa_tg token refresh failed: {e}")
+            access_token = decrypt(conn.access_token_enc)
+    
+        bx = BitrixClient(domain=domain, access_token=access_token)
+    
+        try:
+            deal = await bx.call("crm.deal.get", {"id": deal_id})
+            contact_id = deal.get("result", {}).get("CONTACT_ID")
+            if not contact_id or contact_id == "0":
+                log.warning(f"check_wa_tg no contact for deal_id={deal_id}")
+                return {"status": "no_contact"}
+            contact = await bx.call("crm.contact.get", {"id": contact_id})
+            phones = contact.get("result", {}).get("PHONE", [])
+            phone = phones[0].get("VALUE") if phones else None
+            log.info(f"check_wa_tg deal_id={deal_id} contact_id={contact_id} phone={phone}")
+        except Exception as e:
+            log.error(f"check_wa_tg crm fetch failed: {e}")
+            return {"status": "error"}
+    
+        if not phone:
+            log.warning(f"check_wa_tg no phone contact_id={contact_id}")
+            return {"status": "no_phone"}
+    
+        phone = phone.replace("+", "").replace(" ", "").replace("-", "")
+        result = await self._robot_check_account(phone, conn.line_id)
+        exists = result.get("exists") == "Y"
+        status_text = "Есть в мессенджере" if exists else "Нет в мессенджере"
+    
+        try:
+            await bx.call(
+                "crm.deal.update",
+                {"id": deal_id, "fields": {"UF_CRM_1781704941990": status_text}},
+                use_json=True,
+            )
+            log.info(f"check_wa_tg updated deal_id={deal_id} status={status_text}")
+        except Exception as e:
+            log.error(f"check_wa_tg deal update failed: {e}")
+    
+        return {"status": "ok", "exists": exists}
