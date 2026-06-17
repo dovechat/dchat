@@ -372,6 +372,26 @@ class CrmService:
             except Exception as e:
                 log.warning(f"bizproc.robot.add {robot_code} failed: {e}")
 
+        try:
+            await bx.call(
+                "crm.userfield.add",
+                {
+                    "fields": {
+                        "ENTITY_ID": "CRM_DEAL",
+                        "FIELD_NAME": "DOVECHAT_WA_TG_STATUS",
+                        "USER_TYPE_ID": "string",
+                        "XML_ID": "DOVECHAT_WA_TG_STATUS",
+                        "EDIT_FORM_LABEL": "DoveChat: статус в мессенджере",
+                        "LIST_COLUMN_LABEL": "DoveChat: статус",
+                        "MANDATORY": "N",
+                    }
+                },
+            )
+            log.info("crm.userfield.add DOVECHAT_WA_TG_STATUS done")
+        except Exception as e:
+            log.warning(f"crm.userfield.add failed (possibly already exists): {e}")
+
+
     async def save_install_tokens(self, body: bytes, domain: str = "" ) -> None:
         from urllib.parse import parse_qs
         from core.config import settings
