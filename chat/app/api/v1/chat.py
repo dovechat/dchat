@@ -20,6 +20,7 @@ from app.schemas.chat_schemas import (
     LineResponse,
     LineWithChannelsResponse,
     MessageCreate,
+    MessageDirection,
     MessageResponse,
 )
 from models.tenants import User
