@@ -59,6 +59,7 @@ async def _enqueue_outgoing(
         user_email=current_user.email,
         message_id=message.id,
         files=files,
+        template=data.template,
     )
     log.info(f"_enqueue_outgoing channel_type={channel_type} message_id={message.id}")
     return MessageResponse.model_validate(message)

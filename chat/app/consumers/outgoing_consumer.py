@@ -33,6 +33,7 @@ async def process_message(
         status=MessageStatus.sent,
         media=event_data.get("media", []),
         message_id=event_data.get("message_id"),
+        template=data.template,
     )
     current_user = UserContext(
         id=uuid.UUID(event_data["user_id"]),
