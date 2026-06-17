@@ -197,7 +197,6 @@ class WabaListener:
                 conversation_id=conv.id,
                 external_id=msg_id,
                 text=text,
-                msg_type=msg_type,
                 media_items=media_items if media_items else None,
                 raw_data=value,
             )

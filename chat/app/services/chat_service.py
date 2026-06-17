@@ -952,7 +952,6 @@ class ChatService:
             conversation_id: uuid.UUID,
             external_id: str,
             text: str | None,
-            msg_type: str,
             media_items: list | None = None,
             raw_data: dict | None = None
     ) -> MessageResponse:
@@ -963,13 +962,11 @@ class ChatService:
             direction=MessageDirection.inbound,
             text=text or "",
             channel_msg_id=external_id,
-            media=[
-                {"id": str(media_id), "file_name": file_name, "mime_type": mime_type}
-            ] if media_id else None,
-            raw_content=raw_data
+            media=media_items or [],
+            raw_content=raw_data,
         )
 
-        _, message = await self.conv_msg(data, None)  # user_id=None для входящих
+        _, message = await self.conv_msg(data, None)
         return MessageResponse.model_validate(message)
 
     async def save_incoming_vk(
