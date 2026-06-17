@@ -7,6 +7,7 @@ from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
 from app.services.websocket_manager import manager
 from app.services.chat_service import ChatService
+from core.config import settings
 from core.database import get_db
 from infra.crypto import decrypt
 from models.lines import Line
