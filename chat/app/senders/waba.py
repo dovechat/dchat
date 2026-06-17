@@ -34,5 +34,17 @@ class WabaSender(BaseSender):
                 result = await conn.send_file(clean_phone, file_url, m.get("mime_type"), data.text)
                 results.append(result)
             return results[-1] if results else None
+        elif data.template:
+            return await conn.send_template(
+                clean_phone,
+                data.template["name"],
+                data.template.get("language", "ru"),
+                data.template.get("components", []),
+            )
         else:
             return await conn.send_message(clean_phone, data.text)
+
+    async def send_template(self, phone: str, template_name: str, language: str = "ru", components: list | None = None) -> dict:
+        conn = WabaConnection(api_key=self.creds["api_key"])
+        clean_phone = phone.lstrip('+')
+        return await conn.send_template(clean_phone, template_name, language, components)

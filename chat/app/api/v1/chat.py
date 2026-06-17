@@ -115,6 +115,24 @@ async def create_message_waba(
     return await _enqueue_outgoing("waba", MessageCreate.parse_raw(data), files, current_user, chat_service)
 
 
+@router.post("/messages/waba/template", response_model=MessageResponse)
+async def create_message_waba_template(
+    conversation_id: uuid.UUID = Form(...),
+    template_name: str = Form(...),
+    language: str = Form(default="ru"),
+    components: str = Form(default="[]"),
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    data = MessageCreate(
+        conversation_id=conversation_id,
+        direction=MessageDirection.outbound,
+        text=f"[template:{template_name}]",
+        phone="",
+        template={"name": template_name, "language": language, "components": json.loads(components)},
+    )
+
+    return await _enqueue_outgoing("waba", data, [], current_user, chat_service)
 @router.post("/messages/vk", response_model=MessageResponse)
 async def create_message_vk(
     data: str = Form(...),

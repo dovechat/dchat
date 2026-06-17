@@ -84,6 +84,9 @@ class ChatService:
 
         conv = await self.conv_repo.get_by_id(data.conversation_id)
 
+        if not data.phone:
+            data.phone = conv.client_phone
+
         if data.media:
             for m in data.media:
                 try:
@@ -442,7 +445,6 @@ class ChatService:
                             'message_id': str(data.id),
                             'conversation_id': str(conversation_id),
                             'text': data.text,
-                            # edia_id': data.media_id  # если есть
                         },
                         account_phone=data.phone
                     )

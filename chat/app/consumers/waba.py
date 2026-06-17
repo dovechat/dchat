@@ -50,9 +50,25 @@ class WabaConnection:
             "recipient_type": "individual",
             "to": to,
             "type": "text",
-            "text": {"preview_url": False, "body": text}
+            "text": {"preview_url": False, "body": text},
         }
         return await self.send("messages", payload)
+
+    async def send_template(self, to: str, template_name: str, language: str = "ru",
+                            components: list | None = None) -> dict:
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": language},
+                "components": components or [],
+            },
+        }
+        return await self.send("messages", payload)
+
 
     async def send_file(self, to: str, file_url: str, mime_type: str | None = None, caption: str = "") -> dict:
         # Определяем тип медиа по расширению или mime_type
@@ -170,12 +186,13 @@ class WabaListener:
                         file_name = None
                         media_id = None
                     # Сохраняем в MinIO
-                    await self.storage.save_file(
-                        file_bytes=file_bytes,
-                        media_id=media_id,
-                        filename=file_name or f"{media_id}.bin",
-                        mime_type=mime_type
-                    )
+                    if file_bytes:
+                        await self.storage.save_file(
+                            file_bytes=file_bytes,
+                            media_id=media_id,
+                            filename=file_name or f"{media_id}.bin",
+                            mime_type=mime_type
+                        )
                 text = media.get("caption", "")
 
             phone = f"+{from_number}"

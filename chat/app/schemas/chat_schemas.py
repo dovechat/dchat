@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from models.messages import MessageDirection, MessageStatus
 
 class MessageStatus(str, enum.Enum):
@@ -29,7 +29,14 @@ class MessageCreate(BaseModel):
     text: str | None = None
     media: list[dict] | None = None  # [{"file_name": ..., "mime_type": ...}]
     raw_content: dict | None = None
-    status: MessageStatus = "sent" 
+    status: MessageStatus = "sent"
+    template: dict | None = None  # {"name": ..., "language": ..., "components": [...]}
+
+    @model_validator(mode="after")
+    def check_template_or_media(self) -> "MessageCreate":
+        if self.template and self.media:
+            raise ValueError("template и media не могут быть заданы одновременно")
+        return self
 
 
 class MediaResponse(BaseModel):
