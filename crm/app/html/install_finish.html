@@ -4,7 +4,24 @@
 <script src="//api.bitrix24.com/api/v1/"></script>
 <script>
     BX24.init(function() {
-        BX24.installFinish();
+        BX24.callMethod(
+            "crm.userfield.add",
+            {
+                fields: {
+                    ENTITY_ID: "CRM_DEAL",
+                    FIELD_NAME: "DOVECHAT_WA_TG_STATUS",
+                    USER_TYPE_ID: "string",
+                    XML_ID: "DOVECHAT_WA_TG_STATUS",
+                    EDIT_FORM_LABEL: "DoveChat: статус в мессенджере",
+                    LIST_COLUMN_LABEL: "DoveChat: статус",
+                    MANDATORY: "N"
+                }
+            },
+            function(result) {
+                console.log("userfield result", result.data(), result.error());
+                BX24.installFinish();
+            }
+        );
     });
 </script>
 </body>
