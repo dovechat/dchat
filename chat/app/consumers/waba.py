@@ -185,16 +185,21 @@ class WabaListener:
                 log.warning(f"Conversation not found for line {line_id}, phone {phone}")
                 continue
 
+            media_items = []
+            if media_id:
+                media_items = [{
+                    "media_id": str(media_id),
+                    "file_name": file_name,
+                    "mime_type": mime_type,
+                }]
+
             message = await chat_service.save_incoming_waba(
                 conversation_id=conv.id,
                 external_id=msg_id,
                 text=text,
                 msg_type=msg_type,
-                media_id=media_id,
-                file_name=file_name,
-                file_url=None,
-                mime_type=mime_type,
-                raw_data=value
+                media_items=media_items if media_items else None,
+                raw_data=value,
             )
 
             ws_message = {
@@ -202,14 +207,9 @@ class WabaListener:
                 "text": message.text,
                 "direction": "inbound",
                 "created_at": message.created_at.isoformat(),
-                "phone": phone
+                "phone": phone,
+                "media": media_items,
             }
-            if media_id:
-                ws_message.update({
-                    "media_id": str(media_id),
-                    "file_name": file_name,
-                    "mime_type": mime_type
-                })
 
             await manager.send_new_message(conv.id, ws_message)
 
