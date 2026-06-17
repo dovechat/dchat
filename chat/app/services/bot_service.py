@@ -183,7 +183,7 @@ class BotService:
                 # Get file path from Telegram
                 async with httpx.AsyncClient() as client:
                     # Get file info
-                    file_info_url = f"https://api.telegram.org/bot{bot_token}/getFile"
+                    file_info_url = f"{settings.tg_bot_send_url}/bot{bot_token}/getFile"
                     file_info_resp = await client.post(file_info_url, json={"file_id": file_id})
                     file_info = file_info_resp.json()
 
@@ -194,7 +194,7 @@ class BotService:
                     file_path = file_info["result"]["file_path"]
 
                     # Download file
-                    file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+                    file_url = f"{settings.tg_bot_send_url}/file/bot{bot_token}/{file_path}"
                     file_resp = await client.get(file_url)
                     file_bytes = file_resp.content
                     file_size = len(file_bytes)
@@ -208,7 +208,7 @@ class BotService:
 
                 # Same download logic as above
                 async with httpx.AsyncClient() as client:
-                    file_info_url = f"https://api.telegram.org/bot{bot_token}/getFile"
+                    file_info_url = f"{settings.tg_bot_send_url}/bot{bot_token}/getFile"
                     file_info_resp = await client.post(file_info_url, json={"file_id": file_id})
                     file_info = file_info_resp.json()
 
@@ -217,7 +217,7 @@ class BotService:
                         return None, None, None, None
 
                     file_path = file_info["result"]["file_path"]
-                    file_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+                    file_url = f"{settings.tg_bot_send_url}/file/bot{bot_token}/{file_path}"
                     file_resp = await client.get(file_url)
                     file_bytes = file_resp.content
                     file_size = len(file_bytes)
@@ -240,7 +240,7 @@ class BotService:
 
     async def send_message(self, bot_token: str, chat_id: str, text: str):
         """Send message via Telegram Bot API"""
-        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        url = f"{settings.tg_bot_send_url}/bot{bot_token}/sendMessage"
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url,
