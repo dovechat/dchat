@@ -165,6 +165,7 @@ class BitrixClient:
         return await self.call("imconnector.register", {
             "ID": connector_id,
             "NAME": name,
+            "CAN_FIRST_WRITE": "Y",
             "ICON[DATA_IMAGE]": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>",
             "ICON[COLOR]": "#4f46e5",
             "ICON_DISABLED[DATA_IMAGE]": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>",
