@@ -212,6 +212,15 @@ class CrmService:
         text = data.get("data[MESSAGES][0][message][text]", "")
         text = re.sub(r'\[/?b\]|\[/?br\]', '', text).strip()
 
+        WABA_TEMPLATES = {
+            "disclaimer": {"name": "disclaimer", "language": "ru", "components": []},
+            "first_welcome_messsage": {"name": "first_welcome_messsage", "language": "en", "components": [
+                {"type": "body", "parameters": [{"type": "text", "text": "DoveChat"}]}]},
+        }
+        template_match = re.match(r'^\[template:(\w+)\]$', text)
+        template = WABA_TEMPLATES.get(template_match.group(1)) if template_match else None
+        
+
 
 
         convs = await self._uow.conversations.get_multi(
@@ -229,8 +238,9 @@ class CrmService:
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
             phone=conv.client_phone,
-            text=text,
+            text=text if not template else f"[template:{template['name']}]",
             status=MessageStatus.sent,
+            template=template,
         ).model_dump_json()
 
         memberships = await self._uow.memberships.get_multi(
