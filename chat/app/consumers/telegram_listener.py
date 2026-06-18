@@ -327,7 +327,7 @@ class TelegramListener:
             await self.start_listening(conv_id_str, my_phone, data.phone)
 
             # Ждём появления клиента
-            for i in range(60):  # увеличил попытки до 60 (6 сек)
+            for i in range(150):  # увеличил попытки до 60 (6 сек)
                 await asyncio.sleep(0.1)
                 client = self.clients.get(conv_id_str)
                 if client:
@@ -369,7 +369,7 @@ class TelegramListener:
         client = self.clients.get(conversation_id)
         
         if not client:
-            for i in range(30):
+            for i in range(60):
                 await asyncio.sleep(0.1)
                 client = self.clients.get(conversation_id)
                 if client:
