@@ -269,10 +269,11 @@ class TelegramListener:
                     await task
                 except asyncio.CancelledError:
                     pass
-                del self.tasks[conversation_id]
-                self.clients.pop(conversation_id, None)
-            log.info(f"Removing dead task for {conversation_id}")
-            del self.tasks[conversation_id]
+                    del self.tasks[conversation_id]
+                    self.clients.pop(conversation_id, None)
+                else:
+                    log.info(f"Removing dead task for {conversation_id}")
+                    del self.tasks[conversation_id]
 
         log.info(f"Started listening: tasks --")
         task = asyncio.create_task(
