@@ -229,6 +229,33 @@ class WabaListener:
 
             await manager.send_new_message(conv.id, ws_message)
 
+            try:
+                from crm.app.services.crm_service import CrmService
+                from crm.app.core.uow import CrmUnitOfWork
+                crm_uow = CrmUnitOfWork(db)
+                crm_service = CrmService(crm_uow)
+                line = await crm_uow.lines.get_by_id(line_id)
+                bx_chat_id = await crm_service.send_to_crm(
+                    tenant_id=line.tenant_id,
+                    conversation_id=conv.id,
+                    client_phone=phone,
+                    client_name="",
+                    text=text or "",
+                    message_id=str(message.id),
+                    channel_type="waba",
+                    media=[{"id": m["media_id"], "file_name": m["file_name"], "mime_type": m["mime_type"], "file_size": 0} for m
+                           in media_items],
+                )
+                log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+                if bx_chat_id:
+                    await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
+            except Exception as e:
+                log.error(f"CRM send_to_crm failed: {e}")
+
+
+
+
+
     async def _handle_message_status(self, line_id: str, value: dict):
         """Обработка статусов сообщений"""
         for status_update in value.get("statuses", []):
