@@ -63,7 +63,8 @@ class CrmService:
             try:
                 new_tokens = await provider.refresh_tokens()
                 await self._uow.crm_connections.update(conn, **new_tokens)
-                provider.conn = conn
+                conn.access_token_enc = new_tokens["access_token_enc"]
+                conn.refresh_token_enc = new_tokens["refresh_token_enc"]
                 result = await provider.send_message(
                     conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
                     text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
