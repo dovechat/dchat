@@ -259,8 +259,18 @@ class TelegramListener:
         if conversation_id in self.tasks:
             task = self.tasks[conversation_id]
             if not task.done():
-                log.info(f"Already listening for {conversation_id}")
-                return
+                client = self.clients.get(conversation_id)
+                if client and client.is_connected():
+                    log.info(f"Already listening for {conversation_id}")
+                    return
+                log.info(f"Task alive but client dead for {conversation_id}, cancelling")
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                del self.tasks[conversation_id]
+                self.clients.pop(conversation_id, None)
             log.info(f"Removing dead task for {conversation_id}")
             del self.tasks[conversation_id]
 
