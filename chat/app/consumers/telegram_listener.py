@@ -370,7 +370,7 @@ class TelegramListener:
         client = self.clients.get(conversation_id)
         
         if not client:
-            for i in range(60):
+            for i in range(200):
                 await asyncio.sleep(0.1)
                 client = self.clients.get(conversation_id)
                 if client:
