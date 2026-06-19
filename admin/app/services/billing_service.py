@@ -82,7 +82,7 @@ class AdminBillingService:
             str(request.amount)) if request.balance_type == "bonus" else balance.bonus_balance
 
         # check if icoming amount is anough to give a bonus 
-        if request.amount >= 10000:
+        if request.amount >= 10000 and request.balance_type == "main":
             new_bonus += Decimal(str(request.amount)) * Decimal("0.1")
         await self._uow.billing.update(balance, main_balance=new_main, bonus_balance=new_bonus)
 
