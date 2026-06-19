@@ -434,6 +434,14 @@ class TelegramListener:
                 self.clients[conversation_id] = connection.client
             except Exception as e:
                 log.error(f"----**----  Failed to connect for {conversation_id}: {e}")
+                try:
+                    async with get_db() as db:
+                        chat_repo = ChatRepository(db)
+                        conv = await chat_repo.get_by_id(uuid.UUID(conversation_id))
+                        if conv:
+                            await notify_connection_error(conv.line_id, channel_type="telegram_user", db=db)
+                except Exception as ne:
+                    log.error(f"notify_connection_error failed: {ne}")
                 return
 
         log.info(f"------ TelegramListener._listen_task start sync")
