@@ -14,15 +14,9 @@ from app.schemas.admin_schemas import AdjustmentRequest
 def make_uow(*, entries=None, balance=None):
     uow = MagicMock()
     uow.commit = AsyncMock()
-
     uow.billing.get_ledger = AsyncMock(return_value=entries or [])
-    uow.billing.get_tenant_balance = AsyncMock(
-        return_value=balance or {"main": 0.0, "bonus": 0.0}
-    )
     uow.billing.create_adjustment = AsyncMock(return_value=MagicMock())
-
     uow.audit.log = AsyncMock()
-
     return uow
 
 

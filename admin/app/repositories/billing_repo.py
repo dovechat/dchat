@@ -108,15 +108,11 @@ class BalanceRepository(BaseRepository[Balance]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(Balance, session)
 
-    async def get_tenant_balance(self, tenant_id: uuid.UUID) -> dict[str, float]:
-        results = await self.get_multi(filters={"tenant_id": tenant_id}, limit=1)
-        if not results:
-            return {"main": 0.0, "bonus": 0.0}
-        balance = results[0]
-        return {
-            "main": float(balance.main_balance),
-            "bonus": float(balance.bonus_balance)
-        }
+    async def get_by_tenant(self, tenant_id: uuid.UUID) -> Balance | None:
+        """Get balance for tenant"""
+        query = select(Balance).where(Balance.tenant_id == tenant_id)
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
 
     async def create_balance(self, tenant_id: uuid.UUID) -> Balance:
         """Create initial balance for new tenant"""

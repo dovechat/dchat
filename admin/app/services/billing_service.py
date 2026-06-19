@@ -60,31 +60,39 @@ class AdminBillingService:
         )
 
     async def get_balance(self, tenant_id: uuid.UUID, actor_id: uuid.UUID) -> BalanceOut:
-        # Проверяем, что тенант существует
+        # Check if the tenant exists
         user = await self._uow.users.get_all_users(
             filters={"tenant_id": tenant_id}, limit=1
         ) if False else None  # заглушка — в реальном коде проверка через tenant repo
-
-        balance = await self._uow.balance.get_tenant_balance(tenant_id)
-
-        return BalanceOut(main=balance["main"], bonus=balance["bonus"])
+        balance = await self._uow.balance.get_by_tenant(tenant_id)
+        return BalanceOut(main=balance.main_balance, bonus=balance.bonus_balance)
 
     async def create_adjustment(
-        self,
-        tenant_id: uuid.UUID,
-        request: AdjustmentRequest,
-        actor_id: uuid.UUID,
+            self,
+            tenant_id: uuid.UUID,
+            request: AdjustmentRequest,
+            actor_id: uuid.UUID,
     ) -> MessageResponse:
-        entry = await self._uow.billing.create_adjustment(
+        # get current balance
+        balance = await self._uow.billing.get_by_tenant(tenant_id)
+        new_main = balance.main_balance + Decimal(
+            str(request.amount)) if request.balance_type == "main" else balance.main_balance
+        new_bonus = balance.bonus_balance + Decimal(
+            str(request.amount)) if request.balance_type == "bonus" else balance.bonus_balance
+
+        # check if icoming amount is anough to give a bonus 
+        if request.amount >= 10000:
+            new_bonus += Decimal(str(request.amount)) * Decimal("0.1")
+        await self._uow.billing.update(balance, main_balance=new_main, bonus_balance=new_bonus)
+
+        # add record to bliilng log
+        await self._uow.billing.create_adjustment(
             tenant_id=tenant_id,
             amount=float(request.amount),
             balance_type=request.balance_type,
             description=request.description,
             admin_user_id=actor_id,
         )
-
-        log.info(f"\n\n admin billing_service.create_adjustment tenant_id {tenant_id} \n\n")
-
         await self._uow.audit.log(
             actor_id=actor_id,
             action="balance_adjustment",
@@ -100,12 +108,11 @@ class AdminBillingService:
             memberships = await self._uow.memberships.get_multi(
                 filters={"tenant_id": tenant_id, "role": "owner", "is_active": True}
             )
+            # update user status from trial
             for m in memberships:
                 user = await self._uow.users.get_by_id(m.user_id)
                 if user and user.status == "trial":
                     await self._uow.users.update(user, status="active")
-            await self._uow.commit()
-        await self._uow.users.update(user, status=UserStatus.active)
         await self._uow.commit()
 
         log.info(
@@ -113,9 +120,6 @@ class AdminBillingService:
             f"for tenant {tenant_id}: {request.description}"
         )
         return MessageResponse(message=f"Adjustment created: {request.amount} on {request.balance_type} balance")
-
-    async def get_tenants(self):
-        return await self._uow.tenants.get_multi(limit=1000, order_by=[('name', 'asc')])
 
 
 # === TARIFFS ===
