@@ -419,6 +419,7 @@ class ChatService:
                 })
             except Exception as e:
                 log.error(f"!!! ERROR ---  _finalize_message manager.send_message_status data.media {data.media} {e}")
+        '''
         else:
             # 4. Ошибка -> в Kafka (для каждого канала своё)
             topic_map = {
@@ -452,6 +453,7 @@ class ChatService:
                 log.info(f"\n\n !!!  ------- KAFKA send_event  ---------- data.text {data.text} conversation_id {conversation_id} \n\n")
             except Exception as e:
                 log.error(f"\n\n !!! ERROR ------- kafka send_event failed: {e} ---------- \n\n")
+        '''
 
     async def _save_uploaded_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
         log.info(f"========== ChatService._save_uploaded_file media_id {media_id}")
