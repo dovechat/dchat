@@ -74,7 +74,7 @@ class AdminBillingService:
             actor_id: uuid.UUID,
     ) -> MessageResponse:
         # get current balance
-        balance = await self._uow.billing.get_by_tenant(tenant_id)
+        balance = await self._uow.balance.get_by_tenant(tenant_id)
         new_main = balance.main_balance + Decimal(
             str(request.amount)) if request.balance_type == "main" else balance.main_balance
         new_bonus = balance.bonus_balance + Decimal(
