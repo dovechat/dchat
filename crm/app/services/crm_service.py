@@ -794,7 +794,7 @@ class CrmService:
             await bx.call(
                 "bizproc.event.send",
                 {
-                    "EVENT_TOKEN": event_token,
+                    "event_token": event_token,
                     "RETURN_VALUES": return_values,
                     "LOG_MESSAGE": log_message,
                 },
