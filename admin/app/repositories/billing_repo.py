@@ -110,9 +110,8 @@ class BalanceRepository(BaseRepository[Balance]):
 
     async def get_by_tenant(self, tenant_id: uuid.UUID) -> Balance | None:
         """Get balance for tenant"""
-        query = select(Balance).where(Balance.tenant_id == tenant_id)
-        result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+        results = await self.get_multi(filters={"tenant_id": tenant_id}, limit=1)
+        return results[0] if results else None
 
     async def create_balance(self, tenant_id: uuid.UUID) -> Balance:
         """Create initial balance for new tenant"""
