@@ -781,7 +781,7 @@ class CrmService:
             log.error(f"handle_robot invalid line_id: {line_id_str}")
             return {"status": "error"}
 
-        bx = BitrixClient(domain=conn.domain, access_token=access_token)
+        bx = BitrixClient(domain=conn.domain, access_token=data.get("auth[application_token]"))
 
         if robot_code == "dovechat_check_account":
             return_values = await self._robot_check_account(phone, line_id)
@@ -791,6 +791,7 @@ class CrmService:
 
         try:
             log_message = return_values.get("error") or "Получен ответ от приложения."
+
             await bx.call(
                 "bizproc.event.send",
                 {
