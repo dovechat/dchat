@@ -122,6 +122,9 @@ class AdminBillingService:
         return MessageResponse(message=f"Adjustment created: {request.amount} on {request.balance_type} balance")
 
 
+    async def get_tenants(self):
+        return await self._uow.tenants.get_multi(limit=1000, order_by=[('name', 'asc')])
+
 # === TARIFFS ===
 
     async def get_tariffs(self) -> list[TariffResponse]:
