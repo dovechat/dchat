@@ -24,4 +24,5 @@ async def robot_webhook(
     body = await request.body()
     parsed = parse_qs(body.decode())
     data = {k: v[0] for k, v in parsed.items()}
+    log.info(f"robot_webhook raw data: {data}")
     return await crm_service.handle_robot(robot_code, data)
