@@ -1,7 +1,8 @@
 """Admin service: billing operations."""
 import uuid
 import logging
-1
+
+from decimal import Decimal
 from fastapi import HTTPException, status
 
 from app.core.uow import AdminUnitOfWork
