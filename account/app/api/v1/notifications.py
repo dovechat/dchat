@@ -139,10 +139,9 @@ async def delete_notification_settings(
     tenant_id: uuid.UUID = Depends(check_tenant_access),
     current_user: UserContext = Depends(get_current_user),
     service: NotificationService = Depends(get_notification_service),
-    user_id=current_user.id,
 ):
     try:
-        await service.delete_settings(settings_id, tenant_id)
+        await service.delete_settings(settings_id, tenant_id, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
