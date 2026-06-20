@@ -8,6 +8,7 @@ from typing import Dict
 from core.database import get_db
 from core.redis import rdb
 from infra.crypto import decrypt
+from notification.notification_caller import notify_connection_error
 from repo.conversation_repo import ConversationRepository
 from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository, LineRepository
@@ -28,20 +29,30 @@ class VkConnection:
 
     def __init__(self, access_token: str):
         self.access_token = access_token
+        self.line_id = line_id
 
     async def call(self, method: str, params: dict) -> dict:
         log.info(f"\n\n *=*=*=*=*=*== VkConnection.call params {params} \n\n")
         url = f"{VK_API_URL}/{method}"
         params = {**params, "access_token": self.access_token, "v": VK_API_VERSION}
         log.info(f"\n\n *=*=*=*=*=*== VkConnection.call params {params} \n\n")
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, data=params)
-            resp.raise_for_status()
-            result = resp.json()
-            if result.get("error"):
-                log.error(f"VK API error full: {result['error']}")
-                raise ValueError(f"VK API error: {result['error']['error_msg']}")
-            return result.get("response")
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(url, data=params)
+                resp.raise_for_status()
+                result = resp.json()
+                if result.get("error"):
+                    log.error(f"VK API error full: {result['error']}")
+                    raise ValueError(f"VK API error: {result['error']['error_msg']}")
+                return result.get("response")
+        except Exception as e:
+            log.error(f"VkConnection.call failed: {e}")
+            try:
+                async with get_session() as db:
+                    await notify_connection_error(self.line_id, channel_type="vk", db=db)
+            except Exception as ne:
+                log.error(f"notify_connection_error failed: {ne}")
+            raise
 
     async def send_message(self, peer_id: int, text: str, random_id: int) -> dict:
         return await self.call("messages.send", {

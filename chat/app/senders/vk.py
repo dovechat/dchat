@@ -12,6 +12,7 @@ class VKSender(BaseSender):
     def __init__(self):
         self.listener = None
         self.creds = None
+        self.line_id = None
 
     def extract_msg_id(self, result) -> str | None:
         log.info(f"VK extract_msg_id result={result} type={type(result)}")
@@ -25,10 +26,13 @@ class VKSender(BaseSender):
     def set_creds(self, creds: dict):
         self.creds = creds
 
+    def set_line_id(self, line_id):
+        self.line_id = line_id
+
     async def send(self, data: MessageCreate) -> dict:
         log.info(f"\n\n ========== send data.message_id  {data.message_id} {type(data.message_id)} \n\n")
 
-        conn = VkConnection(access_token=self.creds["access_token"])
+        conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id)
 
         clean_phone = data.phone.lstrip('+')
 

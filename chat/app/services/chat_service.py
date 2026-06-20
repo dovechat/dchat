@@ -70,6 +70,9 @@ class ChatService:
             sender.set_bot_token(creds["bot_token"])
         else:
             sender.set_creds(creds)
+
+        sender.set_line_id(channel_acc.line_id)
+
         log.info(f"_init_sender channel_type={channel_type} conv_id={conv_id}")
         return sender
 

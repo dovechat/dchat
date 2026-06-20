@@ -23,6 +23,7 @@ class GreenWhatsAppConnection:
     def __init__(self, id_instance: str, api_token: str):
         self.id_instance = id_instance
         self.api_token = api_token
+        self.line_id = line_id
 
     def api_url(self):
         return f"https://7103.api.greenapi.com/waInstance{self.id_instance}"
@@ -47,6 +48,13 @@ class GreenWhatsAppConnection:
                 return response.json()
         except Exception as e:
             log.error(f"!!! --- ERROR: GreenWhatsAppConnection.send failed {e}")
+            try:
+                async with get_db() as db:
+                    await notify_connection_error(self.line_id, channel_type="whatsapp_green", db=db)
+            except Exception as ne:
+                log.error(f"notify_connection_error failed: {ne}")
+
+
 
     async def send_message(self, chat_id: str, text: str) -> dict:
         """Отправить сообщение через Green API"""

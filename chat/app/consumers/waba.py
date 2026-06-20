@@ -10,10 +10,12 @@ from core.redis import rdb
 from infra.crypto import decrypt
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
+from notification.notification_caller import notify_connection_error
 from repo.line_repo import ChannelAccountRepository
 from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from services.storage_service import StorageService
+
 
 
 log = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class WabaConnection:
 
     def __init__(self, api_key: str):
         self.api_key = api_key
+        self.line_id = None
         self.headers = {
             "D360-API-KEY": api_key,
             "Content-Type": "application/json"
@@ -42,6 +45,11 @@ class WabaConnection:
                 return response.json()
         except Exception as e:
             log.error(f"WabaConnection.send failed: {e}")
+            try:
+                async with get_db() as db:
+                    await notify_connection_error(self.line_id, channel_type="waba", db=db)
+            except Exception as ne:
+                log.error(f"notify_connection_error failed: {ne}")
             raise
 
     async def send_message(self, to: str, text: str) -> dict:

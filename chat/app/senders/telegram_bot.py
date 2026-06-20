@@ -4,6 +4,8 @@ from core.config import settings
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
 from app.utils import get_file_from_s3
+from core.database import get_db
+from notification.notification_caller import notify_connection_error
 
 log = logging.getLogger(__name__)
 
@@ -13,9 +15,13 @@ class TelegramBotSender(BaseSender):
 
     def __init__(self):
         self.bot_token = None
+        self.line_id = None
 
     def set_bot_token(self, bot_token: str):
         self.bot_token = bot_token
+
+    def set_line_id(self, line_id):
+        self.line_id = line_id
 
     async def send(self, data: MessageCreate) -> dict:
         """Отправить сообщение (текст или файл)"""
@@ -26,10 +32,19 @@ class TelegramBotSender(BaseSender):
 
         url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/"
 
-        if data.media:
-            return await self._send_file(data)
-        else:
-            return await self._send_text(data)
+        try:
+            if data.media:
+                return await self._send_file(data)
+            else:
+                return await self._send_text(data)
+        except Exception as e:
+            log.error(f"TelegramBotSender.send failed: {e}")
+            try:
+                async with get_db() as db:
+                    await notify_connection_error(self.line_id, channel_type="telegram_bot", db=db)
+            except Exception as ne:
+                log.error(f"notify_connection_error failed: {ne}")
+            raise
 
     def extract_msg_id(self, result) -> str | None:
         return str(result.get("message_id")) if result else None
