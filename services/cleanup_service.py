@@ -11,7 +11,7 @@ from infra.crypto import decrypt
 
 log = logging.getLogger("uvicorn.error")
 
-GREEN_API_BASE = "https://api.green-api.com"
+GREEN_API_BASE = settings.proxy_green_url
 
 
 class CleanupService:

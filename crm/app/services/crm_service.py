@@ -908,7 +908,7 @@ class CrmService:
                 try:
                     async with httpx.AsyncClient() as client:
                         resp = await client.post(
-                            f"https://api.green-api.com/waInstance{id_instance}/checkWhatsapp/{api_token}",
+                            f"{settings.proxy_green_url}/waInstance{id_instance}/checkWhatsapp/{api_token}",
                             json={"phoneNumber": int(phone)},
                             timeout=15,
                         )

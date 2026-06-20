@@ -383,7 +383,7 @@ class ChannelAccountService:
 
 
     async def _set_green_webhook(self, line_id, id_instance, api_token):
-        green_wh_url = f"https://api.green-api.com/waInstance{id_instance}/setSettings/{api_token}"
+        green_wh_url = f"{settings.proxy_green_url}/waInstance{id_instance}/setSettings/{api_token}"
         our_wh_url = f"{settings.proxy_url}/api/v1/webhooks/whatsapp/green/{line_id}"
         log.info(f"our_wh_url {our_wh_url}")
         try:
@@ -413,7 +413,7 @@ class ChannelAccountService:
 
     async def get_qr_from_green(self, id_instance: str, api_token: str) -> str:
         log.info(f"get_qr_from_green id_instance={id_instance}")
-        url = f"https://api.green-api.com/waInstance{id_instance}/qr/{api_token}"
+        url = f"{settings.proxy_green_url}/waInstance{id_instance}/qr/{api_token}"
         async with httpx.AsyncClient() as client:
             try:
                 res = await client.get(url, timeout=30)
