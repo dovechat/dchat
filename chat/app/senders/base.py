@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from sqlalchemy.ext.asyncio import AsyncSession
 from  app.schemas.chat_schemas import MessageCreate
 
 class BaseSender(ABC):
@@ -8,7 +9,7 @@ class BaseSender(ABC):
         return None
 
     @abstractmethod
-    async def send(self, data: MessageCreate) -> dict:
+    async def send(self, data: MessageCreate, db: AsyncSession) -> dict:
         """Отправить текстовое сообщение"""
         pass
 

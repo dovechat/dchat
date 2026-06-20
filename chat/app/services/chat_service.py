@@ -114,7 +114,7 @@ class ChatService:
         result = None
         success = False
         try:
-            result = await sender.send(data)
+            result = await sender.send(data, self.db)
             success = bool(result)
             log.info(f"_process_queue_outgoing sent channel_type={channel_type} result={result}")
         except Exception as e:

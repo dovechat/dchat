@@ -29,7 +29,7 @@ class VKSender(BaseSender):
     def set_line_id(self, line_id):
         self.line_id = line_id
 
-    async def send(self, data: MessageCreate) -> dict:
+    async def send(self, data: MessageCreate, db: AsyncSession = None) -> dict:
         log.info(f"\n\n ========== send data.message_id  {data.message_id} {type(data.message_id)} \n\n")
 
         conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id)

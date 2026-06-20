@@ -1,5 +1,6 @@
 import logging
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
@@ -23,7 +24,7 @@ class TelegramBotSender(BaseSender):
     def set_line_id(self, line_id):
         self.line_id = line_id
 
-    async def send(self, data: MessageCreate) -> dict:
+    async def send(self, data: MessageCreate, db: AsyncSession = None) -> dict:
         """Отправить сообщение (текст или файл)"""
         log.info(f"\n\n +++++++++++++ TelegramBotSender.send data {data} \n\n")
 
@@ -40,8 +41,7 @@ class TelegramBotSender(BaseSender):
         except Exception as e:
             log.error(f"TelegramBotSender.send failed: {e}")
             try:
-                async with get_db() as db:
-                    await notify_connection_error(self.line_id, channel_type="telegram_bot", db=db)
+                await notify_connection_error(self.line_id, channel_type="telegram_bot", db=db)
             except Exception as ne:
                 log.error(f"notify_connection_error failed: {ne}")
             raise

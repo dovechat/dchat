@@ -20,11 +20,12 @@ class WhatsAppGreenSender(BaseSender):
     def extract_msg_id(self, result) -> str | None:
         return result.get("idMessage") if result else None
 
-    async def send(self, data: MessageCreate) -> dict:
+    async def send(self, data: MessageCreate, db: AsyncSession = None) -> dict:
         conn = GreenWhatsAppConnection(
             id_instance=self.creds["id_instance"],
             api_token=self.creds["api_token"],
             line_id=self.line_id,
+            db=db,
         )
 
         clean_phone = data.phone.lstrip('+')

@@ -20,10 +20,12 @@ get_session = asynccontextmanager(get_db)
 class GreenWhatsAppConnection:
     """Соединение с Green API для одной линии"""
 
-    def __init__(self, id_instance: str, api_token: str, line_id=None):
+    def __init__(self, id_instance: str, api_token: str, line_id=None, db: AsyncSession =None,):
         self.id_instance = id_instance
         self.api_token = api_token
         self.line_id = line_id
+        self.db = db
+        
 
     def api_url(self):
         return f"https://7103.api.greenapi.com/waInstance{self.id_instance}"
@@ -49,8 +51,7 @@ class GreenWhatsAppConnection:
         except Exception as e:
             log.error(f"!!! --- ERROR: GreenWhatsAppConnection.send failed {e}")
             try:
-                async with get_db() as db:
-                    await notify_connection_error(self.line_id, channel_type="whatsapp_green", db=db)
+                await notify_connection_error(self.line_id, channel_type="whatsapp_green", db=self.db)
             except Exception as ne:
                 log.error(f"notify_connection_error failed: {ne}")
 

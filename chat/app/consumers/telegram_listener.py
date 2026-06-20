@@ -435,7 +435,7 @@ class TelegramListener:
             except Exception as e:
                 log.error(f"----**----  Failed to connect for {conversation_id}: {e}")
                 try:
-                    async with get_db() as db:
+                    async with get_session() as db:
                         chat_repo = ChatRepository(db)
                         conv = await chat_repo.get_by_id(uuid.UUID(conversation_id))
                         if conv:

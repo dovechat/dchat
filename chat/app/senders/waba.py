@@ -25,8 +25,8 @@ class WabaSender(BaseSender):
     def set_line_id(self, line_id):
         self.line_id = line_id
 
-    async def send(self, data: MessageCreate) -> dict:
-        conn = WabaConnection(api_key=self.creds["api_key"])
+    async def send(self, data: MessageCreate, db: AsyncSession = None) -> dict:
+        conn = WabaConnection(api_key=self.creds["api_key"], db=db)
 
         clean_phone = data.phone.lstrip('+')
 
@@ -47,7 +47,7 @@ class WabaSender(BaseSender):
         else:
             return await conn.send_message(clean_phone, data.text)
 
-    async def send_template(self, phone: str, template_name: str, language: str = "ru", components: list | None = None) -> dict:
-        conn = WabaConnection(api_key=self.creds["api_key"])
+    async def send_template(self, phone: str, template_name: str, language: str = "ru", components: list | None = None, db: AsyncSession = None) -> dict:
+        conn = WabaConnection(api_key=self.creds["api_key"], db=db)
         clean_phone = phone.lstrip('+')
         return await conn.send_template(clean_phone, template_name, language, components)

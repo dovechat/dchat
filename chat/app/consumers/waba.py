@@ -27,9 +27,10 @@ WABA_API_URL = "https://waba-sandbox.360dialog.io/v1"
 class WabaConnection:
     """Соединение с 360dialog API для одной линии"""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, line_id=None, db=None):
         self.api_key = api_key
         self.line_id = None
+        self.db = db
         self.headers = {
             "D360-API-KEY": api_key,
             "Content-Type": "application/json"
@@ -46,8 +47,7 @@ class WabaConnection:
         except Exception as e:
             log.error(f"WabaConnection.send failed: {e}")
             try:
-                async with get_db() as db:
-                    await notify_connection_error(self.line_id, channel_type="waba", db=db)
+                await notify_connection_error(self.line_id, channel_type="waba", db=self.db)
             except Exception as ne:
                 log.error(f"notify_connection_error failed: {ne}")
             raise
