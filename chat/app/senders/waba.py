@@ -22,6 +22,9 @@ class WabaSender(BaseSender):
     def set_creds(self, creds: dict):
         self.creds = creds
 
+    def set_line_id(self, line_id):
+        self.line_id = line_id
+
     async def send(self, data: MessageCreate) -> dict:
         conn = WabaConnection(api_key=self.creds["api_key"])
 
