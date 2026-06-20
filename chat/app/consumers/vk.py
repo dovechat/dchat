@@ -5,6 +5,7 @@ import uuid
 import random
 from contextlib import asynccontextmanager
 from typing import Dict
+from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.redis import rdb
 from infra.crypto import decrypt
@@ -27,9 +28,10 @@ VK_API_VERSION = "5.199"
 class VkConnection:
     """Соединение с VK API для одной линии"""
 
-    def __init__(self, access_token: str, line_id=None):
+    def __init__(self, access_token: str, line_id=None, db: AsyncSession = None):
         self.access_token = access_token
         self.line_id = line_id
+        self.db = db
 
     async def call(self, method: str, params: dict) -> dict:
         log.info(f"\n\n *=*=*=*=*=*== VkConnection.call params {params} \n\n")
@@ -48,8 +50,7 @@ class VkConnection:
         except Exception as e:
             log.error(f"VkConnection.call failed: {e}")
             try:
-                async with get_session() as db:
-                    await notify_connection_error(self.line_id, channel_type="vk", db=db)
+                await notify_connection_error(self.line_id, channel_type="vk", db=self.db)
             except Exception as ne:
                 log.error(f"notify_connection_error failed: {ne}")
             raise

@@ -1,6 +1,7 @@
 import httpx
 import logging
 import random
+from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
@@ -32,7 +33,7 @@ class VKSender(BaseSender):
     async def send(self, data: MessageCreate, db: AsyncSession = None) -> dict:
         log.info(f"\n\n ========== send data.message_id  {data.message_id} {type(data.message_id)} \n\n")
 
-        conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id)
+        conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id, db=db)
 
         clean_phone = data.phone.lstrip('+')
 
