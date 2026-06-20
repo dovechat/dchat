@@ -1,4 +1,5 @@
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
