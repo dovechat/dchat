@@ -439,7 +439,9 @@ class TelegramListener:
                         chat_repo = ChatRepository(db)
                         conv = await chat_repo.get_by_id(uuid.UUID(conversation_id))
                         if conv:
+                            log.error(f"----**----  2 notify_connection_error: {conv.line_id}")
                             await notify_connection_error(conv.line_id, channel_type="telegram_user", db=db)
+                            log.error(f"----**----  2 notify_connection_error: {conv.line_id}")
                 except Exception as ne:
                     log.error(f"notify_connection_error failed: {ne}")
                 return
