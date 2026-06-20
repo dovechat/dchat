@@ -15,34 +15,33 @@ from account.app.repositories.notification_repo import NotificationRepository
 class NotificationService:
     def __init__(self, repo: NotificationRepository):
         self.repo = repo
-
+        self.membership_repo = membership_repo
     # ============ NotificationSettings CRUD ============
 
     async def create_settings(
             self,
             tenant_id: UUID,
+            user_id: UUID,
             notification_type: NotificationType,
             channel: NotificationChannel,
             target: str,
-            enabled: bool = True
-    ) -> NotificationSettings:
-        """Создать настройку уведомлений"""
-        # Проверяем, нет ли уже такой комбинации (tenant + type + channel)
-        existing = await self.repo.get_settings_by_type_and_channel(
-            tenant_id, notification_type, channel
-        )
-        if existing:
-            raise ValueError(
-                f"Notification settings for {notification_type.value} via {channel.value} already exist"
-            )
-
-        data = {
-            "notification_type": notification_type,
-            "channel": channel,
-            "target": target,
-            "enabled": enabled,
-        }
-        return await self.repo.create_settings(tenant_id, data)
+            enabled: bool = True,
+    ) -> list[NotificationSettings]:
+        memberships = await self.membership_repo.get_multi(filters={"user_id": user_id, "is_active": True})
+        tenant_ids = [m.tenant_id for m in memberships]
+        results = []
+        for tid in tenant_ids:
+            existing = await self.repo.get_settings_by_type_and_channel(tid, notification_type, channel)
+            if existing:
+                continue
+            data = {
+                "notification_type": notification_type,
+                "channel": channel,
+                "target": target,
+                "enabled": enabled,
+            }
+            results.append(await self.repo.create_settings(tid, data))
+        return results
 
     async def get_all_settings(self, tenant_id: UUID) -> List[NotificationSettings]:
         """Получить все настройки уведомлений тенанта"""
@@ -76,13 +75,17 @@ class NotificationService:
 
         return await self.repo.update_settings(settings, update_data)
 
-    async def delete_settings(self, settings_id: UUID, tenant_id: UUID) -> None:
-        """Удалить настройку уведомлений"""
+    async def delete_settings(self, settings_id: UUID, tenant_id: UUID, user_id: UUID) -> None:
         settings = await self.repo.get_settings_by_id(settings_id, tenant_id)
         if not settings:
             raise ValueError("Notification settings not found")
 
-        await self.repo.delete_settings(settings)
+        memberships = await self.membership_repo.get_multi(filters={"user_id": user_id, "is_active": True})
+        for m in memberships:
+            s = await self.repo.get_settings_by_type_and_channel(m.tenant_id, settings.notification_type,
+                                                                 settings.channel)
+            if s:
+                await self.repo.delete_settings(s)
 
     # ============ NotificationLog ============
 

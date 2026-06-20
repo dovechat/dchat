@@ -34,14 +34,15 @@ def check_tenant_access(tenant_id: uuid.UUID, current_user: UserContext = Depend
 
 def get_notification_service(db: AsyncSession = Depends(get_db)) -> NotificationService:
     repo = NotificationRepository(db)
-    return NotificationService(repo)
+    membership_repo = MembershipRepository(db)
+    return NotificationService(repo, membership_repo)
 
 
 # ============ NotificationSettings ============
 
 @router.post(
     "/settings",
-    response_model=NotificationSettingsResponse,
+    response_model= list[NotificationSettingsResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create notification settings"
 )
@@ -58,6 +59,7 @@ async def create_notification_settings(
             channel=data.channel,
             target=data.target,
             enabled=data.enabled,
+            user_id=current_user.id,
         )
         return settings
     except ValueError as e:
@@ -137,6 +139,7 @@ async def delete_notification_settings(
     tenant_id: uuid.UUID = Depends(check_tenant_access),
     current_user: UserContext = Depends(get_current_user),
     service: NotificationService = Depends(get_notification_service),
+    user_id=current_user.id,
 ):
     try:
         await service.delete_settings(settings_id, tenant_id)
