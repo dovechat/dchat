@@ -48,7 +48,9 @@ class NotificationService:
         context: dict[str, Any],
     ) -> None:
         log.info(f"notification_service.send start")
+        log.info(f"tenant_id {tenant_id} notification_type {notification_type} ")
         enabled = await self.settings_repo.get_enabled(tenant_id, notification_type)
+        log.info(f"enabled {enabled} ")
         if not enabled:
             log.info(f"! notification_service.send NOT enabled")
             return
