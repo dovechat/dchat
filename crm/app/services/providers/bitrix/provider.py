@@ -37,21 +37,16 @@ class BitrixProvider(CrmProvider):
     ) -> dict:
         bx = self._client()
         chat_id = crm_chat_id or f"dc_{conversation_id}"
-        try:
-            return await bx.send_message(
-                connector_id=self.conn.connector_id,
-                line_id=self.conn.crm_line_id,
-                user_id=client_phone,
-                user_name=client_name or "VK User",
-                chat_id=chat_id,
-                text=text,
-                message_id=message_id,
-                media=media,
-            )
-        except Exception:
-            tokens = await self.refresh_tokens()
-            # обновление токенов — через uow снаружи
-            raise
+        return await bx.send_message(
+            connector_id=self.conn.connector_id,
+            line_id=self.conn.crm_line_id,
+            user_id=client_phone,
+            user_name=client_name or "VK User",
+            chat_id=chat_id,
+            text=text,
+            message_id=message_id,
+            media=media,
+        )
 
     async def handle_webhook(self, data: dict) -> dict:
         msg_data = data.get("data", {}).get("MESSAGES", [{}])[0]
