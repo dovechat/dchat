@@ -30,7 +30,7 @@ async def _do_notify(db: AsyncSession, line_id: uuid.UUID, channel_type: str | N
             NotificationSettingsRepository(db),
             NotificationLogRepository(db)
         )
-        log.info(f"notify_connection_error notification_service {notification_service} tenant_id {line.tenant_id} name {line.name} channel_type {line.channel_type}")
+        log.info(f"notify_connection_error notification_service {notification_service} tenant_id {line.tenant_id} name {line.name} channel_type {channel_type}")
         await notification_service.notify_line_connection_error(
             tenant_id=line.tenant_id,
             line_name=line.name,
