@@ -18,7 +18,7 @@ from repo.line_repo import LineRepository
 from notification.notification_repo import NotificationLogRepository, NotificationSettingsRepository
 
 import logging
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 TEMPLATES = {
     NotificationType.line_expiration: lambda ctx: f"Линия «{ctx['line_name']}» истекает {ctx['expires_at']}. Продлите подписку в личном кабинете.",
