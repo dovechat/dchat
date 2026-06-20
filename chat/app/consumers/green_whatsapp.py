@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
+from core.config import settings
 from core.database import get_db
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
@@ -28,10 +29,10 @@ class GreenWhatsAppConnection:
         
 
     def api_url(self):
-        return f"https://7103.api.greenapi.com/waInstance{self.id_instance}"
+        return f"{settings.proxy_green_url}/waInstance{self.id_instance}"
 
     def media_url(self):
-        return f"https://7103.api.greenapi.com/waInstance{self.id_instance}"
+        return f"{settings.proxy_green_url}/waInstance{self.id_instance}"
 
     def send_text_url(self):
         return f"{self.api_url()}/sendMessage/{self.api_token}"
