@@ -27,7 +27,7 @@ VK_API_VERSION = "5.199"
 class VkConnection:
     """Соединение с VK API для одной линии"""
 
-    def __init__(self, access_token: str):
+    def __init__(self, access_token: str, line_id=None):
         self.access_token = access_token
         self.line_id = line_id
 

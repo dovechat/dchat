@@ -20,7 +20,7 @@ get_session = asynccontextmanager(get_db)
 class GreenWhatsAppConnection:
     """Соединение с Green API для одной линии"""
 
-    def __init__(self, id_instance: str, api_token: str):
+    def __init__(self, id_instance: str, api_token: str, line_id=None):
         self.id_instance = id_instance
         self.api_token = api_token
         self.line_id = line_id
