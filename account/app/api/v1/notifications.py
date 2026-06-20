@@ -8,6 +8,7 @@ from core.database import get_db
 from core.dependencies import get_current_user
 from schemas.auth_schemas import UserContext
 from account.app.repositories.notification_repo import NotificationRepository
+from account.app.repositories.membership_repo import MembershipRepository
 from account.app.services.notification_service import NotificationService
 from account.app.schemas.notification_schemas import (
     NotificationSettingsCreate,
