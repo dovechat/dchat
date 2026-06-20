@@ -52,6 +52,7 @@ class NotificationService:
             return
 
         message = TEMPLATES[notification_type](context)
+        log.info(f"notification_service.send message {message}")
 
         for setting in enabled:
             log.info(
@@ -92,6 +93,7 @@ class NotificationService:
         from email.mime.text import MIMEText
         html = f"<p>{message}</p>"
         msg = self._email._create_message(subject="DoveChat уведомление", html=html, to_email=target)
+        log.info(f"notification_service.send _send_email msg {msg}")
         return self._email._send_raw(msg)
 
     def _send_sms(self, target: str, message: str) -> bool:
@@ -138,6 +140,7 @@ class NotificationService:
         )
 
     async def notify_line_connection_error(self, tenant_id: uuid.UUID, line_name: str, channel_type: str) -> None:
+        log.info(f"notification_service.notify_line_connection_error  tenant_id {tenant_id} line_name {line_name}")
         await self.send(tenant_id, NotificationType.line_connection_error, {"line_name": line_name, "channel_type": channel_type})
 
 
