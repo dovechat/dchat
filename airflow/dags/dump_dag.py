@@ -90,7 +90,7 @@ with DAG(
 
     dump_db = BashOperator(
         task_id="dump_db",
-        bash_command=f"pg_dump $DATABASE_URL | gzip > {DUMP_DIR}/dump_{{{{ ds }}}}.sql.gz",
+        bash_command=f"pg_dump $(echo $DATABASE_URL | sed 's|postgresql+asyncpg://|postgresql://|') | gzip > {DUMP_DIR}/dump_{{{{ ds }}}}.sql.gz",
     )
 
     upload_dump = PythonOperator(
