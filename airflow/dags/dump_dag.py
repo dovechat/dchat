@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
@@ -11,7 +12,9 @@ from minio import Minio
 log = logging.getLogger(__name__)
 
 DUMP_DIR = "/opt/dovechat/dumps"
+MEDIA_DIR = "/opt/dovechat/media_backup"
 BUCKET_NAME = "dumps"
+MEDIA_BUCKET = "dovechat-media"
 
 
 def _get_minio_client() -> Minio:
@@ -75,6 +78,64 @@ def cleanup_old_dumps(**context) -> None:
     log.info(f"cleanup_old_dumps kept={len(keep)} total={len(dumps)}")
 
 
+def backup_media(**context) -> None:
+    ds = context["ds"]
+    target_dir = Path(f"{MEDIA_DIR}/{ds}")
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    client = _get_minio_client()
+    objects = list(client.list_objects(MEDIA_BUCKET, recursive=True))
+    for obj in objects:
+        dest = target_dir / obj.object_name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        client.fget_object(MEDIA_BUCKET, obj.object_name, str(dest))
+    log.info(f"backup_media downloaded={len(objects)} files to={target_dir}")
+
+
+def cleanup_old_media(**context) -> None:
+    today = datetime.strptime(context["ds"], "%Y-%m-%d").date()
+    base = Path(MEDIA_DIR)
+    if not base.exists():
+        return
+
+    dirs = []
+    for d in base.iterdir():
+        if not d.is_dir():
+            continue
+        try:
+            obj_date = datetime.strptime(d.name, "%Y-%m-%d").date()
+            dirs.append((obj_date, d))
+        except ValueError:
+            continue
+
+    keep = set()
+    week_seen = set()
+    month_seen = set()
+
+    for obj_date, d in sorted(dirs, reverse=True):
+        age_days = (today - obj_date).days
+        if age_days <= 5:
+            keep.add(d)
+        elif age_days <= 35:
+            week_key = obj_date.isocalendar()[:2]
+            if week_key not in week_seen:
+                week_seen.add(week_key)
+                keep.add(d)
+        elif age_days <= 150:
+            month_key = (obj_date.year, obj_date.month)
+            if month_key not in month_seen:
+                month_seen.add(month_key)
+                keep.add(d)
+
+    import shutil
+    for obj_date, d in dirs:
+        if d not in keep:
+            shutil.rmtree(d)
+            log.info(f"cleanup_old_media removed={d}")
+
+    log.info(f"cleanup_old_media kept={len(keep)} total={len(dirs)}")
+
+
 default_args = {
     "owner": "dovechat",
     "retries": 2,
@@ -105,4 +166,15 @@ with DAG(
         python_callable=cleanup_old_dumps,
     )
 
+    backup_media_task = PythonOperator(
+        task_id="backup_media",
+        python_callable=backup_media,
+    )
+
+    cleanup_media_task = PythonOperator(
+        task_id="cleanup_media",
+        python_callable=cleanup_old_media,
+    )
+
     dump_db >> upload_dump >> cleanup_dump
+    backup_media_task >> cleanup_media_task
