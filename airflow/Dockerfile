@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 
+RUN find /etc/apt -name "*.list" -o -name "*.sources" | xargs sed -i 's|deb.debian.org|mirror.yandex.ru|g'
 RUN apt-get update && apt-get install -y graphviz
 
 WORKDIR /mono
