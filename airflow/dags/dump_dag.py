@@ -4,33 +4,14 @@ import re
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
-from airflow.providers.cncf.kubernetes.secret import Secret
-from kubernetes.client import models as k8s
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 from minio import Minio
 
 log = logging.getLogger(__name__)
 
 DUMP_DIR = "/opt/dovechat/dumps"
 BUCKET_NAME = "dumps"
-
-db_secret = Secret(
-    deploy_type="env",
-    deploy_target="DATABASE_URL",
-    secret="dchat-env-secret",
-    key="DATABASE_URL",
-)
-
-dump_volume = k8s.V1Volume(
-    name="dump-volume",
-    host_path=k8s.V1HostPathVolumeSource(path=DUMP_DIR),
-)
-
-dump_volume_mount = k8s.V1VolumeMount(
-    name="dump-volume",
-    mount_path=DUMP_DIR,
-)
 
 
 def _get_minio_client() -> Minio:
@@ -107,20 +88,9 @@ with DAG(
     tags=["backup"],
 ) as dag:
 
-    dump_db = KubernetesPodOperator(
+    dump_db = BashOperator(
         task_id="dump_db",
-        name="dump-db-pod",
-        namespace="dchat",
-        image="postgres:16-alpine",
-        cmds=["sh", "-c"],
-        arguments=[
-            f"pg_dump $DATABASE_URL | gzip > {DUMP_DIR}/dump_{{{{ ds }}}}.sql.gz",
-        ],
-        secrets=[db_secret],
-        volumes=[dump_volume],
-        volume_mounts=[dump_volume_mount],
-        is_delete_operator_pod=True,
-        get_logs=True,
+        bash_command=f"pg_dump $DATABASE_URL | gzip > {DUMP_DIR}/dump_{{{{ ds }}}}.sql.gz",
     )
 
     upload_dump = PythonOperator(

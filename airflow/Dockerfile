@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 RUN find /etc/apt -name "*.list" -o -name "*.sources" | xargs sed -i 's|deb.debian.org|mirror.yandex.ru|g'
-RUN apt-get update && apt-get install -y graphviz
+RUN apt-get update && apt-get install -y graphviz  postgresql-client
 
 WORKDIR /mono
 COPY .env ./
@@ -17,7 +17,7 @@ COPY infra infra/
 WORKDIR /mono/airflow
 
 RUN pip install --no-cache-dir --timeout 120 --retries 10 -i https://pypi.org/simple poetry
-RUN pip install --no-cache-dir --timeout 120 --retries 10 -i https://pypi.org/simple apache-airflow-providers-cncf-kubernetes==10.18.0
+
 # ИСПРАВЛЕНИЕ: указываем, что файлы лежат в папке airflow в контексте билда
 COPY airflow/pyproject.toml airflow/poetry.lock* ./
 
