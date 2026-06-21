@@ -16,7 +16,7 @@ COPY infra infra/
 
 WORKDIR /mono/airflow
 
-RUN pip install --no-cache-dir poetry
+RUN pip install --no-cache-dir -i https://mirror.yandex.ru/pypi/simple poetry
 
 # ИСПРАВЛЕНИЕ: указываем, что файлы лежат в папке airflow в контексте билда
 COPY airflow/pyproject.toml airflow/poetry.lock* ./
