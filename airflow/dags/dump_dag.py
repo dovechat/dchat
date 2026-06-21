@@ -15,10 +15,12 @@ BUCKET_NAME = "dumps"
 
 
 def _get_minio_client() -> Minio:
+    from core.config import settings
+    endpoint = settings.s3_internal_url.replace("http://", "").replace("https://", "").rstrip("/")
     return Minio(
-        os.environ["MINIO_ENDPOINT"],
-        access_key=os.environ["MINIO_ACCESS_KEY"],
-        secret_key=os.environ["MINIO_SECRET_KEY"],
+        endpoint,
+        access_key=settings.s3_access_key,
+        secret_key=settings.s3_secret_key,
         secure=False,
     )
 
