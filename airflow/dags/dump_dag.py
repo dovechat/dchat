@@ -85,15 +85,19 @@ def backup_media(**context) -> None:
     base_dir.mkdir(parents=True, exist_ok=True)
 
     client = _get_minio_client()
-    cutoff = datetime.strptime(ds, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     objects = list(client.list_objects(MEDIA_BUCKET, recursive=True))
-    new_objects = [obj for obj in objects if obj.last_modified >= cutoff]
-    for obj in new_objects:
+
+    previous_backups = [d for d in Path(MEDIA_DIR).iterdir() if d.is_dir() and d.name != ds]
+    if previous_backups:
+        cutoff = datetime.strptime(ds, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        objects = [obj for obj in objects if obj.last_modified >= cutoff]
+
+    for obj in objects:
         file_date = obj.last_modified.strftime("%Y-%m-%d")
         dest = base_dir / file_date / obj.object_name
         dest.parent.mkdir(parents=True, exist_ok=True)
         client.fget_object(MEDIA_BUCKET, obj.object_name, str(dest))
-    log.info(f"backup_media downloaded={len(new_objects)} of {len(objects)} files to={base_dir}")
+    log.info(f"backup_media downloaded={len(objects)} files to={base_dir}")
 
 
 def cleanup_old_media(**context) -> None:
