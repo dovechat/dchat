@@ -100,42 +100,17 @@ def cleanup_old_media(**context) -> None:
     if not base.exists():
         return
 
-    dirs = []
+    import shutil
     for d in base.iterdir():
         if not d.is_dir():
             continue
         try:
             obj_date = datetime.strptime(d.name, "%Y-%m-%d").date()
-            dirs.append((obj_date, d))
         except ValueError:
             continue
-
-    keep = set()
-    week_seen = set()
-    month_seen = set()
-
-    for obj_date, d in sorted(dirs, reverse=True):
-        age_days = (today - obj_date).days
-        if age_days <= 5:
-            keep.add(d)
-        elif age_days <= 35:
-            week_key = obj_date.isocalendar()[:2]
-            if week_key not in week_seen:
-                week_seen.add(week_key)
-                keep.add(d)
-        elif age_days <= 150:
-            month_key = (obj_date.year, obj_date.month)
-            if month_key not in month_seen:
-                month_seen.add(month_key)
-                keep.add(d)
-
-    import shutil
-    for obj_date, d in dirs:
-        if d not in keep:
+        if (today - obj_date).days > 365:
             shutil.rmtree(d)
             log.info(f"cleanup_old_media removed={d}")
-
-    log.info(f"cleanup_old_media kept={len(keep)} total={len(dirs)}")
 
 
 default_args = {
