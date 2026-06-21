@@ -82,7 +82,7 @@ default_args = {
 with DAG(
     dag_id="db_backup_dag",
     default_args=default_args,
-    schedule_interval="0 3 * * *",
+    schedule="0 3 * * *",
     start_date=datetime(2026, 6, 1),
     catchup=False,
     tags=["backup"],
