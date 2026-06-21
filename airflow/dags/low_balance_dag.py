@@ -11,7 +11,7 @@ from models.lines import Line  # noqa: F401
 
 
 def _parse_warn_days() -> list[int]:
-    raw = os.getenv("LOW_BALANCE_WARN_DAYS", "5,3")
+    # raw = os.getenv("LOW_BALANCE_WARN_DAYS", "5,3")
     raw = settings.low_balance_warn_days
     return [int(d.strip()) for d in raw.split(",") if d.strip().isdigit()]
 

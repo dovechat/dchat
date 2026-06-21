@@ -12,6 +12,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    project_dir: str = "/opt/dovechat"
+
     # Database
     database_url: str = "..."
 
