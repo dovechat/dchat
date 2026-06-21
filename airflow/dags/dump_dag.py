@@ -80,8 +80,8 @@ def cleanup_old_dumps(**context) -> None:
 
 def backup_media(**context) -> None:
     ds = context["ds"]
-    day_dir = Path(MEDIA_DIR) / ds
-    day_dir.mkdir(parents=True, exist_ok=True)
+    marker = Path(MEDIA_DIR) / ds
+    marker.mkdir(parents=True, exist_ok=True)
 
     client = _get_minio_client()
     objects = list(client.list_objects(MEDIA_BUCKET, recursive=True))
