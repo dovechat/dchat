@@ -101,19 +101,21 @@ class CleanupService:
         log.info(f"\n\n ------- cleanup_line conversations: {len(conversations)} ---------- \n\n")
 
         for conversation in conversations:
-            media_ids = await self.message_repo.get_media_ids_by_conversation(conversation.id)
-            for media_id in media_ids:
-                try:
-                    self.s3.remove_object(settings.s3_bucket, media_id)
-                    result["media_deleted"] += 1
-                    log.info(f"\n\n ------- cleanup_line media deleted: {media_id} ---------- \n\n")
-                except Exception as e:
-                    result["media_errors"] += 1
-                    log.error(f"\n\n ------- cleanup_line media error: {media_id} {e} ---------- \n\n")
-
-            await self.conversation_repo.delete(conversation)
-            result["conversations"] += 1
-
+            try:
+                media_ids = await self.message_repo.get_media_ids_by_conversation(conversation.id)
+                for media_id in media_ids:
+                    try:
+                        self.s3.remove_object(settings.s3_bucket, media_id)
+                        result["media_deleted"] += 1
+                        log.info(f"\n\n ------- cleanup_line media deleted: {media_id} ---------- \n\n")
+                    except Exception as e:
+                        result["media_errors"] += 1
+                        log.error(f"\n\n ------- cleanup_line media error: {media_id} {e} ---------- \n\n")
+    
+                await self.conversation_repo.delete(conversation)
+                result["conversations"] += 1
+            except Exception as e:
+                log.error(f"cleanup_line conversation error: {conversation.id} {e}", exc_info=True)
 
         if channel_type == "whatsapp_green":
             await self._cleanup_green_instance(line_id, channel_account)
