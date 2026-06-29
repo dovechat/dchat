@@ -103,6 +103,7 @@ class CleanupService:
         for conversation in conversations:
             try:
                 media_ids = await self.message_repo.get_media_ids_by_conversation(conversation.id)
+                log.info(f"\n\n ------- cleanup_line media media_ids: {media_ids} ---------- \n\n")
                 for media_id in media_ids:
                     try:
                         self.s3.remove_object(settings.s3_bucket, media_id)
