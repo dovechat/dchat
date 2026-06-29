@@ -113,13 +113,13 @@ class CleanupService:
                         result["media_errors"] += 1
                         log.error(f"\n\n ------- cleanup_line media error: {media_id} {e} ---------- \n\n")
 
-                log.info(f"\n\n ------- cleanup_line before conversation_repo.delete: {conversation_repo} ---------- \n\n")
+                log.info(f"\n\n ------- cleanup_line before conversation_repo.delete: {conversation} ---------- \n\n")
                 try:
                     await self.conversation_repo.delete(conversation)
                 except Exception as e:
                     log.error(f"\n\n ------- cleanup_line conversation_repo.delete  error: {e} ---------- \n\n")
                 log.info(
-                    f"\n\n ------- cleanup_line after conversation_repo.delete: {conversation_repo} ---------- \n\n")
+                    f"\n\n ------- cleanup_line after conversation_repo.delete: {conversation} ---------- \n\n")
                 result["conversations"] += 1
             except Exception as e:
                 log.error(f"cleanup_line conversation error: {conversation.id} {e}", exc_info=True)
