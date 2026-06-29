@@ -259,7 +259,8 @@ class GreenWhatsAppListener:
                     channel_type="whatsapp_green",
                     connection_error=error_reason
                 )
-                await notify_connection_error(line_id, "whatsapp_green",db)
+                if conn_status in ("error", "disconnected"):
+                    await notify_connection_error(line_id, "whatsapp_green",db)
                 log.info(f"*** GreenWhatsAppListener._handle_instance_state end try")
             except Exception as e:
                 log.error(f"*** GreenWhatsAppListener._handle_instance_state ERROR: {e}")
