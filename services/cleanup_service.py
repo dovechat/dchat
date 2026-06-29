@@ -50,6 +50,7 @@ class CleanupService:
         if token:
             log.info(f"\n\n ---- +++ ---- Send remove webhook greenapi external_id: {instance.external_id} ---+++---  \n\n")
             async with httpx.AsyncClient(timeout=10.0) as client:
+                log.info(f"\n\n ---- +++ ---- Send remove webhook greenapi {GREEN_API_BASE}/waInstance{instance.external_id}/clearMessagesQueue/{token}")
                 try:
                     resp = await client.get(f"{GREEN_API_BASE}/waInstance{instance.external_id}/clearMessagesQueue/{token}")
                     log.info(f"\n\n ------- clearMessagesQueue instance={instance.external_id} status={resp.status_code} ---------- \n\n")
@@ -66,7 +67,7 @@ class CleanupService:
                     )
                     if not str(resp.status_code).startswith("2"):
                         log.error(f"Send remove webhook returned wrong status code: {resp.status_code} {resp.json()}")
-                except httpx.ReadTimeout:
+                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.TimeoutException):
                     msg = f"!!! --- ERROR: Send green remove webhook  {green_set_settiings_url} request returns timeout "
                     log.error(msg)
 
