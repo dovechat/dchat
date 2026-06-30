@@ -49,8 +49,8 @@ class CrmService:
 
         log.info(f"send_to_crm conn2 {conn}")
         provider = get_provider(conn)
-        link = await self._uow.crm_dialog_links.get_by_conversation(conversation_id)
-        crm_chat_id = link.crm_chat_id if link else None
+        conversation = await self._uow.conversations.get_by_id(conversation_id)
+        crm_chat_id = conversation.crm_chat_id
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
@@ -79,17 +79,12 @@ class CrmService:
         new_session_id = str(data_result[0].get("session", {}).get("ID", ""))
 
         # 2. Если диалог новый — создаём link и привязываем к сделке
-        if not link:
+        if not conversation.crm_chat_id:
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
-            bx_chat_id = f"dc_{conversation_id}"
-
-            await self._uow.crm_dialog_links.create(
-                conversation_id=conversation_id, crm_connection_id=conn.id,
-                crm_chat_id=bx_chat_id, crm_user_id=client_phone)
-
+            conversation.crm_chat_id = session_chat_id
+            await self._uow.conversations.update(conversation)
             log.info(f"send_to_crm conversation_id {conversation_id}")
-
             # Ищем контакт и сделку с уже рабочим токеном
             try:
                 bx = provider._client()
@@ -99,7 +94,8 @@ class CrmService:
                     deal_id = await bx.find_open_deal(contact_id)
                     log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
                     if deal_id:
-                        attach_result = await bx.attach_deal_to_chat(session_chat_id, conn.crm_line_id, conn.connector_id,
+                        attach_result = await bx.attach_deal_to_chat(session_chat_id, conn.crm_line_id,
+                                                                     conn.connector_id,
                                                                      deal_id)
                         log.info(f"attach_deal_to_chat result={attach_result}")
                     else:
@@ -110,8 +106,8 @@ class CrmService:
                     log.warning(f"contact not found for client_phone={client_phone}")
             except Exception as e:
                 log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
-            log.info(f"send_to_crm bx_chat_id {bx_chat_id}")
-            return bx_chat_id
+            log.info(f"send_to_crm bx_chat_id {session_chat_id}")
+            return session_chat_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
         conn = await self._uow.crm_connections.get_by_tenant(tenant_id, crm_type)
@@ -221,11 +217,10 @@ class CrmService:
         template = WABA_TEMPLATES.get(template_match.group(1)) if template_match else None
 
         conv = None
-        if crm_chat_id and crm_chat_id.startswith("dc_"):
-            try:
-                conv = await self._uow.conversations.get_by_id(uuid.UUID(crm_chat_id[len("dc_"):]))
-            except ValueError:
-                conv = None
+        if crm_chat_id:
+            conv = await self._uow.conversations.get_one_or_none(
+                filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id}
+            )
         if not conv:
             log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id}")
             return
@@ -274,9 +269,6 @@ class CrmService:
                 log.info(f"crm-outgoing response: {resp.status_code} {resp.text}")
             except Exception as e:
                 log.error(f"crm-outgoing request failed: {e}")
-
-
-
 
         im_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
         im_message_id = data.get("data[MESSAGES][0][im][message_id]")
