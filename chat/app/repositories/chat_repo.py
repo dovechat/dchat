@@ -156,7 +156,7 @@ class ChatRepository(BaseRepository[Conversation]):
             .join(Conversation, Conversation.line_id == ChannelAccount.line_id)
             .where(
                 Conversation.id == conversation_id,
-                ChannelAccount.channel_type == Conversation.channel_type.value
+                ChannelAccount.channel_type.value == Conversation.channel_type
             )
         )
         result = await self.session.execute(stmt)
