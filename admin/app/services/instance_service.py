@@ -136,7 +136,8 @@ class AdminInstanceService:
                 instance_repo=MonoInstanceRepository(self._uow._session),
             )
             for ch in channels:
-                await cleanup.cleanup_line(old_line_id, channel_type=ch.channel_type.value)
+                if ch.channel_type.value  == "whatsapp_green":
+                    await cleanup.cleanup_line(old_line_id, channel_type=ch.channel_type.value)
             if not any(ch.channel_type.value == "whatsapp_green" for ch in channels):
                 await self._uow.instances.release(instance)
         else:
