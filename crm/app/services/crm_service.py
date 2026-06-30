@@ -82,7 +82,7 @@ class CrmService:
         if not link:
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
-            bx_chat_id = f"dc_{conversation_id}"
+            bx_chat_id = session_chat_id or f"dc_{conversation_id}"
 
             await self._uow.crm_dialog_links.create(
                 conversation_id=conversation_id, crm_connection_id=conn.id,
