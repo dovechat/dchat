@@ -41,7 +41,7 @@ class BitrixProvider(CrmProvider):
             connector_id=self.conn.connector_id,
             line_id=self.conn.crm_line_id,
             user_id=client_phone,
-            user_name=client_name or "VK User",
+            user_name=client_name or self.conn.channel_type,
             chat_id=chat_id,
             text=text,
             message_id=message_id,
