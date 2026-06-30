@@ -218,9 +218,10 @@ class CrmService:
 
         conv = None
         if crm_chat_id:
-            conv = await self._uow.conversations.get_one_or_none(
+            convs = await self._uow.conversations.get_multi(
                 filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id}
             )
+            conv = convs[0] if convs else None
         if not conv:
             log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id}")
             return
