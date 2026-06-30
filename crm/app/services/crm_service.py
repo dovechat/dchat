@@ -219,7 +219,11 @@ class CrmService:
         conv = None
         if crm_chat_id:
             convs = await self._uow.conversations.get_multi(
-                filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id}
+                filters={
+                    "line_id": conn.line_id,
+                    "crm_chat_id": crm_chat_id,
+                    "channel_type": settings.BITRIX_CONNECTOR_CHANNEL_MAP.get(connector_id),
+                }
             )
             conv = convs[0] if convs else None
         if not conv:
