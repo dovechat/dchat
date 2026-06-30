@@ -219,18 +219,16 @@ class CrmService:
         }
         template_match = re.match(r'^\[template:(\w+)\]$', text)
         template = WABA_TEMPLATES.get(template_match.group(1)) if template_match else None
-        
 
-
-
-        convs = await self._uow.conversations.get_multi(
-            filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id},
-            limit=1,
-        )
-        if not convs:
+        conv = None
+        if crm_chat_id and crm_chat_id.startswith("dc_"):
+            try:
+                conv = await self._uow.conversations.get_by_id(uuid.UUID(crm_chat_id[len("dc_"):]))
+            except ValueError:
+                conv = None
+        if not conv:
             log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id}")
             return
-        conv = convs[0]
 
         files = await self._collect_bitrix_files(data)
 
