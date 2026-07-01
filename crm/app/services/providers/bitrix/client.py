@@ -177,6 +177,7 @@ class BitrixClient:
         return await self.call("imconnector.connector.data.set", {
             "CONNECTOR": connector_id,
             "LINE": open_line_id,
+            "DATA[ID]": f"{connector_id}_line{open_line_id}",
             "DATA[ACTIVE]": "Y",
         })
 

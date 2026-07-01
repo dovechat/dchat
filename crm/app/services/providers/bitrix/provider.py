@@ -36,7 +36,7 @@ class BitrixProvider(CrmProvider):
         media: list[dict] = [],
     ) -> dict:
         bx = self._client()
-        chat_id = crm_chat_id or ""
+        chat_id = f"{connector_id}_line{crm_line_id}"
         return await bx.send_message(
             connector_id=self.conn.connector_id,
             line_id=self.conn.crm_line_id,
