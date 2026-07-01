@@ -83,7 +83,7 @@ class CrmService:
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
             conversation.crm_chat_id = session_chat_id
-            await self._uow.conversations.update(conversation)
+            await self._uow.conversations.update(conversation, crm_chat_id=session_chat_id)
             log.info(f"send_to_crm conversation_id {conversation_id}")
             # Ищем контакт и сделку с уже рабочим токеном
             try:
