@@ -34,7 +34,7 @@ class ChatRepository(BaseRepository[Conversation]):
             self,
             line_id: uuid.UUID,
             channel_type: str,
-            crm_chat_id: str,
+            crm_chat_id: Optional[str] = None,
             client_phone: Optional[str] = None,
             meta: Optional[dict] = None
     ) -> Conversation:

@@ -14,7 +14,7 @@ class MessageStatus(str, enum.Enum):
 class ConversationCreate(BaseModel):
     line_id: uuid.UUID
     channel_type: str
-    crm_chat_id: str
+    crm_chat_id: str | None = None
     client_phone: str | None = None
     meta: dict | None = None
     
