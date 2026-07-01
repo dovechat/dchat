@@ -85,7 +85,7 @@ class ConversationResponse(BaseModel):
     id: uuid.UUID
     line_id: uuid.UUID
     channel_type: str
-    crm_chat_id: str
+    crm_chat_id: str | None = None
     client_phone: str | None = None
     meta: dict | None = None
     created_at: datetime
