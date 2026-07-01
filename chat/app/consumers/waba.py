@@ -158,107 +158,107 @@ class WabaListener:
             creds = decrypt(account.credentials_encrypted["encrypted_data"])
             api_key = json.loads(creds)["api_key"]
 
-        for msg in value.get("messages", []):
-            msg_id = msg["id"]
-
-            dedup_key = f"waba_msg:{msg_id}"
-            if await rdb.get(dedup_key):
-                continue
-            await rdb.set(dedup_key, "1", ex=300)
-
-            from_number = msg["from"]
-            msg_type = msg["type"]
-
-            text = None
-            media_id = None
-            file_name = None
-            mime_type = None
-            file_bytes = None
-
-            if msg_type == "text":
-                text = msg["text"]["body"]
-            elif msg_type in ["image", "audio", "video", "document"]:
-                media = msg.get(msg_type, {})
-                log.info(f"Downloading media {media} with key {api_key[:5]}...")
-                if "id" in media:
-                    # Скачиваем из WABA
-                    try:
-                        file_bytes = await self.download_media(media["url"], api_key)
-                        mime_type = media.get("mime_type")
-                        file_name = media.get("filename")
-                        media_id = uuid.uuid4()
-                    except Exception as e:
-                        log.error(f"ERROR: !!! --- Failed to download media {media_id}: {e}")
-                        file_bytes = None
-                        mime_type = None
-                        file_name = None
-                        media_id = None
-                    # Сохраняем в MinIO
-                    if file_bytes:
-                        await self.storage.save_file(
-                            file_bytes=file_bytes,
-                            media_id=media_id,
-                            filename=file_name or f"{media_id}.bin",
-                            mime_type=mime_type
-                        )
-                text = media.get("caption", "")
-
-            phone = f"+{from_number}"
-
-            conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "waba")
-            if not conv:
-                log.warning(f"Conversation not found for line {line_id}, phone {phone}")
-                continue
-
-            media_items = []
-            if media_id:
-                media_items = [{
-                    "media_id": str(media_id),
-                    "file_name": file_name,
-                    "mime_type": mime_type,
-                }]
-
-            message = await chat_service.save_incoming_waba(
-                conversation_id=conv.id,
-                external_id=msg_id,
-                text=text,
-                media_items=media_items if media_items else None,
-                raw_data=value,
-            )
-
-            ws_message = {
-                "id": str(message.id),
-                "text": message.text,
-                "direction": "inbound",
-                "created_at": message.created_at.isoformat(),
-                "phone": phone,
-                "media": media_items,
-            }
-
-            await manager.send_new_message(conv.id, ws_message)
-
-            try:
-                from crm.app.services.crm_service import CrmService
-                from crm.app.core.uow import CrmUnitOfWork
-                crm_uow = CrmUnitOfWork(db)
-                crm_service = CrmService(crm_uow)
-                line = await crm_uow.lines.get_by_id(line_id)
-                bx_chat_id = await crm_service.send_to_crm(
-                    tenant_id=line.tenant_id,
+            for msg in value.get("messages", []):
+                msg_id = msg["id"]
+    
+                dedup_key = f"waba_msg:{msg_id}"
+                if await rdb.get(dedup_key):
+                    continue
+                await rdb.set(dedup_key, "1", ex=300)
+    
+                from_number = msg["from"]
+                msg_type = msg["type"]
+    
+                text = None
+                media_id = None
+                file_name = None
+                mime_type = None
+                file_bytes = None
+    
+                if msg_type == "text":
+                    text = msg["text"]["body"]
+                elif msg_type in ["image", "audio", "video", "document"]:
+                    media = msg.get(msg_type, {})
+                    log.info(f"Downloading media {media} with key {api_key[:5]}...")
+                    if "id" in media:
+                        # Скачиваем из WABA
+                        try:
+                            file_bytes = await self.download_media(media["url"], api_key)
+                            mime_type = media.get("mime_type")
+                            file_name = media.get("filename")
+                            media_id = uuid.uuid4()
+                        except Exception as e:
+                            log.error(f"ERROR: !!! --- Failed to download media {media_id}: {e}")
+                            file_bytes = None
+                            mime_type = None
+                            file_name = None
+                            media_id = None
+                        # Сохраняем в MinIO
+                        if file_bytes:
+                            await self.storage.save_file(
+                                file_bytes=file_bytes,
+                                media_id=media_id,
+                                filename=file_name or f"{media_id}.bin",
+                                mime_type=mime_type
+                            )
+                    text = media.get("caption", "")
+    
+                phone = f"+{from_number}"
+    
+                conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "waba")
+                if not conv:
+                    log.warning(f"Conversation not found for line {line_id}, phone {phone}")
+                    continue
+    
+                media_items = []
+                if media_id:
+                    media_items = [{
+                        "media_id": str(media_id),
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                    }]
+    
+                message = await chat_service.save_incoming_waba(
                     conversation_id=conv.id,
-                    client_phone=phone,
-                    client_name="",
-                    text=text or "",
-                    message_id=str(message.id),
-                    channel_type="waba",
-                    media=[{"id": m["media_id"], "file_name": m["file_name"], "mime_type": m["mime_type"], "file_size": 0} for m
-                           in media_items],
+                    external_id=msg_id,
+                    text=text,
+                    media_items=media_items if media_items else None,
+                    raw_data=value,
                 )
-                log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
-                if bx_chat_id:
-                    await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
-            except Exception as e:
-                log.error(f"CRM send_to_crm failed: {e}")
+    
+                ws_message = {
+                    "id": str(message.id),
+                    "text": message.text,
+                    "direction": "inbound",
+                    "created_at": message.created_at.isoformat(),
+                    "phone": phone,
+                    "media": media_items,
+                }
+    
+                await manager.send_new_message(conv.id, ws_message)
+    
+                try:
+                    from crm.app.services.crm_service import CrmService
+                    from crm.app.core.uow import CrmUnitOfWork
+                    crm_uow = CrmUnitOfWork(db)
+                    crm_service = CrmService(crm_uow)
+                    line = await crm_uow.lines.get_by_id(line_id)
+                    bx_chat_id = await crm_service.send_to_crm(
+                        tenant_id=line.tenant_id,
+                        conversation_id=conv.id,
+                        client_phone=phone,
+                        client_name="",
+                        text=text or "",
+                        message_id=str(message.id),
+                        channel_type="waba",
+                        media=[{"id": m["media_id"], "file_name": m["file_name"], "mime_type": m["mime_type"], "file_size": 0} for m
+                               in media_items],
+                    )
+                    log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+                    if bx_chat_id:
+                        await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
+                except Exception as e:
+                    log.error(f"CRM send_to_crm failed: {e}", exc_info=True)
 
 
 
