@@ -204,7 +204,8 @@ class CrmService:
             log.error(f"handle_bitrix_incoming token refresh failed: {e}")
             access_token = decrypt(conn.access_token_enc)
 
-        crm_chat_id = data.get("data[MESSAGES][0][chat][id]")
+        client_chat_id = data.get("data[MESSAGES][0][chat][id]")
+        crm_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
         text = data.get("data[MESSAGES][0][message][text]", "")
         text = re.sub(r'\[/?b\]|\[/?br\]', '', text).strip()
 
@@ -275,18 +276,17 @@ class CrmService:
             except Exception as e:
                 log.error(f"crm-outgoing request failed: {e}")
 
-        im_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
         im_message_id = data.get("data[MESSAGES][0][im][message_id]")
-        if im_chat_id and im_message_id:
+        if crm_chat_id and im_message_id:
             try:
                 bx = BitrixClient(domain=conn.domain, access_token=access_token)
                 await bx.call("imconnector.send.status.delivery", {
                     "CONNECTOR": conn.connector_id,
                     "LINE": conn.crm_line_id,
-                    "MESSAGES[0][im][chat_id]": im_chat_id,
+                    "MESSAGES[0][im][chat_id]": crm_chat_id,
                     "MESSAGES[0][im][message_id]": im_message_id,
                     "MESSAGES[0][message][id][0]": im_message_id,
-                    "MESSAGES[0][chat][id]": crm_chat_id,
+                    "MESSAGES[0][chat][id]": client_chat_id,
                 })
                 log.info(f"delivery status sent for im_message_id={im_message_id}")
             except Exception as e:
