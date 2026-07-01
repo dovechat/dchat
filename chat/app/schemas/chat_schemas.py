@@ -70,7 +70,7 @@ class ConversationListResponse(BaseModel):
     line_name: str | None = None
     tenant_id: uuid.UUID | None = None  # добавить
     channel_type: str
-    crm_chat_id: str
+    crm_chat_id: str | None = None
     client_phone: str | None = None
     meta: dict | None = None
     created_at: datetime

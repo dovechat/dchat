@@ -177,7 +177,8 @@ async def list_conversations(
             is_closed=is_closed,
         )
     except Exception as e:
-        log.error(f"\n\n router.get  /conversations {e} \n\n")
+        log.error(f"router.get /conversations failed: {e}", exc_info=True)
+        raise
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
