@@ -75,10 +75,7 @@ class CrmService:
 
         log.info(f"send_to_crm result {result}")
 
-        data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-        new_session_id = str(data_result[0].get("session", {}).get("ID", ""))
-
-        og.info(f"\n\n ---------- conversation.crm_chat_id {conversation.crm_chat_id }\n\n")
+        log.info(f"\n\n ---------- conversation.crm_chat_id {conversation.crm_chat_id }\n\n")
 
         # 2. Если диалог новый — создаём link и привязываем к сделке
         if not conversation.crm_chat_id:
