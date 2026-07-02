@@ -262,7 +262,7 @@ class ChatRepository(BaseRepository[Conversation]):
             line_id=line_id,
             client_phone=chat_id,
             channel_type="telegram_bot",
-            crm_chat_id=chat_id,
+            crm_chat_id=None,  # New chat should have this field empty
             meta={"username": client_phone} if client_phone else {}
         )
         self.session.add(new_conv)
