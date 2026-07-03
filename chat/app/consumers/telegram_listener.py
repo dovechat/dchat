@@ -11,6 +11,7 @@ from datetime import timedelta
 from typing import Callable, Dict
 from io import BytesIO
 from minio import Minio
+from sqlalchemy import select, and_ 
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -24,7 +25,7 @@ from app.schemas.chat_schemas import MessageCreate
 from app.services.websocket_manager import manager
 from app.services.chat_service import ChatService
 from app.utils import get_file_from_s3
-from models.messages import MessageDirection
+from models.messages import Conversation, ChannelAccount, MessageDirection
 from notification.notification_caller import notify_connection_error
 from services.storage_service import StorageService
 
@@ -285,6 +286,21 @@ class TelegramListener:
         self.tasks[conversation_id] = task
         log.info(f"Started listening: self.tasks {self.tasks }")
         log.info(f"Started listening: conversation={conversation_id} my={my_phone} peer={peer_phone}")
+
+
+    async def start_all(self):
+        async with get_session() as db:
+            chat_repo = ChatRepository(db)
+            rows = await chat_repo.get_active_telegram_user_targets()
+
+        log.info(f"TelegramListener.start_all: found {len(rows)} telegram_user conversations")
+        for conv_id, my_phone, peer_phone in rows:
+            try:
+                await self.start_listening(str(conv_id), my_phone or '', peer_phone or '')
+            except Exception as e:
+                log.error(f"start_all failed for {conv_id}: {e}")
+
+
 
     async def stop_listening(self, conversation_id: str):
         log.info(f"stop_listening called for {conversation_id}")

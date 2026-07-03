@@ -84,12 +84,12 @@ class ConnectionManager:
         log.info(f"+++++++ websocket_manager  ConnectionManager.connect Connected: conversation={conversation_id}, total={len(self.active_connections[conversation_id])}")
 
     async def disconnect(self, conversation_id: str, websocket: WebSocket):
-        listener = websocket.app.state.listener
+        # listener = websocket.app.state.listener
         if conversation_id in self.active_connections:
             self.active_connections[conversation_id].remove(websocket)
             if not self.active_connections[conversation_id]:
                 del self.active_connections[conversation_id]
-                await listener.stop_listening(conversation_id)
+                # await listener.stop_listening(conversation_id)
 
         log.info(f"Disconnected: conversation={conversation_id}")
 

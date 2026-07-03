@@ -303,3 +303,15 @@ class ChatRepository(BaseRepository[Conversation]):
         conv.is_closed = is_closed
         await self.session.flush()
         return conv
+
+    async def get_active_telegram_user_targets(self) -> list[tuple[str, str, str]]:
+        stmt = (
+            select(Conversation.id, ChannelAccount.phone, Conversation.client_phone)
+            .join(ChannelAccount, and_(
+                Conversation.line_id == ChannelAccount.line_id,
+                Conversation.channel_type == ChannelAccount.channel_type
+            ))
+            .where(Conversation.channel_type == "telegram_user")
+        )
+        result = await self.session.execute(stmt)
+        return result.all()

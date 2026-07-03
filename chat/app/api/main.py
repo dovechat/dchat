@@ -79,6 +79,8 @@ async def startup():
     app.state.vk_listener = VkListener()
     asyncio.create_task(redis_subscriber())
     asyncio.create_task(start_consumer(tg_listener=app.state.listener))
+    asyncio.create_task(app.state.listener.start_all())
+
 
 @app.on_event("shutdown")
 async def shutdown():
