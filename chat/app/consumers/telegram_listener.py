@@ -300,6 +300,41 @@ class TelegramListener:
             except Exception as e:
                 log.error(f"start_all failed for {conv_id}: {e}")
 
+    async def _health_check_loop(self, interval: int = 600):
+        while True:
+            await asyncio.sleep(interval)
+            dead = []
+            for conv_id, client in list(self.clients.items()):
+                try:
+                    if not client.is_connected():
+                        dead.append(conv_id)
+                except Exception as e:
+                    log.error(f"health_check: error checking {conv_id}: {e}")
+                    dead.append(conv_id)
+
+            if not dead:
+                continue
+
+            log.warning(f"health_check: found {len(dead)} dead clients, restarting")
+            async with get_session() as db:
+                chat_repo = ChatRepository(db)
+                rows = await chat_repo.get_active_telegram_user_targets()
+            targets = {str(r[0]): (r[1], r[2]) for r in rows}
+
+            for conv_id in dead:
+                self.tasks.pop(conv_id, None)
+                self.clients.pop(conv_id, None)
+                target = targets.get(conv_id)
+                if not target:
+                    log.warning(f"health_check: no target found for {conv_id}, skipping restart")
+                    continue
+                my_phone, peer_phone = target
+                try:
+                    await self.start_listening(conv_id, my_phone or '', peer_phone or '')
+                except Exception as e:
+                    log.error(f"health_check: restart failed for {conv_id}: {e}")
+
+
 
 
     async def stop_listening(self, conversation_id: str):
