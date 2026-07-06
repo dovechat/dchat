@@ -164,10 +164,8 @@ async def test_line(test_tenant):
         line = Line(
             tenant_id=test_tenant.id,
             name="Test WhatsApp Line",
-            channel_type=ChannelType.WHATSAPP_GREEN.value,
             status="active",
             is_demo=False,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
             connection_state={"status": "not_connected"}
         )
         session.add(line)
@@ -205,26 +203,43 @@ async def test_instance():
 
 
 @pytest.fixture
-async def test_allocated_instance(test_line):
-    """Create instance allocated to test line"""
+async def test_allocated_instance(test_tenant):
+    """Create line + whatsapp account + allocated instance"""
+    import uuid as _uuid
+    from models.lines import ChannelAccount
     async with get_test_db() as session:
+        line = Line(
+            tenant_id=test_tenant.id,
+            name="Test WhatsApp Line",
+            status="active",
+            is_demo=False,
+            connection_state={"status": "not_connected"}
+        )
+        session.add(line)
+        await session.flush()
+        account = ChannelAccount(
+            line_id=line.id,
+            channel_type="whatsapp_green",
+            credentials_encrypted={},
+        )
+        session.add(account)
+        await session.flush()
         instance = Instance(
-            provider="green_api",
-            external_id="test_allocated_instance",
+            provider="green",
+            external_id=str(_uuid.uuid4().int)[:10],
             status=InstanceStatus.busy,
-            allocated_to_line_id=test_line.id
+            allocated_to_line_id=line.id
         )
         session.add(instance)
         await session.commit()
-        await session.refresh(instance)
-        yield instance
-
-        # Cleanup
-        async with get_test_db() as session:
-            obj = await session.get(Instance, instance.id)
-            if obj:
-                await session.delete(obj)
-                await session.commit()
+        line_id = line.id
+        instance_id = instance.id
+    yield instance
+    async with get_test_db() as session:
+        obj = await session.get(Line, line_id)
+        if obj:
+            await session.delete(obj)
+            await session.commit()
 
 
 @pytest.fixture

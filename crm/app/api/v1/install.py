@@ -1,5 +1,6 @@
 """Bitrix24 install handler."""
 import logging
+import uuid
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
@@ -7,6 +8,7 @@ import os
 
 from app.core.dependencies import get_crm_service
 from app.services.crm_service import CrmService
+from crm.app.schemas.crm_schemas import AmoSaveTokensRequest
 
 log = logging.getLogger("uvicorn.error")
 
@@ -95,3 +97,73 @@ async def bitrix_select_tenant(body: dict, crm_service: CrmService = Depends(get
         tenant_id=body["tenant_id"],
         bx_auth=body.get("bx_auth", {}),
     )
+
+# AMO ---------
+
+@install_router.get("/amo")
+async def amo_install_redirect():
+    from core.config import settings
+    from fastapi.responses import RedirectResponse
+    params = (
+        f"client_id={settings.AMO_CLIENT_ID}"
+        f"&redirect_uri={settings.AMO_REDIRECT_URI}"
+        f"&response_type=code"
+        f"&state=install"
+        f"&mode=popup"
+    )
+    return RedirectResponse(f"https://www.kommo.com/oauth?{params}")
+
+
+@install_router.get("/amo/callback")
+async def amo_oauth_callback(
+    request: Request,
+    crm_service: CrmService = Depends(get_crm_service),
+):
+    code = request.query_params.get("code")
+    log.info(f"amo_oauth_callback params={dict(request.query_params)}")
+    referer = request.query_params.get("referer", "")
+    domain = referer.replace("https://", "").replace("http://", "").rstrip("/")
+    return await crm_service.handle_amo_install(code=code, domain=domain)
+
+
+@install_router.get("/amo/auth-url")
+async def amo_auth_url():
+    from core.config import settings
+    from fastapi.responses import JSONResponse
+    params = (
+        f"client_id={settings.AMO_CLIENT_ID}"
+        f"&redirect_uri={settings.AMO_REDIRECT_URI}"
+        f"&response_type=code"
+        f"&state=install"
+    )
+    return JSONResponse({"url": f"https://new1782329019.amocrm.ru/oauth2/authorize?{params}"})
+
+
+@install_router.post("/amo/save-tokens")
+async def amo_save_tokens(
+    body: AmoSaveTokensRequest,
+    crm_service: CrmService = Depends(get_crm_service),
+):
+    from core.config import settings
+    from infra.crypto import encrypt
+    import httpx
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            f"https://{body.domain}/api/v4/account?with=amojo_id",
+            headers={"Authorization": f"Bearer {body.access_token}"},
+        )
+        resp.raise_for_status()
+        account = resp.json()
+        log.info(f"amo_save_tokens account response={account}")
+    account_id = str(account["id"])
+    amojo_id = account.get("amojo_id", "")
+    await crm_service._uow.crm_connections.upsert_amo(
+        domain=body.domain,
+        account_id=account_id,
+        amojo_id=amojo_id,
+        access_token_enc=encrypt(body.access_token),
+        refresh_token_enc=encrypt(body.refresh_token),
+        tenant_id=body.tenant_id,
+    )
+    log.info(f"amo_save_tokens saved domain={body.domain} account_id={account_id}")
+    return {"ok": True, "account_id": account_id, "amojo_id": amojo_id}

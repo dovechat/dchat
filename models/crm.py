@@ -16,7 +16,7 @@ class CrmConnection(Base):
     line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="SET NULL"), nullable=True, index=True)
     crm_type = Column(String, nullable=False, default="bitrix24")
     channel_type = Column(String, nullable=True)
-    connector_id = Column(String, nullable=False)
+    connector_id = Column(String, nullable=True)
     crm_line_id = Column(String, nullable=True)
     domain = Column(String, nullable=False)
     access_token_enc = Column(String, nullable=False)
@@ -25,6 +25,9 @@ class CrmConnection(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     token_updated_at = Column(DateTime, server_default=func.now())
     created_at = Column(DateTime, server_default=func.now())
+    # AMO-specific fields
+    account_id = Column(String, nullable=True)
+    amojo_id = Column(String, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("line_id", "connector_id", name="uq_line_connector"),
@@ -36,13 +39,13 @@ class CrmDialogLink(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
-    crm_connection_id = Column(UUID(as_uuid=True), ForeignKey("crm_connections.id", ondelete="CASCADE"), nullable=False, index=True)
+    crm_account_id = Column(UUID(as_uuid=True), ForeignKey("crm_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     crm_chat_id = Column(String, nullable=False)
     crm_user_id = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint("conversation_id", "crm_connection_id", name="uq_conv_crm"),
+        UniqueConstraint("conversation_id", "crm_account_id", name="uq_conv_crm"),
     )
 
 
@@ -55,3 +58,35 @@ class CrmSettings(Base):
     responsible_user_id = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
+
+class CrmAccount(Base):
+    __tablename__ = "crm_accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    crm_type = Column(String, nullable=False)
+    domain = Column(String, nullable=False)
+    access_token_enc = Column(String)
+    refresh_token_enc = Column(String)
+    is_active = Column(Boolean, default=True)
+    token_updated_at = Column(DateTime)
+    created_at = Column(DateTime, server_default=func.now())
+    member_id = Column(String)
+    amojo_id = Column(String)
+    account_id = Column(String)
+    no_deal_action = Column(String, default="nothing")
+    auto_create_contact = Column(Boolean, default=True)
+    responsible_user_id = Column(String)
+
+
+class CrmLineConnection(Base):
+    __tablename__ = "crm_line_connections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crm_account_id = Column(UUID(as_uuid=True), ForeignKey("crm_accounts.id", ondelete="CASCADE"), nullable=False)
+    line_id = Column(UUID(as_uuid=True), ForeignKey("lines.id", ondelete="CASCADE"), nullable=False)
+    channel_type = Column(String, nullable=False)
+    crm_line_id = Column(String)
+    connector_id = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())

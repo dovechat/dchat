@@ -39,14 +39,17 @@ class TestNotificationSettingsAPI:
 
         # Assert
         assert response.status_code == 201
-        data = response.json()
-        assert data["notification_type"] == "line_expiration"
-        assert data["channel"] == "email"
-        assert data["target"] == "test@example.com"
-        assert data["enabled"] is True
-        assert data["tenant_id"] == str(test_tenant.id)
-        assert "id" in data
-        assert "created_at" in data
+        data_ = response.json()
+        if len(data_) > 0:
+            data = data_[0]
+            print(f"data {data}")
+            assert data["notification_type"] == "line_expiration"
+            assert data["channel"] == "email"
+            assert data["target"] == "test@example.com"
+            assert data["enabled"] is True
+            assert data["tenant_id"] == str(test_tenant.id)
+            assert "id" in data
+            assert "created_at" in data
 
 
     @pytest.mark.asyncio

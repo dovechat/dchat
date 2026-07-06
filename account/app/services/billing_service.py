@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from fastapi import HTTPException
 from app.repositories.billing_repo import (
@@ -68,11 +69,13 @@ class BillingService:
             data.balance_type
         )
 
+
         # Create ledger entry
         await self.ledger_repo.create_entry(
             tenant_id=tenant_id,
             amount=data.amount,
             balance_type=data.balance_type,
+            operation_type="adjustment",
             description=data.description
         )
 

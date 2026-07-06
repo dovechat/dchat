@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     proxy_green_url: str = "https://tg.dove-chat.pro/green"  # api.green-api.com
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
+    load_test_mode: bool = False
 
     # CORS
     backend_cors_origins: str = ""
@@ -99,6 +100,15 @@ class Settings(BaseSettings):
     BITRIX_CONNECTOR_MAP: dict = {k: "dovechat_" + k for k in CHANNELS}
     BITRIX_CONNECTOR_CHANNEL_MAP: dict = {"dovechat_" +  k: k for k in CHANNELS}
     CHANNEL_HANDLERS: dict = {k: "create_msg_" + k for k in CHANNELS}
+
+    # AML
+    channel_id: str  = ""
+    channel_secret: str = ""
+    AMO_CLIENT_ID: str = ""
+    AMO_CLIENT_SECRET: str = ""
+    AMO_REDIRECT_URI: str = ""
+    AMO_CHANNEL_ID: str = ""
+    AMO_CHANNEL_SECRET: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -5,9 +5,10 @@ import  time
 import uuid
 import logging
 from core.config import settings
-from models.crm import CrmConnection
+from models.crm import CrmAccount
 from models.messages import MessageDirection
 from schemas.chat_schemas import MessageCreate, MessageStatus
+from crm.app.schemas.crm_schemas import AmoLineConnectRequest
 from crm.app.services.providers.bitrix.provider import BitrixProvider
 from crm.app.services.providers.amocrm.provider import AmoCrmProvider
 
@@ -18,8 +19,7 @@ PROVIDERS = {
     "amocrm": AmoCrmProvider,
 }
 
-
-def get_provider(conn: CrmConnection):
+def get_provider(conn: CrmAccount):
     cls = PROVIDERS.get(conn.crm_type)
     if not cls:
         raise ValueError(f"Unknown CRM type: {conn.crm_type}")
@@ -75,22 +75,34 @@ class CrmService:
 
         log.info(f"send_to_crm result {result}")
 
-        data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-        new_session_id = str(data_result[0].get("session", {}).get("ID", ""))
+        # --- AmoCRM ---
+        if conn.crm_type == "amocrm":
+            if not link:
+                amo_chat_id = result.get("crm_chat_id", f"dc_{conversation_id}")
+                await self._uow.crm_dialog_links.create(
+                    conversation_id=conversation_id,
+                    crm_account_id=conn.id,
+                    crm_chat_id=amo_chat_id,
+                    crm_user_id=client_phone,
+                )
+                log.info(f"send_to_crm amo_chat_id={amo_chat_id}")
+                return amo_chat_id
+            return link.crm_chat_id
 
-        # 2. Если диалог новый — создаём link и привязываем к сделке
+        # --- Bitrix24 ---
         if not link:
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
             bx_chat_id = f"dc_{conversation_id}"
 
             await self._uow.crm_dialog_links.create(
-                conversation_id=conversation_id, crm_connection_id=conn.id,
-                crm_chat_id=bx_chat_id, crm_user_id=client_phone)
-
+                conversation_id=conversation_id,
+                crm_connection_id=conn.id,
+                crm_chat_id=bx_chat_id,
+                crm_user_id=client_phone,
+            )
             log.info(f"send_to_crm conversation_id {conversation_id}")
 
-            # Ищем контакт и сделку с уже рабочим токеном
             try:
                 bx = provider._client()
                 contact_id = await bx.find_contact_by_phone(client_phone)
@@ -99,19 +111,28 @@ class CrmService:
                     deal_id = await bx.find_open_deal(contact_id)
                     log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
                     if deal_id:
-                        attach_result = await bx.attach_deal_to_chat(session_chat_id, conn.crm_line_id, conn.connector_id,
-                                                                     deal_id)
+                        attach_result = await bx.attach_deal_to_chat(
+                            session_chat_id,
+                            conn.crm_line_id,
+                            conn.connector_id,
+                            deal_id,
+                        )
                         log.info(f"attach_deal_to_chat result={attach_result}")
                     else:
                         crm_settings = await self._uow.crm_settings.get_by_tenant(tenant_id)
                         log.info(
-                            f"no deal found, crm_settings={crm_settings} no_deal_action={crm_settings.no_deal_action if crm_settings else None}")
+                            f"no deal found, crm_settings={crm_settings} "
+                            f"no_deal_action={crm_settings.no_deal_action if crm_settings else None}"
+                        )
                 else:
                     log.warning(f"contact not found for client_phone={client_phone}")
             except Exception as e:
                 log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
+
             log.info(f"send_to_crm bx_chat_id {bx_chat_id}")
             return bx_chat_id
+        else:
+            return link.crm_chat_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
         conn = await self._uow.crm_connections.get_by_tenant(tenant_id, crm_type)
@@ -220,9 +241,6 @@ class CrmService:
         template_match = re.match(r'^\[template:(\w+)\]$', text)
         template = WABA_TEMPLATES.get(template_match.group(1)) if template_match else None
         
-
-
-
         convs = await self._uow.conversations.get_multi(
             filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id},
             limit=1,
@@ -276,9 +294,6 @@ class CrmService:
                 log.info(f"crm-outgoing response: {resp.status_code} {resp.text}")
             except Exception as e:
                 log.error(f"crm-outgoing request failed: {e}")
-
-
-
 
         im_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
         im_message_id = data.get("data[MESSAGES][0][im][message_id]")
@@ -1066,3 +1081,191 @@ class CrmService:
             log.error(f"check_wa_tg deal update failed: {e}")
     
         return {"status": "ok", "exists": exists}
+
+    async def handle_amo_install(self, code: str, domain: str) -> dict:
+        from fastapi.responses import RedirectResponse
+        from core.config import settings
+        from infra.crypto import encrypt
+        import httpx
+    
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"https://{domain}/oauth2/access_token",
+                json={
+                    "client_id": settings.AMO_CLIENT_ID,
+                    "client_secret": settings.AMO_CLIENT_SECRET,
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": settings.AMO_REDIRECT_URI,
+                },
+            )
+            log.info(f"handle_amo_install token exchange domain={domain} status={resp.status_code}")
+            resp.raise_for_status()
+            tokens = resp.json()
+    
+        access_token = tokens["access_token"]
+        refresh_token = tokens["refresh_token"]
+    
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"https://{domain}/api/v4/account",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            log.info(f"handle_amo_install get account domain={domain} status={resp.status_code}")
+            resp.raise_for_status()
+            account = resp.json()
+    
+        account_id = str(account["id"])
+        amojo_id = account.get("amojo_id", "")
+    
+        await self._uow.crm_connections.upsert_amo(
+            domain=domain,
+            account_id=account_id,
+            amojo_id=amojo_id,
+            access_token_enc=encrypt(access_token),
+            refresh_token_enc=encrypt(refresh_token),
+        )
+        log.info(f"handle_amo_install saved domain={domain} account_id={account_id}")
+        return RedirectResponse(url="/crm/html/install_finish.html", status_code=303)
+
+    async def handle_amo_incoming(self, body: bytes, amojo_id: str, signature: str) -> None:
+        from crm.app.services.providers.amocrm.client import AmoCrmClient
+        from core.config import settings
+        import json
+
+        conn = await self._uow.crm_connections.get_by_amojo_id(amojo_id)
+        if not conn:
+            log.error(f"handle_amo_incoming: connection not found amojo_id={amojo_id}")
+            return
+
+        line_conns = await self._uow.crm_line_connections.get_by_account(conn.id)
+        if not line_conns:
+            log.warning(f"handle_amo_incoming: no line connection for account {conn.id}")
+            return
+
+        client = AmoCrmClient(
+            channel_id=settings.AMO_CHANNEL_ID,
+            channel_secret=settings.AMO_CHANNEL_SECRET,
+            account_id=conn.amojo_id,
+        )
+        if not client.verify_webhook(body, signature):
+            log.error(f"handle_amo_incoming: invalid signature amojo_id={amojo_id}")
+            return
+
+        data = json.loads(body)
+        log.info(f"handle_amo_incoming data={data}")
+        provider = AmoCrmProvider(conn)
+        parsed = await provider.handle_webhook(data)
+        log.info(f"handle_amo_incoming parsed={parsed} amojo_id={amojo_id}")
+
+        crm_chat_id = parsed["crm_chat_id"]
+        link = await self._uow.crm_dialog_links.get_by_crm_chat_id(crm_chat_id)
+        if not link:
+            line_id = line_conns[0].line_id
+            convs = await self._uow.conversations.get_multi(
+                filters={"client_phone": parsed["client_phone"], "line_id": line_id},
+                limit=1,
+            )
+            if not convs:
+                log.warning(f"handle_amo_incoming: no conversation phone={parsed['client_phone']} line={line_id}")
+                return
+            link = await self._uow.crm_dialog_links.create(
+                conversation_id=convs[0].id,
+                crm_account_id=conn.id,
+                crm_chat_id=crm_chat_id,
+                crm_user_id=parsed["client_phone"],
+            )
+
+        conv = await self._uow.conversations.get_by_id(link.conversation_id)
+        if not conv:
+            log.error(f"handle_amo_incoming: no conversation id={link.conversation_id}")
+            return
+
+        memberships = await self._uow.memberships.get_multi(
+            filters={"tenant_id": conn.tenant_id, "role": "owner"},
+            limit=1,
+        )
+        owner = await self._uow.users.get_by_id(memberships[0].user_id)
+
+        msg_json = MessageCreate(
+            conversation_id=conv.id,
+            direction=MessageDirection.outbound,
+            phone=conv.client_phone,
+            text=parsed["text"],
+            status=MessageStatus.sent,
+        ).model_dump_json()
+
+        async with httpx.AsyncClient() as http:
+            try:
+                resp = await http.post(
+                    "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-outgoing",
+                    data={
+                        "data": msg_json,
+                        "channel_type": line_conns[0].channel_type,
+                        "user_id": str(owner.id),
+                        "user_email": owner.email,
+                    },
+                    timeout=10,
+                )
+                log.info(f"handle_amo_incoming crm_chat_id={crm_chat_id} status={resp.status_code}")
+            except Exception as e:
+                log.error(f"handle_amo_incoming request failed: {e}")
+    
+    async def amo_connect_channel(self, tenant_id: uuid.UUID) -> dict:
+        from crm.app.services.providers.amocrm.client import AmoCrmClient
+        from core.config import settings
+    
+        conn = await self._uow.crm_connections.get_by_tenant(
+            tenant_id=tenant_id,
+            crm_type="amocrm",
+        )
+        if not conn:
+            raise ValueError(f"No amocrm connection for tenant_id={tenant_id}")
+    
+        client = AmoCrmClient(
+            channel_id=settings.AMO_CHANNEL_ID,
+            channel_secret=settings.AMO_CHANNEL_SECRET,
+            account_id=conn.amojo_id,
+        )
+        result = await client.connect_account()
+        await self._uow.crm_connections.update(
+            conn,
+            amojo_id=result.get("account_id"),
+        )
+        log.info(f"amo_connect_channel tenant_id={tenant_id} result={result}")
+        return result
+
+
+    async def disconnect_amo_line(self, line_id: uuid.UUID) -> None:
+        conn = await self._uow.crm_line_connections.get_by_line(line_id)
+        if conn:
+            await self._uow.crm_line_connections.delete(conn)
+
+
+    async def list_amo_accounts(self) -> list:
+        return await self._uow.crm_connections.get_multi(
+            filters={"crm_type": "amocrm", "is_active": True},
+        )
+    
+    async def connect_amo_line(self, body: AmoLineConnectRequest) -> dict:
+        existing = await self._uow.crm_line_connections.get_multi(
+            filters={"line_id": body.line_id, "is_active": True},
+            limit=1,
+        )
+        if existing:
+            await self._uow.crm_line_connections.update(
+                existing[0],
+                crm_account_id=body.crm_account_id,
+                channel_type=body.channel_type,
+            )
+        else:
+            await self._uow.crm_line_connections.create(
+                crm_account_id=body.crm_account_id,
+                line_id=body.line_id,
+                channel_type=body.channel_type,
+                is_active=True,
+            )
+        # await self._uow.commit()
+        log.info(f"connect_amo_line line_id={body.line_id} crm_account_id={body.crm_account_id}")
+        return {"ok": True}
+

@@ -55,7 +55,8 @@ class BalanceLedgerRepository(BaseRepository[BalanceLedger]):
             amount: Decimal,
             balance_type: str,
             description: str,
-            reference_id: Optional[uuid.UUID] = None
+            operation_type: str,
+            reference_id: Optional[uuid.UUID] = None,
     ) -> BalanceLedger:
         """Create ledger entry"""
         return await self.create(
@@ -63,7 +64,8 @@ class BalanceLedgerRepository(BaseRepository[BalanceLedger]):
             amount=amount,
             balance_type=balance_type,
             description=description,
-            reference_id=reference_id
+            reference_id=reference_id,
+            operation_type=operation_type
         )
 
     async def get_history(

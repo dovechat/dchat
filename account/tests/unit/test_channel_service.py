@@ -2,7 +2,7 @@ import pytest
 import uuid
 
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from fastapi import HTTPException
 
 from app.services.channel_service import ChannelAccountService
@@ -27,6 +27,7 @@ def mock_channel_account():
             self.credentials_encrypted = {"encrypted_data": enc_data}
             self.state_json = {"status": "active"}
             self.updated_at = None
+            self.channel_type = "whatsapp_green"
 
     return MockChannelAccount()
 
@@ -43,13 +44,12 @@ def mock_line():
 
 @pytest.fixture
 def channel_service():
-    """ChannelAccountService with mocked repos"""
     mock_channel_repo = AsyncMock()
     mock_line_repo = AsyncMock()
-
     return ChannelAccountService(
         channel_repo=mock_channel_repo,
-        line_repo=mock_line_repo
+        line_repo=mock_line_repo,
+        instance_repo=AsyncMock()
     )
 
 
@@ -77,9 +77,9 @@ async def test_get_account_success(channel_service, mock_line, mock_channel_acco
 
     
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = mock_channel_account
+    channel_service.channel_repo.get_by_line_and_type.return_value = mock_channel_account
     
-    result = await channel_service.get_account(line_id, tenant_id)
+    result = await channel_service.get_account(line_id, tenant_id, ChannelType.WHATSAPP_GREEN)
     '''
     assert isinstance(result, ChannelAccountResponse)
     assert result.line_id == mock_channel_account.line_id
@@ -95,7 +95,7 @@ async def test_get_account_line_not_found(channel_service):
     channel_service.line_repo.get_line_by_id.return_value = None
 
     with pytest.raises(HTTPException) as exc:
-        await channel_service.get_account(line_id, tenant_id)
+        await channel_service.get_account(line_id, tenant_id, ChannelType.WHATSAPP_GREEN)
 
     assert exc.value.status_code == 404
 
@@ -107,9 +107,10 @@ async def test_get_account_not_found(channel_service, mock_line):
     tenant_id = mock_line.tenant_id
 
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = None
+    channel_service.channel_repo.get_by_line_and_type.return_value = None
+    channel_service.channel_repo.get_by_line_and_type.return_value = None
 
-    res = await channel_service.get_account(line_id, tenant_id)
+    res = await channel_service.get_account(line_id, tenant_id, ChannelType.WHATSAPP_GREEN)
     assert res.id is None
     assert res.line_id == line_id
 
@@ -121,6 +122,7 @@ async def test_update_telegram_bot_success(channel_service, mock_line, mock_chan
     """Test updating Telegram Bot credentials"""
     line_id = mock_line.id
     tenant_id = mock_line.tenant_id
+    mock_channel_account.channel_type = "telegram_bot"
 
     credentials = TelegramBotCredentials(
         bot_token="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
@@ -128,7 +130,7 @@ async def test_update_telegram_bot_success(channel_service, mock_line, mock_chan
     )
 
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = mock_channel_account
+    channel_service.channel_repo.get_by_line_and_type.return_value = mock_channel_account
     channel_service.channel_repo.update_account.return_value = mock_channel_account
 
     result = await channel_service.update_telegram_bot(line_id, tenant_id, credentials)
@@ -142,34 +144,19 @@ async def test_update_telegram_bot_creates_if_not_exists(channel_service, mock_l
     """Test creating channel account if it doesn't exist"""
     line_id = mock_line.id
     tenant_id = mock_line.tenant_id
+    mock_channel_account.channel_type = "telegram_bot"
 
     credentials = TelegramBotCredentials(bot_token="test_token")
 
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = None
+    channel_service.channel_repo.get_by_line_and_type.return_value = None
     channel_service.channel_repo.create_account.return_value = mock_channel_account
+    channel_service.channel_repo.update_account.return_value = mock_channel_account
 
     result = await channel_service.update_telegram_bot(line_id, tenant_id, credentials)
 
     channel_service.channel_repo.create_account.assert_called_once()
     assert isinstance(result, ChannelAccountResponse)
-
-
-@pytest.mark.asyncio
-async def test_update_telegram_bot_wrong_channel_type(channel_service, mock_line):
-    """Test 400 when line has wrong channel type"""
-    mock_line.channel_type = "vk"
-    line_id = mock_line.id
-    tenant_id = mock_line.tenant_id
-
-    credentials = TelegramBotCredentials(bot_token="test_token")
-
-    channel_service.line_repo.get_line_by_id.return_value = mock_line
-
-    with pytest.raises(HTTPException) as exc:
-        await channel_service.update_telegram_bot(line_id, tenant_id, credentials)
-
-    assert exc.value.status_code == 400
 
 
 # === UPDATE TELEGRAM USER TESTS ===
@@ -180,6 +167,7 @@ async def test_update_telegram_user_success(channel_service, mock_line, mock_cha
     mock_line.channel_type = "telegram_user"
     line_id = mock_line.id
     tenant_id = mock_line.tenant_id
+    mock_channel_account.channel_type = "telegram_user"
 
     credentials = TelegramUserCredentials(
         phone="+1234567890",
@@ -189,7 +177,7 @@ async def test_update_telegram_user_success(channel_service, mock_line, mock_cha
     )
 
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = mock_channel_account
+    channel_service.channel_repo.get_by_line_and_type.return_value = mock_channel_account
     channel_service.channel_repo.update_account.return_value = mock_channel_account
 
     result = await channel_service.update_telegram_user(line_id, tenant_id, credentials)
@@ -207,9 +195,10 @@ async def test_update_waba_success(channel_service_waba, mock_line):
 
 
     mock_line.channel_type = ChannelType.WABA
-    mock_updated = AsyncMock(
+    mock_updated = MagicMock(
         id=uuid.uuid4(),
         line_id=line_id,
+        channel_type="waba",
         state_json={},
         updated_at=datetime.now()
     )
@@ -218,29 +207,11 @@ async def test_update_waba_success(channel_service_waba, mock_line):
     channel_service_waba.channel_repo.get_by_line.return_value = None
     channel_service_waba._encrypt_credentials = lambda x: {"encrypted_data": "encrypted"}
     channel_service_waba.channel_repo.create_account.return_value = mock_updated
+    channel_service_waba.channel_repo.update_account.return_value = mock_updated
 
     result = await channel_service_waba.update_waba(line_id, tenant_id, api_key)
 
     assert result.line_id == line_id
-
-
-@pytest.mark.asyncio
-async def test_update_waba_wrong_channel_type(channel_service, mock_line):
-    """Test 400 when line has wrong channel type"""
-    mock_line.channel_type = "telegram_bot"
-    line_id = mock_line.id
-    tenant_id = mock_line.tenant_id
-    api_key = "test-key"
-
-    channel_service.line_repo.get_line_by_id.return_value = mock_line
-
-    with pytest.raises(HTTPException) as exc:
-        await channel_service.update_waba(line_id, tenant_id, api_key)
-
-    assert exc.value.status_code == 400
-
-
-
 
 
 # === UPDATE VK TESTS ===
@@ -251,6 +222,7 @@ async def test_update_vk_success(channel_service, mock_line, mock_channel_accoun
     mock_line.channel_type = "vk"
     line_id = mock_line.id
     tenant_id = mock_line.tenant_id
+    mock_channel_account.channel_type = "vk"
 
     credentials = VKCredentials(
         access_token="vk_token_12345",
@@ -258,10 +230,19 @@ async def test_update_vk_success(channel_service, mock_line, mock_channel_accoun
     )
 
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = mock_channel_account
+    channel_service.channel_repo.get_by_line_and_type.return_value = mock_channel_account
     channel_service.channel_repo.update_account.return_value = mock_channel_account
 
-    result = await channel_service.update_vk(line_id, tenant_id, credentials)
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"response": {"server_id": 1}}
+
+    with patch("app.services.channel_service.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get.return_value = mock_resp
+        mock_client.post.return_value = mock_resp
+        result = await channel_service.update_vk(line_id, tenant_id, credentials)
 
     channel_service.channel_repo.update_account.assert_called_once()
     assert isinstance(result, ChannelAccountResponse)
@@ -278,7 +259,7 @@ async def test_update_state_success(channel_service, mock_line, mock_channel_acc
     new_state = {"status": "connected", "last_update": "2024-01-01"}
 
     channel_service.line_repo.get_line_by_id.return_value = mock_line
-    channel_service.channel_repo.get_by_line.return_value = mock_channel_account
+    channel_service.channel_repo.get_by_line_and_type.return_value = mock_channel_account
     channel_service.channel_repo.update_account.return_value = mock_channel_account
 
     result = await channel_service.update_state(line_id, tenant_id, new_state)
