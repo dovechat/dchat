@@ -327,24 +327,72 @@ class ChatService:
         return result
 
 
-    async def create_conversation(
-            self,
-            tenant_id: uuid.UUID,
-            data: ConversationCreate
-    ) -> ConversationResponse:
-        """Create new conversation"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---------------------------------------
+
+    async def create_conversation(self, tenant_id, data, tg_listener=None) -> ConversationResponse:
         conversation = await self.conv_repo.create_conversation(
-            line_id=data.line_id,
-            channel_type=data.channel_type,
-            crm_chat_id=data.crm_chat_id,
-            client_phone=data.client_phone,
-            meta=data.meta
+            line_id=data.line_id, channel_type=data.channel_type,
+            crm_chat_id=data.crm_chat_id, client_phone=data.client_phone, meta=data.meta
         )
 
-        return ConversationResponse(
-            **conversation.__dict__,
-            messages=[]
-        )
+        if data.channel_type == "telegram_user" and tg_listener:
+            accs = await self.ch_acc_repo.get_by_line(data.line_id)
+            tg_acc = next((a for a in accs if a.channel_type == "telegram_user"), None)
+            if tg_acc:
+                await tg_listener.start_listening(str(conversation.id), tg_acc.phone, data.client_phone or '')
+
+        return ConversationResponse(**conversation.__dict__, messages=[])
+    
+    
+    
+    
+    
+    # ---------------------------------
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     async def conv_msg(
