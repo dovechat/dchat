@@ -351,7 +351,7 @@ class ChatService:
             crm_chat_id=data.crm_chat_id, client_phone=data.client_phone, meta=data.meta
         )
 
-        if data.channel_type == "telegram_user" and tg_listener:
+        if data.channel_type.value == "telegram_user" and tg_listener:
             accs = await self.ch_acc_repo.get_by_line(data.line_id)
             tg_acc = next((a for a in accs if a.channel_type == "telegram_user"), None)
             if not tg_acc:
