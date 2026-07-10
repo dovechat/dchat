@@ -222,13 +222,13 @@ class CrmService:
             convs = await self._uow.conversations.get_multi(
                 filters={
                     "line_id": conn.line_id,
-                    "crm_chat_id": crm_chat_id,
+                    "crm_chat_id": client_chat_id,
                     "channel_type": settings.BITRIX_CONNECTOR_CHANNEL_MAP.get(connector_id),
                 }
             )
             conv = convs[0] if convs else None
         if not conv:
-            log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id}")
+            log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id} client_chat_id {client_chat_id}")
             return
 
         files = await self._collect_bitrix_files(data)
