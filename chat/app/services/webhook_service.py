@@ -11,8 +11,6 @@ from repo.line_repo import ChannelAccountRepository, InstanceRepository, LineRep
 from schemas.line_schemas import ChannelType
 
 
-
-
 log = logging.getLogger(__name__)
 
 class WebhookHandler(ABC):

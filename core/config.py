@@ -75,6 +75,17 @@ class Settings(BaseSettings):
     s3_external_url: str = "http://localhost:9000/"
     s3_internal_url: str = "http://minio:9000/"
 
+    VK_OAUTH_CLIENT_ID: str = "ВАШ_ТЕСТОВЫЙ_ID"
+    VK_OAUTH_CLIENT_SECRET: str = "ВАШ_ТЕСТОВЫЙ_SECRET"
+    VK_OAUTH_REDIRECT_URI: str = "https://tg.dove-chat.pro/dev/crm/api/v1/vk/oauth/callback"
+    VK_OAUTH_SCOPE: str = "groups,manage"
+    
+    vk_oauth_client: str = ""
+    vk_oauth_client_secret: str = ""
+    vk_oauth_redirect_uri: str = ""
+    vk_oauth_scope: str = ""
+
+
     BITRIX_CLIENT_ID: str = "local.6a11925fa39594.77018871"
     BITRIX_CLIENT_SECRET: str = "x1W6xLDK1YElQhc2FjCZ3AkinJtahY3teWpO1jCzqO4kuEUsOl"
     BITRIX_APPLICATION_TOKEN: str = "84b9dd8be3f401e8764e2dd82365361b"

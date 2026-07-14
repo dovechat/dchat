@@ -26,6 +26,26 @@ class VKCredentials(BaseModel):
     secret_key: Optional[str] = Field(None, description="VK callback secret key")
     confirmation_code: Optional[str] = Field(None, description="VK confirmation code")
 
+class VKOAuthStartResponse(BaseModel):
+    authorize_url: str
+
+
+class VKGroupOption(BaseModel):
+    id: int
+    name: str
+    screen_name: str
+    photo_100: str | None = None
+
+
+class VKOAuthCallbackResult(BaseModel):
+    payload: str
+    groups: list[VKGroupOption]
+
+
+class VKOAuthConfirmRequest(BaseModel):
+    payload: str
+    group_id: int
+
 
 class ChannelAccountResponse(BaseModel):
     """Response with channel account info"""
