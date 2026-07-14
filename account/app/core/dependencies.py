@@ -12,6 +12,7 @@ from app.repositories.billing_repo import (
 from app.repositories.tenant_repo import RequisitsRepository, TenantRepository
 from app.repositories.line_repo import  LineRepository
 from repo.instance_repo import InstanceRepository
+from repo.crm_repo import CrmLineConnectionRepository
 from repo.crm_settings_repo import CrmSettingsRepository
 from repo.conversation_repo import ConversationRepository
 from repo.message_repo import MessageRepository
@@ -69,12 +70,16 @@ async def get_channel_account_repo(db: AsyncSession = Depends(get_db)) -> Channe
 async def get_instance_repo(db: AsyncSession = Depends(get_db)) -> InstanceRepository:
     return InstanceRepository(db)
 
+async def get_crm_line_repo(db: AsyncSession = Depends(get_db)) -> CrmLineConnectionRepository:
+    return CrmLineConnectionRepository(db)
+
 async def get_channel_service(
     channel_repo: ChannelAccountRepository = Depends(get_channel_account_repo),
     line_repo: LineRepository = Depends(get_line_repo),
-    instance_repo: InstanceRepository = Depends(get_instance_repo)
+    instance_repo: InstanceRepository = Depends(get_instance_repo),
+    crm_line_repo: CrmLineConnectionRepository = Depends(get_crm_line_repo),
 ) -> ChannelAccountService:
-    return ChannelAccountService(channel_repo, line_repo, instance_repo)
+    return ChannelAccountService(channel_repo, line_repo, instance_repo, crm_line_repo)
 
 async def get_conversation_repo(db: AsyncSession = Depends(get_db)) -> ConversationRepository:
     return ConversationRepository(db)

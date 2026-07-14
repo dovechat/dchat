@@ -22,7 +22,7 @@ def mock_repo():
 @pytest.fixture
 def service(mock_repo):
     """Service instance with mocked repo"""
-    return NotificationService(mock_repo)
+    return NotificationService(mock_repo, AsyncMock())
 
 
 @pytest.fixture
@@ -42,6 +42,8 @@ class TestNotificationSettingsCreate:
     async def test_create_settings_success(self, service, mock_repo, tenant_id):
         """Успешное создание настройки"""
         # Arrange
+        user_id = uuid4()
+        service.membership_repo.get_multi.return_value = [MagicMock(tenant_id=tenant_id)]
         mock_repo.get_settings_by_type_and_channel.return_value = None
         expected_settings = NotificationSettings(
             id=uuid4(),
@@ -61,10 +63,11 @@ class TestNotificationSettingsCreate:
             channel=NotificationChannel.email,
             target="test@example.com",
             enabled=True,
+            user_id=user_id,
         )
 
         # Assert
-        assert result == expected_settings
+        assert result == [expected_settings]
         mock_repo.get_settings_by_type_and_channel.assert_called_once_with(
             tenant_id, NotificationType.line_expiration, NotificationChannel.email
         )
@@ -84,6 +87,8 @@ class TestNotificationSettingsCreate:
         )
         mock_repo.get_settings_by_type_and_channel.return_value = existing_settings
 
+        service.membership_repo.get_multi.return_value = [MagicMock(tenant_id=tenant_id)]
+
         # Act & Assert
         with pytest.raises(ValueError, match="already exist"):
             await service.create_settings(
@@ -91,6 +96,7 @@ class TestNotificationSettingsCreate:
                 notification_type=NotificationType.line_expiration,
                 channel=NotificationChannel.email,
                 target="test@example.com",
+                user_id=uuid4()
             )
 
         mock_repo.create_settings.assert_not_called()
@@ -237,8 +243,11 @@ class TestNotificationSettingsDelete:
         )
         mock_repo.get_settings_by_id.return_value = existing_settings
 
+        service.membership_repo.get_multi.return_value = [MagicMock(tenant_id=tenant_id)]
+        mock_repo.get_settings_by_type_and_channel.return_value = existing_settings
+
         # Act
-        await service.delete_settings(settings_id, tenant_id)
+        await service.delete_settings(settings_id, tenant_id, user_id=uuid4())
 
         # Assert
         mock_repo.delete_settings.assert_called_once_with(existing_settings)
@@ -251,7 +260,7 @@ class TestNotificationSettingsDelete:
 
         # Act & Assert
         with pytest.raises(ValueError, match="not found"):
-            await service.delete_settings(settings_id, tenant_id)
+            await service.delete_settings(settings_id, tenant_id, user_id=uuid4())
 
         mock_repo.delete_settings.assert_not_called()
 

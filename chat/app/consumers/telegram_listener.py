@@ -128,6 +128,10 @@ class TelegramConnection:
         async def handler(event):
             await self._handle_message(event)
 
+        @self.client.on(events.MessageEdited)
+        async def edited_handler(event):
+            await self._handle_edited_message(event)
+
         log.info(f"+++++++++ Connecting to Telegram self.client after @self.client.on")
 
         self._running = True
@@ -193,6 +197,31 @@ class TelegramConnection:
         await self.disconnect()
         log.info(f"Run finished for {self.conversation_id}")
 
+    async def _handle_edited_message(self, event):
+        if not event.is_private or event.out:
+            return
+
+        async with get_session() as db:
+            msg_repo = MessageRepository(db)
+            messages = await msg_repo.get_multi(
+                filters={"conversation_id": self.conversation_id, "channel_msg_id": str(event.message.id)}
+            )
+            if not messages:
+                log.error(
+                    f"_handle_edited_message: message not found conv={self.conversation_id} msg_id={event.message.id}")
+                return
+
+            db_message = messages[0]
+            text = event.message.text or ""
+            await msg_repo.update(db_message, text=text)
+            await db.commit()
+
+            await manager.send_message_update(str(self.conversation_id), {
+                "type": "edit",
+                "message_id": str(db_message.id),
+                "text": text,
+            })
+
     async def _handle_message(self, event):
         # Проверка на дубликат
         if hasattr(self, 'processed_msgs') and event.id in self.processed_msgs:
@@ -228,7 +257,31 @@ class TelegramConnection:
         log.info(f"Calling message_callback for {self.conversation_id}")
         async with get_session() as db:
             await self.message_callback(db, self.conversation_id, self.peer_phone, event)
-        
+
+    async def _handle_deleted_message(self, event):
+        deleted_ids = [str(i) for i in event.deleted_ids]
+        if not deleted_ids:
+            return
+
+        async with get_session() as db:
+            msg_repo = MessageRepository(db)
+            messages = await msg_repo.get_multi(
+                filters={"conversation_id": self.conversation_id, "channel_msg_id": deleted_ids}
+            )
+            if not messages:
+                return
+
+            for db_message in messages:
+                await msg_repo.delete(db_message)
+
+            await db.commit()
+
+            for db_message in messages:
+                await manager.send_message_update(str(self.conversation_id), {
+                    "type": "delete",
+                    "message_id": str(db_message.id),
+                })
+
 
     async def wait_for_client(self, timeout=30):
         log.info(f"Waiting for client for {self.conversation_id}")
@@ -647,3 +700,18 @@ class TelegramListener:
                 })
         except Exception as e:
             log.error(f"Album flush failed: {e}", exc_info=True)
+
+
+    async def edit_message_user(self, conversation_id: str, phone: str, msg_id: str, text: str):
+        client = self.clients.get(conversation_id)
+        if not client:
+            raise RuntimeError(f"No client for {conversation_id}")
+        entity = await client.get_entity(phone)
+        return await client.edit_message(entity, int(msg_id), text)
+    
+    async def delete_message_user(self, conversation_id: str, phone: str, msg_id: str):
+        client = self.clients.get(conversation_id)
+        if not client:
+            raise RuntimeError(f"No client for {conversation_id}")
+        entity = await client.get_entity(phone)
+        return await client.delete_messages(entity, int(msg_id))

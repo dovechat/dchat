@@ -67,7 +67,7 @@ async def get_tenant(
     tenant_service: TenantService = Depends(get_tenant_service)
 ):
     """Get tenant by ID"""
-    return await tenant_service.get_tenant(tenant_id=tenant_id, current_user=current_user)
+    return await tenant_service.get_tenant(tenant_id=tenant_id)
 
 @tenant_router.get("/", response_model=list[TenantResponse])
 async def list_tenants(
@@ -87,8 +87,7 @@ async def update_tenant(
     """Update tenant details"""
     return await tenant_service.update_tenant(
         tenant_id=tenant_id, 
-        data=data.model_dump(),
-        current_user=current_user
+        data=data.model_dump()
     )
 
 @tenant_router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -98,7 +97,7 @@ async def delete_tenant(
     tenant_service: TenantService = Depends(get_tenant_service)
 ):
     """Delete tenant"""
-    await tenant_service.delete_tenant(tenant_id=tenant_id, current_user=current_user)
+    await tenant_service.delete_tenant(tenant_id=tenant_id)
 
 
 @tenant_router.patch("/{tenant_id}/banking/ru", response_model=BankDetailsRead)

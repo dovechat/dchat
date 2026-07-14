@@ -4,6 +4,7 @@ import json
 from typing import Optional
 from fastapi import HTTPException
 from app.repositories.line_repo import LineRepository
+from repo.crm_settings_repo import CrmSettingsRepository
 from repo.instance_repo import InstanceRepository
 from repo.line_repo import ChannelAccountRepository
 from app.schemas.channel_schemas import (
@@ -29,11 +30,13 @@ class ChannelAccountService:
             self,
             channel_repo: ChannelAccountRepository,
             line_repo: LineRepository,
-            instance_repo: InstanceRepository
+            instance_repo: InstanceRepository,
+            crm_line_repo: CrmSettingsRepository,
     ):
         self.channel_repo = channel_repo
         self.line_repo = line_repo
         self.instance_repo = instance_repo
+        self.crm_line_repo = crm_line_repo
 
     def _encrypt_credentials(self, credentials: dict) -> dict:
         """
@@ -106,9 +109,11 @@ class ChannelAccountService:
         accounts = await self.channel_repo.get_by_line(line_id)
         result = []
         for account in accounts:
-            
             credentials = self._decrypt_credentials(account.credentials_encrypted)
             phone = credentials.get("phone") if credentials else None
+            amo_link = await self.crm_line_repo.get_by_line_and_channel(
+                account.line_id, account.channel_type.value
+            )
             cha_resp = ChannelAccountResponse(
                 id=account.id,
                 line_id=account.line_id,
@@ -117,9 +122,9 @@ class ChannelAccountService:
                 state_json=account.state_json,
                 updated_at=account.updated_at.isoformat() if account.updated_at else None,
                 expires_at=account.expires_at.isoformat() if account.expires_at else None,
-                connection_status=account.connection_status,  # добавить
+                connection_status=account.connection_status,
+                amo_connected=amo_link is not None,
             )
-            # log.info(f"\n\n --------- ChannelAccountService.get_accounts cha_resp {cha_resp} \n\n")
             result.append(cha_resp)
         res = sorted(result, key=lambda x: x.channel_type)
         return res
@@ -270,6 +275,8 @@ class ChannelAccountService:
         log.info(
             f"Account from DB: {account.id if account else None}, state_json={account.state_json if account else None}")
 
+        instance = None
+
         if not account:
             log.info("Account not found, creating new...")
             account = await self.channel_repo.create_account(
@@ -302,7 +309,7 @@ class ChannelAccountService:
             await self.channel_repo.update_account(account, state_json={})
             log.info("Cleared pending from state_json")
 
-        token = decrypt(instance.token)
+        token = decrypt(instance.token)  if instance else api_token
 
         if id_instance and api_token:
             await self._set_green_webhook(line_id, id_instance, token)
@@ -351,7 +358,7 @@ class ChannelAccountService:
         # 3. Берём свободный инстанс
         log.info(f"******** channel_service connect_whatsapp_green account {account}")
         instance = await self.instance_repo.get_free_green_instance()
-        log.info(f"******** channel_service connect_whatsapp_green instance {instance}")
+        log.info(f"******** channel_service connect_whatsapp_green instance {instance} {instance.__dict__} ")
         if not instance:
             log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} No free WhatsApp Green instance available")
             raise HTTPException(404, "No free WhatsApp Green instance available")
@@ -394,7 +401,9 @@ class ChannelAccountService:
                         "webhookUrl": our_wh_url,
                         "outgoingWebhook": "yes",
                         "stateWebhook": "yes",
-                        "incomingWebhook": "yes"
+                        "incomingWebhook": "yes",
+                        "editedMessageWebhook": "yes",
+                        "deletedMessageWebhook": "yes"
                     }
                 )
             if not str(res.status_code).startswith("2"):
@@ -530,6 +539,7 @@ class ChannelAccountService:
                 "server_id": server_id,
                 "message_new": 1,
                 "message_reply": 1,
+                "message_edit": 1,
                 "access_token": access_token,
                 "v": "5.199"
             }

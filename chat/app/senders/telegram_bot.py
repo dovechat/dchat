@@ -39,7 +39,7 @@ class TelegramBotSender(BaseSender):
             else:
                 return await self._send_text(data)
         except Exception as e:
-            log.error(f"TelegramBotSender.send failed: {e}")
+            log.error(f"TelegramBotSender.send failed: {e}", exc_info=True)
             try:
                 await notify_connection_error(self.line_id, channel_type="telegram_bot", db=db)
             except Exception as ne:
@@ -51,13 +51,16 @@ class TelegramBotSender(BaseSender):
 
     async def _send_text(self, data: MessageCreate) -> dict:
         """Отправить текстовое сообщение"""
+        log.info(f"\n\n =^=^=^=^=^=^=^= tg bot send  settings.load_test_mode {settings.load_test_mode} \n\n")
+        if settings.load_test_mode:
+            return {"ok": True, "mock": True}
         log.info(f"\n\n send TEXT")
         url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/sendMessage"
         payload = {
             "chat_id": data.phone,
             "text": data.text
         }
-
+        log.info(f"\n\n ======== tg bot send  url {url} payload {payload} \n\n")
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload)
             result = response.json()
@@ -93,6 +96,27 @@ class TelegramBotSender(BaseSender):
                 result = result["result"]
         return result
 
+    async def edit(self, channel_msg_id: str, phone: str, text: str) -> dict:
+        if not self.bot_token:
+            raise ValueError("Bot token not set")
+        url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/editMessageText"
+        payload = {"chat_id": phone, "message_id": int(channel_msg_id), "text": text}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload)
+            result = response.json()
+            if not result.get("ok"):
+                raise Exception(f"Telegram API error: {result}")
+            return result["result"]
 
-
+    async def delete(self, channel_msg_id: str, phone: str) -> dict:
+        if not self.bot_token:
+            raise ValueError("Bot token not set")
+        url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/deleteMessage"
+        payload = {"chat_id": phone, "message_id": int(channel_msg_id)}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload)
+            result = response.json()
+            if not result.get("ok"):
+                raise Exception(f"Telegram API error: {result}")
+            return result
     

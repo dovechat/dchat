@@ -60,6 +60,7 @@ class ChannelAccountResponse(BaseModel):
     expires_at: datetime | None = None
     updated_at: datetime | None = None
     connection_status: str | None = None
+    amo_connected: bool = False
 
 
 class ChannelAccountUpdate(BaseModel):

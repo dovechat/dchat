@@ -9,7 +9,7 @@ import httpx
 
 from core.config import settings
 from infra.crypto import encrypt, decrypt
-from app.schemas.channel_schemas import VKGroupOption
+from app.schemas.vk_oauth_schemas import VKGroupOption
 
 VK_AUTHORIZE_URL = "https://id.vk.com/authorize"
 VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"
@@ -67,7 +67,7 @@ class VKOAuthService:
                 data={
                     "grant_type": "authorization_code",
                     "client_id": settings.VK_OAUTH_CLIENT_ID,
-                    "client_secret": settings.VK_OAUTH_CLIENT_SECRET,
+                    # "client_secret": settings.VK_OAUTH_CLIENT_SECRET,
                     "redirect_uri": settings.VK_OAUTH_REDIRECT_URI,
                     "code": code,
                     "code_verifier": state_data["code_verifier"],

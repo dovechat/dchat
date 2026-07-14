@@ -1,5 +1,6 @@
 import pytest
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock
 from fastapi import HTTPException
@@ -9,6 +10,7 @@ from app.schemas.billing_schemas import (
     BalanceResponse,
     BalanceAdjust,
     BalanceLedgerResponse,
+    BillingHistoryItem,
     PaymentResponse,
     PaymentStatusUpdate,
     TariffCreate,
@@ -177,7 +179,7 @@ async def test_get_payments(billing_service, mock_payment):
     result = await billing_service.get_payments(tenant_id)
 
     assert len(result) == 1
-    assert isinstance(result[0], PaymentResponse)
+    assert isinstance(result[0], BillingHistoryItem)
     assert result[0].status == "pending"
 
 

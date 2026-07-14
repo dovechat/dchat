@@ -127,7 +127,7 @@ async def test_member_repo_get_by_tenant(test_tenant):
         repo = MembershipRepository(db)
         results = await repo.get_by_tenant(test_tenant.id)
         assert len(results) >= 1
-        assert any(m.tenant_id == test_tenant.id for m in results)
+        assert any(m[0].tenant_id == test_tenant.id for m in results)
 
 
 @pytest.mark.asyncio

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from io import BytesIO
 from typing import List, Optional, Tuple
-from fastapi import Depends, Request, UploadFile
+from fastapi import Depends, HTTPException, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from minio import Minio
 from app.repositories.chat_repo import ChatRepository
@@ -63,6 +63,7 @@ class ChatService:
         sender = SenderFactory.get_sender(channel_type)
         if channel_type == "telegram_user":
             sender.set_listener(tg_listener)
+            sender.set_conv_id(conv_id)
             return sender
         channel_acc = await self.conv_repo.get_channel_acc_by_conversation(conv_id)
         creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
@@ -148,6 +149,46 @@ class ChatService:
 
     async def create_msg_vk(self, data, files=[], current_user=None):
         return await self._process_queue_outgoing("vk", data, current_user)
+
+    async def edit_message(self, message_id: uuid.UUID, text: str, current_user: UserContext, tg_listener: 'TelegramListener') -> MessageResponse:
+        message = await self.msg_repo.get_by_id(message_id)
+        if not message:
+            raise HTTPException(status_code=404, detail="message not found")
+        conv = await self.conv_repo.get_by_id(message.conversation_id)
+        if not message.channel_msg_id:
+            raise HTTPException(status_code=400, detail="no channel_msg_id")
+
+        sender = await self._init_sender(conv.channel_type, conv.id, tg_listener=tg_listener)
+        await sender.edit(message.channel_msg_id, conv.client_phone, text)
+
+        await self.msg_repo.update(message, text=text)
+        await self.db.commit()
+
+        await manager.send_message_update(str(conv.id), {
+            "type": "edit",
+            "message_id": str(message.id),
+            "text": text,
+        })
+        return MessageResponse.model_validate(message)
+
+    async def delete_message(self, message_id: uuid.UUID, current_user: UserContext, tg_listener: 'TelegramListener') -> None:
+        message = await self.msg_repo.get_by_id(message_id)
+        if not message:
+            raise HTTPException(status_code=404, detail="message not found")
+        conv = await self.conv_repo.get_by_id(message.conversation_id)
+        if not message.channel_msg_id:
+            raise HTTPException(status_code=400, detail="no channel_msg_id")
+
+        sender = await self._init_sender(conv.channel_type, conv.id, tg_listener=tg_listener)
+        await sender.delete(message.channel_msg_id, conv.client_phone)
+
+        await self.msg_repo.delete(message)
+        await self.db.commit()
+
+        await manager.send_message_update(str(conv.id), {
+            "type": "delete",
+            "message_id": str(message.id),
+        })
 
 
     async def get_conversations(

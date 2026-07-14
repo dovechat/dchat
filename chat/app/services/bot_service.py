@@ -30,6 +30,44 @@ class BotService:
         self.membership_repo = MembershipRepository(db)
         self.storage = StorageService()
 
+    async def _handle_edited_message(self, line_id: uuid.UUID, line, edited: dict):
+        chat = edited.get("chat", {})
+        chat_id = chat.get("id")
+        message_id = edited.get("message_id")
+        text = edited.get("text") or edited.get("caption", "")
+
+        if not chat_id or not message_id:
+            log.error("Ignoring invalid edited_message update")
+            return {"ok": True}
+
+        conversation, _ = await self.conv_repo.get_or_create_by_chat_id(
+            line_id=line_id,
+            chat_id=str(chat_id),
+            tenant_id=line.tenant_id,
+            client_phone=chat.get("username") or str(chat_id),
+        )
+
+        messages = await self.msg_repo.get_multi(
+            filters={"conversation_id": conversation.id, "channel_msg_id": str(message_id)}
+        )
+        if not messages:
+            log.error(f"_handle_edited_message: message not found chat_id={chat_id} message_id={message_id}")
+            return {"ok": True}
+
+        db_message = messages[0]
+        await self.msg_repo.update(db_message, text=text)
+        await self.db.commit()
+
+        from app.services.websocket_manager import manager
+        await manager.send_message_update(str(conversation.id), {
+            "type": "edit",
+            "message_id": str(db_message.id),
+            "text": text,
+        })
+
+        return {"ok": True}
+
+
     async def handle_webhook(self, line_id: uuid.UUID, update_data: dict):
         """Handle incoming update from Telegram Bot API"""
         # Get line and bot token
@@ -37,6 +75,15 @@ class BotService:
         if not line:
             log.error(f"Line {line_id} not found")
             return {"ok": False}
+
+        log.info(f"\n\n ***---** update_data {update_data}")
+
+        edited = update_data.get("edited_message")
+        if edited:
+            return await self._handle_edited_message(line_id, line, edited)
+
+        # Extract message data
+        message = update_data.get("message", {})
 
         # Extract message data
         message = update_data.get("message", {})

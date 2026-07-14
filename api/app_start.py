@@ -29,9 +29,15 @@ def start(title: str, description: str = "", version: str = "0.1.0", server_pref
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         log.error(f"422 Validation Error: {exc.errors()}")
         log.error(f"Request body: {await request.body()}")
+        errors = []
+        for e in exc.errors():
+            err = dict(e)
+            if "ctx" in err and "error" in err["ctx"]:
+                err["ctx"] = {"error": str(err["ctx"]["error"])}
+            errors.append(err)
         return JSONResponse(
             status_code=422,
-            content={"detail": exc.errors()}
+            content={"detail": errors}
         )
 
     if server_prefix:

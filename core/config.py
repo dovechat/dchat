@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     proxy_green_url: str = "https://tg.dove-chat.pro/green"  # api.green-api.com
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
+    load_test_mode: bool = False
 
     # CORS
     backend_cors_origins: str = ""
@@ -47,9 +48,9 @@ class Settings(BaseSettings):
     account_port: int | str | None  = 8071
     chat_port: int | str | None  = 8001
 
-    device_id: str = "69728ef652ef775390b32f83"
-    phone: str = "+995511221503"
-    apikey: str = "0f0f0dad-ce62-4ffa-b1e3-76634a59eb67"
+    device_id: str = ""
+    phone: str = ""
+    apikey: str = ""
     kafka_bootstrap_servers: str = ""
     kafka_topic: str = ""
     kafka_group_id: str = ""
@@ -67,28 +68,22 @@ class Settings(BaseSettings):
     low_balance_warn_days: tuple[int, ...]  = (5, 3)
 
     s3_endpoint: str = "minio:9000"
-    s3_access_key: str = "minioadmin"
-    s3_secret_key: str = "minioadmin"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
     s3_secure: bool = False
     s3_bucket: str = "dovechat-media"
     s3_bt_bucket: str = "storage"
     s3_external_url: str = "http://localhost:9000/"
     s3_internal_url: str = "http://minio:9000/"
 
-    VK_OAUTH_CLIENT_ID: str = "ВАШ_ТЕСТОВЫЙ_ID"
-    VK_OAUTH_CLIENT_SECRET: str = "ВАШ_ТЕСТОВЫЙ_SECRET"
+    VK_OAUTH_CLIENT_ID: str = ""
+    VK_OAUTH_CLIENT_SECRET: str = ""
     VK_OAUTH_REDIRECT_URI: str = "https://tg.dove-chat.pro/dev/crm/api/v1/vk/oauth/callback"
     VK_OAUTH_SCOPE: str = "groups,manage"
-    
-    vk_oauth_client: str = ""
-    vk_oauth_client_secret: str = ""
-    vk_oauth_redirect_uri: str = ""
-    vk_oauth_scope: str = ""
 
-
-    BITRIX_CLIENT_ID: str = "local.6a11925fa39594.77018871"
-    BITRIX_CLIENT_SECRET: str = "x1W6xLDK1YElQhc2FjCZ3AkinJtahY3teWpO1jCzqO4kuEUsOl"
-    BITRIX_APPLICATION_TOKEN: str = "84b9dd8be3f401e8764e2dd82365361b"
+    BITRIX_CLIENT_ID: str = ""
+    BITRIX_CLIENT_SECRET: str = ""
+    BITRIX_APPLICATION_TOKEN: str = ""
     
     CHANNELS: list = [
         "telegram_bot",
@@ -110,6 +105,15 @@ class Settings(BaseSettings):
     BITRIX_CONNECTOR_MAP: dict = {k: "dovechat_" + k for k in CHANNELS}
     BITRIX_CONNECTOR_CHANNEL_MAP: dict = {"dovechat_" +  k: k for k in CHANNELS}
     CHANNEL_HANDLERS: dict = {k: "create_msg_" + k for k in CHANNELS}
+
+    # AML
+    channel_id: str  = ""
+    channel_secret: str = ""
+    AMO_CLIENT_ID: str = ""
+    AMO_CLIENT_SECRET: str = ""
+    AMO_REDIRECT_URI: str = ""
+    AMO_CHANNEL_ID: str = ""
+    AMO_CHANNEL_SECRET: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

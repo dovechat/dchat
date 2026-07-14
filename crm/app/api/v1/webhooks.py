@@ -53,3 +53,19 @@ async def bitrix_check_wa_tg(
     data = {k: v[0] for k, v in parsed.items()}
     log.info(f"bitrix_check_wa_tg data: {data}")
     return await crm_service.check_wa_tg(data)
+
+# AMO ------
+
+@webhooks_router.post("/amo/{amojo_id}")
+async def amo_webhook(
+    amojo_id: str,
+    request: Request,
+    crm_service: CrmService = Depends(get_crm_service),
+):
+    body = await request.body()
+    signature = request.headers.get("X-Signature", "")
+    # amojo_id может прийти как scope_id (channel_id_amojo_id)
+    if "_" in amojo_id:
+        amojo_id = amojo_id.split("_", 1)[1]
+    await crm_service.handle_amo_incoming(body, amojo_id=amojo_id, signature=signature)
+    return {"status": "ok"}

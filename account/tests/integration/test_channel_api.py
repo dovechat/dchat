@@ -18,21 +18,26 @@ async def test_get_channel_account(client, test_tenant, test_line, token_with_te
 async def test_update_telegram_bot_credentials(client, test_tenant, token_with_tenant):
     """Test updating Telegram Bot credentials"""
     from tests.conftest import get_test_db
-    from models.lines import Line
+    from models.lines import ChannelAccount, Line
     from schemas.line_schemas import ChannelType
 
-    # Create telegram_bot line
     async with get_test_db() as session:
         from datetime import datetime, timedelta, timezone
         line = Line(
             tenant_id=test_tenant.id,
             name="Test Telegram Bot",
-            channel_type=ChannelType.TELEGRAM_BOT.value,
             status="active",
-            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
-            connection_state={"status": "not_connected"}
         )
         session.add(line)
+        await session.flush()
+
+        account = ChannelAccount(
+            line_id=line.id,
+            channel_type=ChannelType.TELEGRAM_BOT.value,
+            credentials_encrypted={},
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        )
+        session.add(account)
         await session.commit()
         await session.refresh(line)
         line_id = line.id
@@ -45,14 +50,11 @@ async def test_update_telegram_bot_credentials(client, test_tenant, token_with_t
         },
         headers=token_with_tenant
     )
-
     assert response.status_code == 200
     data = response.json()
-
     assert data["line_id"] == str(line_id)
     assert data["channel_type"] == "telegram_bot"
 
-    # Cleanup
     async with get_test_db() as session:
         obj = await session.get(Line, line_id)
         if obj:

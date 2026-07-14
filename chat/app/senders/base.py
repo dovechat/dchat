@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from sqlalchemy.ext.asyncio import AsyncSession
 from  app.schemas.chat_schemas import MessageCreate
 
+
 class BaseSender(ABC):
     """Базовый класс для отправки сообщений в разные каналы"""
 
@@ -13,7 +14,8 @@ class BaseSender(ABC):
         """Отправить текстовое сообщение"""
         pass
 
-#    @abstractmethod
-#    async def send_file(self, conversation_id: str, recipient: str, file_data: dict, caption: str = None) -> dict:
-#        """Отправить файл"""
-#        pass
+    async def edit(self, channel_msg_id: str, phone: str, text: str) -> dict:
+        raise NotImplementedError
+
+    async def delete(self, channel_msg_id: str, phone: str) -> dict:
+        raise NotImplementedError

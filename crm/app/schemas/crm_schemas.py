@@ -24,10 +24,12 @@ class CrmConnectionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class BitrixAuthRequest(BaseModel):
     email: str
     password: str
     placement_params: str = ""
+
 
 class BitrixConnectRequest(BaseModel):
     line_id: uuid.UUID
@@ -35,3 +37,21 @@ class BitrixConnectRequest(BaseModel):
     refresh_token: str
     member_id: str
     domain: str
+
+
+class AmoSaveTokensRequest(BaseModel):
+    tenant_id: uuid.UUID
+    domain: str
+    access_token: str
+    refresh_token: str = ""
+
+class AmoAccountOut(BaseModel):
+    id: uuid.UUID
+    domain: str
+    amojo_id: str | None
+    is_active: bool
+
+class AmoLineConnectRequest(BaseModel):
+    crm_account_id: uuid.UUID
+    line_id: uuid.UUID
+    channel_type: str

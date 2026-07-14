@@ -162,3 +162,6 @@ class CrmMessageOut(BaseModel):
     channel_type: str
     channel_account_id: uuid.UUID | None
     media: list[dict] = []
+
+class MessageEditRequest(BaseModel):
+    text: str

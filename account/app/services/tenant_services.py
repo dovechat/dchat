@@ -73,14 +73,14 @@ class TenantService:
             for t, cnt in rows
         ]
 
-    async def get_tenant(self, tenant_id: uuid.UUID, current_user: UserContext) -> TenantResponse:
+    async def get_tenant(self, tenant_id: uuid.UUID,) -> TenantResponse:
         """Get tenant by ID and user ownership with context validation"""
         tenant = await self.repo.get_tenant_by_id(tenant_id)
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found or access denied")
         return TenantResponse.model_validate(tenant)
 
-    async def update_tenant(self, tenant_id: uuid.UUID, data: dict, current_user: UserContext) -> TenantResponse:
+    async def update_tenant(self, tenant_id: uuid.UUID, data: dict) -> TenantResponse:
         """Update tenant with ownership check in repo"""
         updated_tenant = await self.repo.update_tenant(
             tenant_id=tenant_id,
@@ -90,7 +90,7 @@ class TenantService:
             raise HTTPException(status_code=404, detail="Tenant not found or access denied")
         return TenantResponse.model_validate(updated_tenant)
 
-    async def delete_tenant(self, tenant_id: uuid.UUID, current_user: UserContext) -> None:
+    async def delete_tenant(self, tenant_id: uuid.UUID) -> None:
         """Delete tenant with ownership check in repo"""
         success = await self.repo.delete_tenant(tenant_id=tenant_id)
         if not success:

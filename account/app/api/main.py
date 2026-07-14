@@ -13,8 +13,8 @@ from app.api.v1.channels import channel_router
 from app.api.v1.billing import billing_router, tariff_router
 from app.api.v1.members import members_router
 from app.api.v1.notifications import router as notification_router
-from app.api.v1.webhooks import router as webhooks_router, vk_oauth_router
-
+from app.api.v1.webhooks import router as webhooks_router
+from app.api.v1.vk_oauth_router import vk_oauth_router
 
 import logging
 logging.getLogger('uvicorn.error').setLevel(logging.DEBUG)
@@ -66,6 +66,7 @@ app.include_router(tariff_router, prefix=settings.api_v1_prefix)
 app.include_router(notification_router, prefix=settings.api_v1_prefix) 
 app.include_router(members_router, prefix=settings.api_v1_prefix)
 app.include_router(webhooks_router, prefix=settings.api_v1_prefix)
+app.include_router(vk_oauth_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/health")

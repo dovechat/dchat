@@ -9,17 +9,13 @@ from app.schemas.tenant_schemas import BankDetailsRead, TenantCreate, TenantResp
 
 @pytest.fixture
 def mock_tenant():
-    """Helper to create a mock tenant object"""
-    tenant = MagicMock()
-    tenant.id = uuid.uuid4()
-    tenant.user_id = uuid.uuid4()
-    tenant.name = "Test Tenant"
-    tenant.locale = "en"
-    tenant.payment = "wire"
-    tenant.status = "active"
-    tenant.banking_details = None
-    return tenant
-
+    return TenantResponse(
+        id=uuid.uuid4(),
+        name="Test Tenant",
+        locale="en_US",
+        payment="acquiring",
+        status="active",
+    )
 
 @pytest.mark.asyncio
 async def test_create_with_owner_success():
@@ -43,14 +39,21 @@ async def test_create_with_owner_success():
 
 
 @pytest.mark.asyncio
-async def test_get_all_tenants_service(mock_tenant, test_user):
+async def test_get_all_tenants_service(test_user):
     mock_repo = AsyncMock()
     service = TenantService(repo=mock_repo)
-    mock_repo.get_all_tenants.return_value = [mock_tenant]
+    mock_tenant = TenantResponse(
+        id=uuid.uuid4(),
+        name="Test Tenant",
+        locale="en_US",
+        payment="acquiring",
+        status="active",
+    )
+    mock_repo.get_all_tenants_with_member_counts.return_value = [(mock_tenant, 1)]
 
     result = await service.get_all_tenants(test_user)
 
-    mock_repo.get_all_tenants.assert_called_once_with(user_id=test_user.id)
+    mock_repo.get_all_tenants_with_member_counts.assert_called_once_with(user_id=test_user.id)
     assert len(result) == 1
     assert isinstance(result[0], TenantResponse)
 
@@ -61,9 +64,9 @@ async def test_get_tenant_success(mock_tenant):
     service = TenantService(repo=mock_repo)
     mock_repo.get_tenant_by_id.return_value = mock_tenant
 
-    result = await service.get_tenant(mock_tenant.id, mock_tenant.user_id)
+    result = await service.get_tenant(mock_tenant.id)
     print(f"-------------- result {result}")
-    print(f"-------------- mock_tenant {mock_tenant.id} {mock_tenant.user_id}")
+    print(f"-------------- mock_tenant {mock_tenant.id}")
 
     mock_repo.get_tenant_by_id.assert_called_once_with(mock_tenant.id)
     assert result.id == mock_tenant.id
@@ -76,7 +79,7 @@ async def test_update_tenant_success(mock_tenant):
     update_data = {"name": "New Name"}
     mock_repo.update_tenant.return_value = mock_tenant
 
-    await service.update_tenant(mock_tenant.id, update_data, mock_tenant.user_id)
+    await service.update_tenant(mock_tenant.id, update_data)
 
     # Match the actual call structure: (tenant_id, user_id, data) as keywords
     mock_repo.update_tenant.assert_called_once_with(
@@ -102,9 +105,9 @@ async def test_delete_tenant_api(client, test_tenant, token_with_tenant):
 
 
 @pytest.mark.parametrize("method_name, args", [
-    ("get_tenant", (uuid.uuid4(), uuid.uuid4())),
-    ("update_tenant", (uuid.uuid4(), {}, uuid.uuid4())),
-    ("delete_tenant", (uuid.uuid4(), uuid.uuid4())),
+    ("get_tenant", (uuid.uuid4(),)),
+    ("update_tenant", (uuid.uuid4(), {})),
+    ("delete_tenant", (uuid.uuid4(),)),
 ])
 @pytest.mark.asyncio
 async def test_tenant_methods_404(method_name, args):

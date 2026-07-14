@@ -34,7 +34,7 @@ class NotificationService:
         for tid in tenant_ids:
             existing = await self.repo.get_settings_by_type_and_channel(tid, notification_type, channel)
             if existing:
-                continue
+                raise ValueError("Notification settings already exist")
             data = {
                 "notification_type": notification_type,
                 "channel": channel,

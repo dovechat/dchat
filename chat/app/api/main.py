@@ -42,6 +42,8 @@ app.add_middleware(
     allow_origins=[
 	"https://tg.dove-chat.com:8443",
         "http://chat.127.0.0.1.nip.io",
+        "http://127.0.0.1:30087",
+        "https://tg.dove-chat.pro",
         "http://localhost",
         "http://127.0.0.1",
         "http://localhost:3001",

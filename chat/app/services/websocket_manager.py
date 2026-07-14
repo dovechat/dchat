@@ -129,5 +129,10 @@ class ConnectionManager:
                 except Exception as e:
                     log.error(f"send_new_conversation error: {e}")
 
+    async def send_message_update(self, conversation_id: str, data: dict):
+        conversation_id = str(conversation_id)
+        log.info(f"===== WebsocketManager.send_message_update data {data}")
+        await rdb.publish(f"ws:message_update:{conversation_id}", json.dumps(data))
+
 
 manager = ConnectionManager()

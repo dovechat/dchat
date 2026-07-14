@@ -91,7 +91,19 @@ class VkConnection:
         # 4. Отправить
         return f"doc{doc['owner_id']}_{doc['id']}"
 
-
+    async def edit_message(self, peer_id: int, message_id: int, text: str) -> dict:
+        return await self.call("messages.edit", {
+            "peer_id": peer_id,
+            "message_id": message_id,
+            "message": text,
+        })
+    
+    async def delete_message(self, peer_id: int, message_id: int) -> dict:
+        return await self.call("messages.delete", {
+            "peer_id": peer_id,
+            "message_ids": message_id,
+            "delete_for_all": 1,
+        })
 
 
 class VkListener:
@@ -101,6 +113,35 @@ class VkListener:
         self.connections: Dict[str, VkConnection] = {}
         self.storage = StorageService()
         log.info("VkListener initialized")
+
+    async def _handle_edited_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession):
+        msg = payload.get("object", {})
+        if not msg:
+            log.warning(f"No message in VK edit payload: {payload}")
+            return
+
+        msg_id = str(msg.get("id"))
+        from_id = msg.get("from_id")
+        text = msg.get("text", "")
+        phone = str(from_id)
+
+        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "vk")
+        if not conv:
+            return
+
+        msg_repo = MessageRepository(db)
+        messages = await msg_repo.get_multi(filters={"channel_msg_id": msg_id, "conversation_id": conv.id})
+        if not messages:
+            return
+
+        message = messages[0]
+        await msg_repo.update(message, text=text)
+
+        await manager.send_message_update(str(conv.id), {
+            "type": "edit",
+            "message_id": str(message.id),
+            "text": text,
+        })
 
     async def handle_webhook(self, line_id: str, payload: dict):
         from app.services.chat_service import ChatService
@@ -120,6 +161,10 @@ class VkListener:
             return await self.vk_handle_reply(line_id, payload)
         elif event_type == "confirmation":
             return await self.vk_confirm(line_id)
+        elif event_type == "message_edit":
+            async with get_session() as db:
+                chat_service = ChatService(db)
+                return await self._handle_edited_message(line_id, payload, chat_service, db)
         else:
             log.warning(f"Ignoring VK webhook type: {event_type}")
 
