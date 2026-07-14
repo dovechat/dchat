@@ -1,16 +1,19 @@
 """CRM service — routes to the right provider."""
 import httpx
 import json
+import jwt
 import  time
 import uuid
 import logging
+from fastapi import HTTPException
 from core.config import settings
+from infra.crypto import decrypt
 from models.crm import CrmAccount
 from models.messages import MessageDirection
 from schemas.chat_schemas import MessageCreate, MessageStatus
 from crm.app.schemas.crm_schemas import AmoLineConnectRequest
 from crm.app.services.providers.bitrix.provider import BitrixProvider
-from crm.app.services.providers.amocrm.provider import AmoCrmProvider
+from crm.app.services.providers.amocrm.provider import AmoCrmClient, AmoCrmProvider
 
 log = logging.getLogger("uvicorn.error")
 
@@ -1269,3 +1272,55 @@ class CrmService:
         log.info(f"connect_amo_line line_id={body.line_id} crm_account_id={body.crm_account_id}")
         return {"ok": True}
 
+    async def get_conv_by_lead(self, lead_id: str) -> uuid.UUID:
+        links = await self._uow.crm_dialog_links.get_multi(filters={"amo_lead_id": lead_id}, limit=1)
+        link = links[0] if links else None
+        if link:
+            convs = await self._uow.conversations.get_multi(filters={"id": link.conversation_id}, limit=1)
+            conversation = convs[0] if convs else None
+            lines = await self._uow.lines.get_multi(filters={"id": conversation.line_id}, limit=1)
+            line = lines[0] if lines else None
+            embed_token = jwt.encode(
+                {
+                    "sub": "970fb0f9-fbb4-46b3-8153-0c59f7ac883f",
+                    "tenant_id": str(line.tenant_id),
+                    "role": "owner",
+                    "type": "access",
+                    "exp": int(time.time()) + 8 * 3600,
+                },
+                settings.secret_key,
+                algorithm=settings.algorithm,
+            )
+            return link.conversation_id, embed_token
+        accounts = await self._uow.crm_connections.get_multi(filters={"crm_type": "amocrm"})
+        for account in accounts:
+            provider = AmoCrmProvider(account)
+            phone = await provider.get_lead_contact_phone(
+                domain=account.domain,
+                access_token=decrypt(account.access_token_enc),
+                lead_id=lead_id,
+            )
+            convs = await self._uow.conversations.get_multi(filters={"client_phone": phone}, limit=1) if phone else []
+            conversation = convs[0] if convs else None
+            if not conversation:
+                continue
+            existing_links = await self._uow.crm_dialog_links.get_multi(filters={"conversation_id": conversation.id},
+                                                                        limit=1)
+            existing_link = existing_links[0] if existing_links else None
+            if existing_link:
+                await self._uow.crm_dialog_links.update(existing_link, amo_lead_id=lead_id)
+            lines = await self._uow.lines.get_multi(filters={"id": conversation.line_id}, limit=1)
+            line = lines[0] if lines else None
+            embed_token = jwt.encode(
+                {
+                    "sub": "970fb0f9-fbb4-46b3-8153-0c59f7ac883f",
+                    "tenant_id": str(line.tenant_id),
+                    "role": "owner",
+                    "type": "access",
+                    "exp": int(time.time()) + 8 * 3600,
+                },
+                settings.secret_key,
+                algorithm=settings.algorithm,
+            )
+            return conversation.id, embed_token
+        raise HTTPException(status_code=404, detail="conversation not found for lead")

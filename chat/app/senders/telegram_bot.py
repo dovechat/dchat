@@ -96,6 +96,27 @@ class TelegramBotSender(BaseSender):
                 result = result["result"]
         return result
 
+    async def edit(self, channel_msg_id: str, phone: str, text: str) -> dict:
+        if not self.bot_token:
+            raise ValueError("Bot token not set")
+        url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/editMessageText"
+        payload = {"chat_id": phone, "message_id": int(channel_msg_id), "text": text}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload)
+            result = response.json()
+            if not result.get("ok"):
+                raise Exception(f"Telegram API error: {result}")
+            return result["result"]
 
-
+    async def delete(self, channel_msg_id: str, phone: str) -> dict:
+        if not self.bot_token:
+            raise ValueError("Bot token not set")
+        url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/deleteMessage"
+        payload = {"chat_id": phone, "message_id": int(channel_msg_id)}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload)
+            result = response.json()
+            if not result.get("ok"):
+                raise Exception(f"Telegram API error: {result}")
+            return result
     

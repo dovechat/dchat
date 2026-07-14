@@ -358,7 +358,7 @@ class ChannelAccountService:
         # 3. Берём свободный инстанс
         log.info(f"******** channel_service connect_whatsapp_green account {account}")
         instance = await self.instance_repo.get_free_green_instance()
-        log.info(f"******** channel_service connect_whatsapp_green instance {instance}")
+        log.info(f"******** channel_service connect_whatsapp_green instance {instance} {instance.__dict__} ")
         if not instance:
             log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} No free WhatsApp Green instance available")
             raise HTTPException(404, "No free WhatsApp Green instance available")
@@ -401,7 +401,9 @@ class ChannelAccountService:
                         "webhookUrl": our_wh_url,
                         "outgoingWebhook": "yes",
                         "stateWebhook": "yes",
-                        "incomingWebhook": "yes"
+                        "incomingWebhook": "yes",
+                        "editedMessageWebhook": "yes",
+                        "deletedMessageWebhook": "yes"
                     }
                 )
             if not str(res.status_code).startswith("2"):
@@ -537,6 +539,7 @@ class ChannelAccountService:
                 "server_id": server_id,
                 "message_new": 1,
                 "message_reply": 1,
+                "message_edit": 1,
                 "access_token": access_token,
                 "v": "5.199"
             }

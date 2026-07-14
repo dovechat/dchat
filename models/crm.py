@@ -43,6 +43,7 @@ class CrmDialogLink(Base):
     crm_chat_id = Column(String, nullable=False)
     crm_user_id = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+    amo_lead_id = Column(String, nullable=True, index=True)
 
     __table_args__ = (
         UniqueConstraint("conversation_id", "crm_account_id", name="uq_conv_crm"),

@@ -195,6 +195,7 @@ async def get_conversation(
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
 
+
 @router.get("/conversations/{conversation_id}/messages", response_model=List[MessageResponse])
 async def get_messages(
     conversation_id: uuid.UUID,
@@ -213,6 +214,7 @@ async def get_messages(
     if len(res) > 0:
         log.info(f"*********** res {res[0]}")
     return res
+
 
 @router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(
@@ -302,7 +304,27 @@ async def crm_robot_send(
 
 
 
+from app.schemas.chat_schemas import MessageEditRequest
 
+@router.patch("/messages/{message_id}", response_model=MessageResponse)
+async def edit_message(
+    message_id: int,
+    data: MessageEditRequest,
+    request: Request,
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    return await chat_service.edit_message(message_id, data.text, current_user, tg_listener=request.app.state.listener)
+
+@router.delete("/messages/{message_id}")
+async def delete_message(
+    message_id: int,
+    request: Request,
+    current_user: UserContext = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    await chat_service.delete_message(message_id, current_user, tg_listener=request.app.state.listener)
+    return {"ok": True}
 
 '''
 @router.post("/messages/tguser", response_model=dict)

@@ -41,3 +41,23 @@ class WhatsAppGreenSender(BaseSender):
             return results[-1] if results else None
         else:
             return await conn.send_message(chat_id, data.text)
+
+    async def edit(self, channel_msg_id: str, phone: str, text: str) -> dict:
+        conn = GreenWhatsAppConnection(
+            id_instance=self.creds["id_instance"],
+            api_token=self.creds["api_token"],
+            line_id=self.line_id,
+        )
+        clean_phone = phone.lstrip('+')
+        chat_id = f"{clean_phone}@c.us"
+        return await conn.edit_message(chat_id, channel_msg_id, text)
+    
+    async def delete(self, channel_msg_id: str, phone: str) -> dict:
+        conn = GreenWhatsAppConnection(
+            id_instance=self.creds["id_instance"],
+            api_token=self.creds["api_token"],
+            line_id=self.line_id,
+        )
+        clean_phone = phone.lstrip('+')
+        chat_id = f"{clean_phone}@c.us"
+        return await conn.delete_message(chat_id, channel_msg_id)

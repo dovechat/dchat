@@ -1,9 +1,15 @@
 """CRM connection management — ЛК."""
+import jwt
+import time
 import uuid
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, HTTPException
+from core.config import settings
 from app.core.dependencies import get_crm_service
 from app.services.crm_service import CrmService
 from app.schemas.crm_schemas import CrmConnectRequest, CrmConnectionResponse, AmoAccountOut, AmoLineConnectRequest
+
+import logging
+log = logging.getLogger("uvicorn.error")
 
 connections_router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -66,3 +72,17 @@ async def disconnect_amo_line(
 ):
     await crm_service.disconnect_amo_line(line_id)
     return {"status": "ok"}
+
+
+@connections_router.get("/amo/lead/{lead_id}")
+async def amo_lead_conversation(
+    lead_id: str,
+    request: Request,
+    crm_service: CrmService = Depends(get_crm_service),
+):
+    auth = request.headers.get("Authorization", "")
+    token = auth.replace("Bearer ", "")
+    log.error(f"decoded={jwt.decode(token, options={'verify_signature': False})!r}")
+
+    conversation_id, embed_token = await crm_service.get_conv_by_lead(lead_id)
+    return {"conversation_id": str(conversation_id), "embed_token": embed_token}

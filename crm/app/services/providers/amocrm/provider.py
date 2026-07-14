@@ -1,4 +1,5 @@
 """amoCRM provider."""
+import httpx
 import logging
 from infra.crypto import encrypt, decrypt
 from crm.app.services.providers.base import CrmProvider
@@ -66,3 +67,31 @@ class AmoCrmProvider(CrmProvider):
             "text": data.get("text", ""),
             "crm_chat_id": data.get("conversation_id", ""),
         }
+
+    async def get_lead_contact_phone(self, domain: str, access_token: str, lead_id: str) -> str | None:
+        url = f"https://{domain}/api/v4/leads/{lead_id}?with=contacts"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url, headers=headers)
+            log.info(f"AmoCrmClient GET lead {lead_id} status={resp.status_code}")
+            if not resp.is_success:
+                log.error(f"AmoCrmClient error {resp.status_code}: {resp.text}")
+                return None
+            data = resp.json()
+    
+        contacts = data.get("_embedded", {}).get("contacts", [])
+        if not contacts:
+            return None
+        contact_id = contacts[0]["id"]
+    
+        url2 = f"https://{domain}/api/v4/contacts/{contact_id}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp2 = await client.get(url2, headers=headers)
+            if not resp2.is_success:
+                return None
+            contact_data = resp2.json()
+    
+        for field in contact_data.get("custom_fields_values") or []:
+            if field.get("field_code") == "PHONE":
+                return field["values"][0]["value"]
+        return None

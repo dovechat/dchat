@@ -48,9 +48,9 @@ class Settings(BaseSettings):
     account_port: int | str | None  = 8071
     chat_port: int | str | None  = 8001
 
-    device_id: str = "69728ef652ef775390b32f83"
-    phone: str = "+995511221503"
-    apikey: str = "0f0f0dad-ce62-4ffa-b1e3-76634a59eb67"
+    device_id: str = ""
+    phone: str = ""
+    apikey: str = ""
     kafka_bootstrap_servers: str = ""
     kafka_topic: str = ""
     kafka_group_id: str = ""
@@ -68,17 +68,22 @@ class Settings(BaseSettings):
     low_balance_warn_days: tuple[int, ...]  = (5, 3)
 
     s3_endpoint: str = "minio:9000"
-    s3_access_key: str = "minioadmin"
-    s3_secret_key: str = "minioadmin"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
     s3_secure: bool = False
     s3_bucket: str = "dovechat-media"
     s3_bt_bucket: str = "storage"
     s3_external_url: str = "http://localhost:9000/"
     s3_internal_url: str = "http://minio:9000/"
 
-    BITRIX_CLIENT_ID: str = "local.6a11925fa39594.77018871"
-    BITRIX_CLIENT_SECRET: str = "x1W6xLDK1YElQhc2FjCZ3AkinJtahY3teWpO1jCzqO4kuEUsOl"
-    BITRIX_APPLICATION_TOKEN: str = "84b9dd8be3f401e8764e2dd82365361b"
+    VK_OAUTH_CLIENT_ID: str = ""
+    VK_OAUTH_CLIENT_SECRET: str = ""
+    VK_OAUTH_REDIRECT_URI: str = "https://tg.dove-chat.pro/dev/crm/api/v1/vk/oauth/callback"
+    VK_OAUTH_SCOPE: str = "groups,manage"
+
+    BITRIX_CLIENT_ID: str = ""
+    BITRIX_CLIENT_SECRET: str = ""
+    BITRIX_APPLICATION_TOKEN: str = ""
     
     CHANNELS: list = [
         "telegram_bot",

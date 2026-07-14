@@ -61,3 +61,13 @@ class VKSender(BaseSender):
             })
         else:
             return await conn.send_message(int(clean_phone), data.text, random_id=data.message_id)
+
+    async def edit(self, channel_msg_id: str, phone: str, text: str) -> dict:
+        conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id)
+        clean_phone = phone.lstrip('+')
+        return await conn.edit_message(int(clean_phone), int(channel_msg_id), text)
+
+    async def delete(self, channel_msg_id: str, phone: str) -> dict:
+        conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id)
+        clean_phone = phone.lstrip('+')
+        return await conn.delete_message(int(clean_phone), int(channel_msg_id))

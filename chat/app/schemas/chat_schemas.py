@@ -14,7 +14,7 @@ class MessageStatus(str, enum.Enum):
 class ConversationCreate(BaseModel):
     line_id: uuid.UUID
     channel_type: str
-    crm_chat_id: str
+    crm_chat_id: str | None = None
     client_phone: str | None = None
     meta: dict | None = None
     
@@ -70,7 +70,7 @@ class ConversationListResponse(BaseModel):
     line_name: str | None = None
     tenant_id: uuid.UUID | None = None  # добавить
     channel_type: str
-    crm_chat_id: str
+    crm_chat_id: str | None = None
     client_phone: str | None = None
     meta: dict | None = None
     created_at: datetime
@@ -85,7 +85,7 @@ class ConversationResponse(BaseModel):
     id: uuid.UUID
     line_id: uuid.UUID
     channel_type: str
-    crm_chat_id: str
+    crm_chat_id: str | None = None
     client_phone: str | None = None
     meta: dict | None = None
     created_at: datetime
@@ -162,3 +162,6 @@ class CrmMessageOut(BaseModel):
     channel_type: str
     channel_account_id: uuid.UUID | None
     media: list[dict] = []
+
+class MessageEditRequest(BaseModel):
+    text: str

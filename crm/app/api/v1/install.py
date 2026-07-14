@@ -139,6 +139,7 @@ async def amo_auth_url():
     return JSONResponse({"url": f"https://new1782329019.amocrm.ru/oauth2/authorize?{params}"})
 
 
+
 @install_router.post("/amo/save-tokens")
 async def amo_save_tokens(
     body: AmoSaveTokensRequest,

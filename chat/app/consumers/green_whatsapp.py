@@ -79,6 +79,30 @@ class GreenWhatsAppConnection:
         log.info(f"send_file url={url} file_url={file_url} chat_id={chat_id}")
         return await self.send(url, payload)
 
+    def edit_message_url(self):
+        return f"{self.api_url()}/editMessage/{self.api_token}"
+    
+    def delete_message_url(self):
+        return f"{self.api_url()}/deleteMessage/{self.api_token}"
+    
+    async def edit_message(self, chat_id: str, id_message: str, text: str) -> dict:
+        url = self.edit_message_url()
+        payload = {
+            "chatId": chat_id,
+            "idMessage": id_message,
+            "message": text
+        }
+        return await self.send(url, payload)
+    
+    async def delete_message(self, chat_id: str, id_message: str) -> dict:
+        url = self.delete_message_url()
+        payload = {
+            "chatId": chat_id,
+            "idMessage": id_message,
+            "onlySenderDelete": False
+        }
+        return await self.send(url, payload)
+
 
 class GreenWhatsAppListener:
     """Слушатель вебхуков от Green API"""
@@ -129,6 +153,33 @@ class GreenWhatsAppListener:
         original_file_name = None
 
         text = None
+        if msg_type == "editedMessage":
+            edited_data = message_data.get("editedMessageData", {})
+            stanza_id = edited_data.get("stanzaId")
+            new_text = edited_data.get("textMessage")
+
+            msg_repo = MessageRepository(db)
+            message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
+            if message:
+                await msg_repo.update(message, text=new_text)
+                await manager.send_message_update(str(message.conversation_id), {
+                    "type": "edit",
+                    "message_id": str(message.id),
+                    "text": new_text,
+                })
+            return
+        if msg_type == "deletedMessage":
+            stanza_id = message_data.get("deletedMessageData", {}).get("stanzaId")
+            if stanza_id:
+                msg_repo = MessageRepository(db)
+                message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
+                if message:
+                    await msg_repo.delete(message)
+                    await manager.send_message_update(str(message.conversation_id), {
+                        "type": "delete",
+                        "message_id": str(message.id),
+                    })
+            return
         if msg_type == "textMessage":
             text = message_data.get("textMessageData", {}).get("textMessage")
         if msg_type in ["imageMessage", "videoMessage", "documentMessage", "audioMessage"]:

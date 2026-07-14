@@ -14,6 +14,16 @@ log = logging.getLogger(__name__)
 
 app = FastAPI(title="DoveChat CRM Service")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://new1782329019.amocrm.ru"],
+    allow_methods=["GET", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     log.error(f"422 Validation Error: {exc.errors()}")
