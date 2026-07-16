@@ -155,7 +155,7 @@ class BotService:
         log.info(f"\n\n *-**-*-*-*-*-*-*-*    ws_message {ws_message} \n\n ")
 
         if media_id:
-            ws_message["media"] = [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}]
+            ws_message["media"] = [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "url": self.storage.presigned_url(media_id)}]
 
         if is_new:
             members = await self.membership_repo.get_by_tenant(line.tenant_id)

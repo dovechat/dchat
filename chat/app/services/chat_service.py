@@ -108,7 +108,7 @@ class ChatService:
             "user_id": str(current_user.id),
             "user_email": current_user.email,
             "status": "sent",
-            "media": data.media or [],
+            "media": [{**m, "url": self.storage.presigned_url(m["id"])} for m in (data.media or [])],
         })
 
         sender = await self._init_sender(channel_type, data.conversation_id, tg_listener)
@@ -471,7 +471,7 @@ class ChatService:
                     "message_id": str(message.id),
                     "status": "delivered",
                     # "mime_type": data.raw_content.get("mime_type"),
-                    "media": data.media or [],
+                    "media": [{**m, "url": self.storage.presigned_url(m["id"])} for m in (data.media or [])],
                 })
             except Exception as e:
                 log.error(f"!!! ERROR ---  _finalize_message manager.send_message_status data.media {data.media} {e}")
