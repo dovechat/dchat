@@ -73,6 +73,9 @@ async def vk_oauth_mock_connect(
     access_token = settings.VK_TEMP_TOKEN
     group_id = settings.VK_TEMP_GROUP_ID
 
+    log.info(
+        f"\n\n ********  VK_TEMP {settings.VK_TEMP_CONFIRMATION_CODE} {settings.VK_TEMP_SECRET_KEY} {group_id} {server_id} {access_token} \n\n")
+
     async with httpx.AsyncClient() as client:
         server_id = await channel_service._vk_add_callback_server(
             client, group_id, access_token, settings.VK_TEMP_SECRET_KEY or "", line_id
@@ -87,7 +90,6 @@ async def vk_oauth_mock_connect(
         "secret_key": settings.VK_TEMP_SECRET_KEY,
     }
     
-    log.info(f"\n\n ********  VK_TEMP {settings.VK_TEMP_CONFIRMATION_CODE} {settings.VK_TEMP_SECRET_KEY} {group_id} {server_id} {access_token} \n\n")
     
     encrypted = channel_service._encrypt_credentials(creds_dict)
     account = await channel_service.channel_repo.get_by_line_and_type(line_id, "vk")
