@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     host_url: str = "http://localhost"
     proxy_url: str = "http://localhost"
     proxy_green_url: str = "https://tg.dove-chat.pro/green"  # api.green-api.com
+    proxy_green_wh: str = ""
     proxy_green_login: str = ""
     proxy_green_password: str = ""
     api_v1_prefix: str = "/api/v1"

@@ -391,7 +391,7 @@ class ChannelAccountService:
 
     async def _set_green_webhook(self, line_id, id_instance, api_token):
         green_wh_url = f"{settings.proxy_green_url}/waInstance{id_instance}/setSettings/{api_token}"
-        our_wh_url = f"{settings.proxy_url}/api/v1/webhooks/whatsapp/green/{line_id}"
+        our_wh_url = f"{settings.proxy_green_wh}/api/v1/webhooks/whatsapp/green/{line_id}"
         log.info(f"our_wh_url {our_wh_url}")
         try:
             async with httpx.AsyncClient() as client:
