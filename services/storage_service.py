@@ -59,4 +59,4 @@ class StorageService:
             str(media_id),
             expires=timedelta(seconds=ttl_seconds),
         )
-        return url.replace(f"http://{settings.s3_endpoint}/{settings.s3_bucket}/", "http://localhost/storage/")
+        return url.replace(f"http://{settings.s3_endpoint}/{settings.s3_bucket}/", f"{settings.s3_external_url}storage/")
