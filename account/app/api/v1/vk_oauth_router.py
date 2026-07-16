@@ -86,6 +86,9 @@ async def vk_oauth_mock_connect(
         "confirmation_code": settings.VK_TEMP_CONFIRMATION_CODE,
         "secret_key": settings.VK_TEMP_SECRET_KEY,
     }
+    
+    log.info(f"\n\n ********  VK_TEMP {settings.VK_TEMP_CONFIRMATION_CODE} {settings.VK_TEMP_SECRET_KEY} {group_id} {server_id} {access_token} \n\n")
+    
     encrypted = channel_service._encrypt_credentials(creds_dict)
     account = await channel_service.channel_repo.get_by_line_and_type(line_id, "vk")
 
