@@ -74,13 +74,16 @@ async def vk_oauth_mock_connect(
     group_id = settings.VK_TEMP_GROUP_ID
 
     log.info(
-        f"\n\n ********  VK_TEMP {settings.VK_TEMP_CONFIRMATION_CODE} {settings.VK_TEMP_SECRET_KEY} {group_id} {server_id} {access_token} \n\n")
+        f"\n\n ********  VK_TEMP {settings.VK_TEMP_CONFIRMATION_CODE} {settings.VK_TEMP_SECRET_KEY} {group_id} {access_token} \n\n")
 
     async with httpx.AsyncClient() as client:
         server_id = await channel_service._vk_add_callback_server(
             client, group_id, access_token, settings.VK_TEMP_SECRET_KEY or "", line_id
         )
         await channel_service._vk_set_callback_settings(client, group_id, server_id, access_token)
+
+    log.info(
+        f"\n\n ********  server_id {server_id} \n\n")
 
     creds_dict = {
         "access_token": access_token,
