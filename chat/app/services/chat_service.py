@@ -433,8 +433,8 @@ class ChatService:
                 except Exception:
                     await self.db.rollback()
 
-        # await self.db.commit()
-        # await self.db.refresh(message, attribute_names=["media"])
+        await self.db.commit()
+        await self.db.refresh(message, attribute_names=["media"])
         log.info(f"conv_msg message.media after refresh: {message.media}")
         return conv, message
 
