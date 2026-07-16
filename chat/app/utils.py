@@ -7,7 +7,8 @@ import logging
 log = logging.getLogger("uvicorn.error")
 
 async def get_file_from_s3(media_id: str) -> tuple[bytes, str]:
-    url = f"{settings.s3_internal_url}{settings.s3_bucket}/{media_id}"
+    from services.storage_service import StorageService
+    url = StorageService().presigned_url(media_id)
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         response.raise_for_status()

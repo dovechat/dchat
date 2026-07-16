@@ -3,9 +3,11 @@ import logging
 import random
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
+from services.storage_service import StorageService
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
 from app.consumers.vk import VkConnection
+
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class VKSender(BaseSender):
         if data.media:
             attachments = []
             for m in data.media:
-                file_url = f"{settings.s3_internal_url}dovechat-media/{m['id']}"
+                file_url = StorageService().presigned_url(m['id'])
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(file_url)
                     resp.raise_for_status()
