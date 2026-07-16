@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     host_url: str = "http://localhost"
     proxy_url: str = "http://localhost"
     proxy_green_url: str = "https://tg.dove-chat.pro/green"  # api.green-api.com
+    proxy_green_login: str = ""
+    proxy_green_password: str = ""
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
     load_test_mode: bool = False
@@ -80,6 +82,10 @@ class Settings(BaseSettings):
     VK_OAUTH_CLIENT_SECRET: str = ""
     VK_OAUTH_REDIRECT_URI: str = "https://tg.dove-chat.pro/dev/crm/api/v1/vk/oauth/callback"
     VK_OAUTH_SCOPE: str = "groups,manage"
+    VK_TEMP_GROUP_ID: str = ""
+    VK_TEMP_TOKEN: str = ""
+    VK_TEMP_SECRET_KEY: str = ""
+    VK_TEMP_CONFIRMATION_CODE: str = ""
 
     BITRIX_CLIENT_ID: str = ""
     BITRIX_CLIENT_SECRET: str = ""

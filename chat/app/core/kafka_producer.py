@@ -24,7 +24,7 @@ class KafkaEventProducer:
         self.producer = AIOKafkaProducer(
             bootstrap_servers=settings.kafka_bootstrap_servers,
             value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            acks='all',
+            acks=1,
             request_timeout_ms=40000,
             retry_backoff_ms=100,
         )
@@ -77,7 +77,7 @@ class KafkaEventProducer:
             await self.start()
 
         try:
-            await self.producer.send_and_wait(topic=topic, value=payload)
+            await self.producer.send(topic=topic, value=payload)
             logger.info(f"KafkaEventProducer.send_message sent topic={topic} conversation_id={conversation_id}")
         except Exception as e:
             logger.error(f"KafkaEventProducer.send_message failed topic={topic}: {e}")

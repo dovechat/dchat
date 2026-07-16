@@ -1,10 +1,15 @@
 import uuid
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.security import HTTPBearer
 from core.dependencies import get_current_user
-from app.core.dependencies import check_tenant_access, get_channel_service, get_cleanup_service
+from app.core.dependencies import (
+    check_tenant_access,
+    get_channel_account_repo,
+    get_channel_service,
+    get_cleanup_service,
+    get_line_repo,
+)
 from services.cleanup_service import CleanupService
-from app.core.dependencies import check_tenant_access, get_channel_service
 from app.schemas.channel_schemas import (
     TelegramBotCredentials,
     TelegramUserCredentials,
@@ -18,7 +23,7 @@ from app.schemas.channel_schemas import (
 )
 from app.schemas.line_schemas import ChannelType
 from app.services.channel_service import ChannelAccountService
-from .vk_oauth_service import VKOAuthService
+from app.services.vk_oauth_service import VKOAuthService
 from schemas.auth_schemas import UserContext
 import logging
 
@@ -33,7 +38,7 @@ channel_router = APIRouter(
 
 
 def get_vk_oauth_service(
-    channel_repo=Depends(get_channel_repo),
+    channel_repo=Depends(get_channel_account_repo),
     line_repo=Depends(get_line_repo),
 ) -> VKOAuthService:
     return VKOAuthService(channel_repo, line_repo)

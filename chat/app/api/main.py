@@ -81,7 +81,7 @@ async def startup():
     app.state.vk_listener = VkListener()
     asyncio.create_task(redis_subscriber())
     asyncio.create_task(start_consumer(tg_listener=app.state.listener))
-    asyncio.create_task(app.state.listener.start_all())
+    # asyncio.create_task(app.state.listener.start_all())
     asyncio.create_task(app.state.listener._health_check_loop())
 
 

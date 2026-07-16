@@ -44,6 +44,7 @@ class MediaResponse(BaseModel):
     id: uuid.UUID
     file_name: str | None = None
     mime_type: str | None = None
+    url: str | None = None
 
 
 class MessageResponse(BaseModel):

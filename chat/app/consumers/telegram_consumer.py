@@ -42,7 +42,8 @@ async def start_consumer():
         bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id=group_id,
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-        auto_offset_reset='earliest'
+        auto_offset_reset='earliest',
+        max_poll_interval_ms=600000,
     )
 
     while True:

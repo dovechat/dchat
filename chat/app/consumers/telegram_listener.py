@@ -82,9 +82,21 @@ class TelegramConnection:
 
         log.info(f"\n\n +++++++++ Connecting to Telegram settings.tg_proxy_host {settings.tg_proxy_host} settings.tg_proxy_port {settings.tg_proxy_port} \n\n ")
 
-        '''
+
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
+        self.client = TelegramClient(
+            StringSession(session_string),
+            settings.tg_api_id,
+            settings.tg_api_hash,
+            connection=ConnectionTcpMTProxyRandomizedIntermediate,
+            proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
+            auto_reconnect=True,
+            connection_retries=5,
+            retry_delay=1
+        )
+
+        '''
         self.client = TelegramClient(
             StringSession(session_string),
             settings.tg_api_id,
@@ -97,16 +109,6 @@ class TelegramConnection:
         )
 
         '''
-        self.client = TelegramClient(
-            StringSession(session_string),
-            settings.tg_api_id,
-            settings.tg_api_hash,
-            proxy={"proxy_type": socks.SOCKS5, "addr": settings.tg_proxy_host, "port": int(settings.tg_proxy_port)},
-            auto_reconnect=True,
-            connection_retries=5,
-            retry_delay=1
-        )
-        
 
         log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
 
@@ -152,6 +154,7 @@ class TelegramConnection:
         log.info(f"+++++++++ !!! Connected: after change status")
 
     async def disconnect(self):
+        log.warning(f"\n\n ****** DISCONNECT CALLED conv={self.conversation_id}\n\n")
         log.info(f"Disconnecting {self.conversation_id}")
         self._running = False
         if self.client:

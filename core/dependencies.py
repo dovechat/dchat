@@ -1,6 +1,6 @@
 import logging
 from typing import Annotated
-
+import json
 import jwt
 import redis.asyncio as redis
 
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.database import get_db, get_db_read, get_db_write
+from core.redis import rdb
 from core.security import ALGORITHMS, SECRET_KEY
 # from app.repositories.contact import ContactRepository
 from repo.user import UserRepository
@@ -28,7 +29,7 @@ log = logging.getLogger("uvicorn.error")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Global redis instance
-rdb = redis.from_url("redis://rdb:6379", decode_responses=True)
+# rdb = redis.from_url("redis://redis:6379", decode_responses=True)
 
 def get_jwt_service() -> JWTService:
     """Get JWT service instance."""
@@ -56,8 +57,8 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
-        # Use SECRET_KEY and ALGORITHMS from core.security as in your snippet
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHMS])
         token_data = TokenPayload(**payload)
     except InvalidTokenError:
@@ -66,17 +67,35 @@ async def get_current_user(
     if token_data.type != "access":
         raise credentials_exception
 
-    user = await user_repo.get_by_id(token_data.sub)
-    if not user:
-        raise credentials_exception
+    cache_key = f"user:{token_data.sub}"
 
-    # tenant_id will be None if user hasn't switched context yet
+    cached_user = await rdb.get(cache_key)
+
+    if cached_user:
+        user_data = json.loads(cached_user)
+    else:
+        user = await user_repo.get_by_id(token_data.sub)
+
+        if not user:
+            raise credentials_exception
+
+        user_data = {
+            "id": str(user.id),
+            "email": user.email,
+        }
+
+        await rdb.setex(
+            cache_key,
+            300,
+            json.dumps(user_data),
+        )
+
     return UserContext(
-        id=user.id,
-        email=user.email,
+        id=user_data["id"],
+        email=user_data["email"],
         role=token_data.role,
         member=token_data.member,
-        tenant_id=token_data.tenant_id 
+        tenant_id=token_data.tenant_id,
     )
 
 # ------- tenants

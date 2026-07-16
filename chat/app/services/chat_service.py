@@ -342,7 +342,7 @@ class ChatService:
         messages = list(reversed(messages))
         result = []
         for msg in messages:
-            msg_dict = msg.__dict__
+            msg_dict = dict(msg.__dict__)
             log.info(f"========  msg.raw_content {msg.raw_content}")
             log.info(f"========  msg.user {msg.user}")
             filename = None
@@ -364,27 +364,20 @@ class ChatService:
             
             log.info(f"========  filename {filename}")
             msg_dict['file_name'] = filename
+
+            media_list = []
+            for m in msg.media:
+                media_list.append({
+                    "id": m.id,
+                    "file_name": m.file_name,
+                    "mime_type": m.mime_type,
+                    "url": self.storage.presigned_url(m.id),
+                })
+            msg_dict['media'] = media_list
+
             result.append(MessageResponse.model_validate(msg_dict))
         return result
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ---------------------------------------
 
     async def create_conversation(self, tenant_id, data, tg_listener=None) -> ConversationResponse:
         conversation = await self.conv_repo.create_conversation(
@@ -407,41 +400,6 @@ class ChatService:
         return ConversationResponse(**conversation.__dict__, messages=[])
     
     
-    
-    
-    
-    # ---------------------------------
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     async def conv_msg(
         self,
         data: MessageCreate,
@@ -450,7 +408,7 @@ class ChatService:
         # Verify conversation exists and belongs to tenant
         # log.info(f"+++++ chat_service ChatService.create_message current_user {current_user}")
         # log.info(f"chat_service ChatService.create_message data {data}")
-        conv = await self.conv_repo.get_conversation_with_messages(data.conversation_id)
+        conv = await self.conv_repo.get_by_id(data.conversation_id)
         if not conv:
             raise ValueError("Conversation not found")
         # log.info(f"chat_service ChatService.create_message conv {conv}")
@@ -475,8 +433,8 @@ class ChatService:
                 except Exception:
                     await self.db.rollback()
 
-        await self.db.commit()
-        await self.db.refresh(message, attribute_names=["media"])
+        # await self.db.commit()
+        # await self.db.refresh(message, attribute_names=["media"])
         log.info(f"conv_msg message.media after refresh: {message.media}")
         return conv, message
 
@@ -517,76 +475,13 @@ class ChatService:
                 })
             except Exception as e:
                 log.error(f"!!! ERROR ---  _finalize_message manager.send_message_status data.media {data.media} {e}")
-        '''
-        else:
-            # 4. Ошибка -> в Kafka (для каждого канала своё)
-            topic_map = {
-                "telegram_user": "telegram-user-retry",
-                "telegram_bot": "telegram-bot-retry",
-                "whatsapp_green": "whatsapp-green-retry",
-                "waba": "waba-retry",
-                "vk": "vk-retry",
-            }
 
-            log.info(f"=============== !!! FAIL success {success} ChatServcie._finalize_message")
-
-            topic = topic_map.get(channel_type, "default_retry")
-
-            log.info(f"=============== !!! FAIL === success {success} ChatServcie._finalize_message topic {topic}")
-
-            try:
-                await kafka_producer.send_event(
-                    topic=topic,
-                    event=KafkaEvent(
-                        event_id=str(uuid.uuid4()),
-                        event_type='message_retry',
-                        payload={
-                            'message_id': str(data.id),
-                            'conversation_id': str(conversation_id),
-                            'text': data.text,
-                        },
-                        account_phone=data.phone
-                    )
-                )
-                log.info(f"\n\n !!!  ------- KAFKA send_event  ---------- data.text {data.text} conversation_id {conversation_id} \n\n")
-            except Exception as e:
-                log.error(f"\n\n !!! ERROR ------- kafka send_event failed: {e} ---------- \n\n")
-        '''
 
     async def _save_uploaded_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
         log.info(f"========== ChatService._save_uploaded_file media_id {media_id}")
         file_bytes = await file.read()
         return await self.storage.save_file(file_bytes, media_id, file.filename, file.content_type)
 
-    '''
-    async def _save_file(self, file_bytes: bytes, media_id: uuid.UUID, filename: str, mime_type: str ) -> dict:
-        stream = BytesIO(file_bytes)
-        if file_bytes is None:
-            return
-        size = len(file_bytes)
-        metadata = {
-            "filename": filename,
-            "content_type": mime_type,
-            "size": size
-        }
-        self.s3_client.put_object(
-            settings.s3_bucket,  # bucket_name
-            str(media_id),  # object_name
-            stream,  # data
-            size,  # length
-            content_type=mime_type,
-            metadata=metadata,
-        )
-
-        log.info(f"========== _save_file saved media_id {media_id} filename {filename} size {size}")
-
-        return {
-            "media_id": media_id,
-            "filename": filename,
-            "mime_type": mime_type,
-            "size": size
-        }
-    '''
 
     def clean_raw_content(self, obj):
         """Рекурсивно преобразует все datetime в строки"""
@@ -599,386 +494,6 @@ class ChatService:
         elif isinstance(obj, (list, tuple)):
             return [self.clean_raw_content(i) for i in obj]
         return obj
-
-    '''
-    async def create_msg_tguser(
-            self,
-            data: MessageCreate,
-            listener: 'TelegramListener',
-            files: list[UploadFile] = [],
-            current_user: UserContext = Depends(get_current_user),
-    ) -> MessageResponse:
-        """Create new message in conversation"""
-
-        if files:
-            media_items = []
-            for file in files:
-                media_id = uuid.uuid4()
-                await self._save_uploaded_file(file, media_id)
-                media_items.append({
-                    "id": str(media_id),
-                    "file_name": file.filename,
-                    "mime_type": file.content_type,
-                })
-            data.media = media_items
-
-        conv, message = await self.conv_msg(data, current_user)
-
-        await manager.send_new_message(str(data.conversation_id), {
-            "id": str(message.id),
-            "text": message.text,
-            "direction": "outbound",
-            "created_at": message.created_at.isoformat(),
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "status": "sent",
-            "media": data.media or [],
-        })
-
-        sender = SenderFactory.get_sender("telegram_user")
-        sender.set_listener(listener)
-        # log.info(f"---------- sender {sender}")
-        # log.info(f"---------- sender.listener {sender.listener}")
-        # log.info(f"---------- sender.listener.send_message_user {sender.listener.send_message_user}")
-        sent = None
-        try:
-            # log.info(f"\n\n +++++++++++++ ChatService.create_msg_tguser  data {data} message {message}  \n\n")
-            sent = await sender.send(data)
-            success = True if sent else False
-            log.info(f"\n\n !!! --- ChatService.create_msg_tguser file sent {sent} success {success} \n\n")
-
-        except Exception as e:
-            log.error(f"ERROR: create_msg_tguser sender.send {e} data {data}")
-            success = False
-        finally:
-            raw_content = None
-            if sent:
-                raw_content = sent.to_dict()
-                raw_content = self.clean_raw_content(raw_content)
-
-            await self._finalize_message(
-                message=message,
-                conversation_id=data.conversation_id,
-                channel_type="telegram_user",
-                data=data,
-                current_user=current_user,
-                success=success,
-                channel_msg_id=str(sent.id) if sent else None,
-                raw_content=raw_content
-            )
-
-        res = MessageResponse.model_validate(message)
-        log.info(f"\n\n ++ ChatService.create_msg_tguser data {data}  \n\n")
-        # log.info(f"\n\n ++ ChatService.create_msg_tguser message.raw_content {res.raw_content}  \n\n")
-        # log.info(f"\n\n ++ ChatService.create_msg_tguser file_name {res.raw_content.get('file_name')}  \n\n")
-
-        return res
-
-    async def create_msg_tgbot(
-            self,
-            data: MessageCreate,
-            files: list[UploadFile] = [],
-            current_user: UserContext = Depends(get_current_user),
-    ) -> MessageResponse:
-        log.info(f"\n\n *********** create_msg_tgbot  data {data} \n\n")
-
-        if files:
-            media_items = []
-            for file in files:
-                media_id = uuid.uuid4()
-                await self._save_uploaded_file(file, media_id)
-                media_items.append({
-                    "id": str(media_id),
-                    "file_name": file.filename,
-                    "mime_type": file.content_type,
-                })
-            data.media = media_items
-
-        # Сохраняем сообщение в БД
-        # _, message = await self.conv_msg(data, current_user)
-        message = await self.msg_repo.get_by_id(data.message_id)
-        if data.media:
-            for m in data.media:
-                try:
-                    await self.media_repo.create(message_id=message.id, **m)
-                except Exception:
-                    await self.db.rollback()
-            await self.db.commit()
-            await self.db.refresh(message, attribute_names=["media"])
-
-        # Первый пинок (новое сообщение)
-        await manager.send_new_message(str(data.conversation_id), {
-            "id": str(message.id),
-            "text": message.text,
-            "direction": "outbound",
-            "created_at": message.created_at.isoformat(),
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "status": "sent",
-            "media": data.media or [],
-        })
-
-        log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc before con_id {data.conversation_id} --- \n\n")
-        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
-        if channel_acc:
-            log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc {channel_acc.__dict__} --- \n\n")
-            log.info(f"\n\n --- ChatServiceChatService.create_msg_tgbot channel_acc.credentials_encrypted {channel_acc.credentials_encrypted} --- \n\n")
-        else:
-            return
-        creds_enc = channel_acc.credentials_encrypted.get("encrypted_data")
-        creds_str = decrypt(creds_enc)
-        bot_token = json.loads(creds_str)["bot_token"]
-        log.info(f"bot_token {bot_token}")
-
-        # Получаем сендер
-        sender = SenderFactory.get_sender("telegram_bot")
-        sender.set_bot_token(bot_token)
-
-        try:
-            # Отправка через сендер
-            result = await sender.send(data)
-            channel_msg_id = str(result.get("message_id")) if result else None
-            raw_content = result if result else None
-            success = True if result else False
-        except Exception as e:
-            log.error(f"Send failed: {e}")
-            success = False
-            channel_msg_id = None
-            raw_content = None
-
-        # Финальная обработка
-        await self._finalize_message(
-            message=message,
-            conversation_id=data.conversation_id,
-            channel_type="telegram_bot",
-            data=data,
-            current_user=current_user,
-            success=success,
-            channel_msg_id=channel_msg_id,
-            raw_content=raw_content
-        )
-
-        return MessageResponse.model_validate(message)
-
-    async def create_msg_whatsapp_green(
-            self,
-            data: MessageCreate,
-            files: list[UploadFile] | None = None,
-            current_user: UserContext = Depends(get_current_user),
-    ) -> MessageResponse:
-        """Create new WhatsApp Green message"""
-        # Получаем креды линии
-        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
-        log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green channel_acc {channel_acc} \n\n")
-        log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green channel_acc.credentials_encrypted {channel_acc.credentials_encrypted['encrypted_data']} \n\n")
-        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
-
-        log.info(f"\n\n ************ ChatService.create_msg_whatsapp_green creds {creds} \n\n")
-
-        # Сохраняем сообщение в БД
-        conv, message = await self.conv_msg(data, current_user)
-
-        # Отправляем на фронт сразу
-        await manager.send_new_message(str(data.conversation_id), {
-            "id": str(message.id),
-            "text": message.text,
-            "direction": "outbound",
-            "created_at": message.created_at.isoformat(),
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "status": "sent",
-            "media": data.media or [],
-        })
-
-        # Отправка через Green API
-        sender = SenderFactory.get_sender("whatsapp_green")
-        sender.set_creds(creds)
-        success = False
-
-        channel_msg_id = None
-        file_info = None
-        log.info(f"\n\n --- MEDIA save start \n\n")
-        log.info(f"\n\n --- MEDIA save start files length {len(files)} \n\n")
-        log.info(f"\n\n --- MEDIA save start files data.media {data.media} \n\n")
-        try:
-            for i, f in enumerate(files):
-                log.info(f"\n\n --- MEDIA save i {i} f {f} \n\n")
-                media_id = data.media[i]["id"] if data.media and i < len(data.media) else None
-                log.info(f"\n\n --- MEDIA save media_id {media_id} \n\n")
-                await self._save_uploaded_file(f, media_id)
-                log.info(f"\n\n --- MEDIA save media_id {media_id} _save_uploaded_file passed \n\n")
-        except Exception as e:
-            log.error(f"WhatsApp Green _save_uploaded_file failed: {e}")
-
-        log.info(f"\n\n --- MEDIA save finish \n\n")
-
-        try:
-            result = await sender.send(data)
-            success = True if result else None
-            channel_msg_id = result.get("idMessage")
-        except Exception as e:
-            log.error(f"WhatsApp Green send failed: {e}")
-            
-        # Финальное обновление
-        await self._finalize_message(
-            message=message,
-            conversation_id=data.conversation_id,
-            channel_type="whatsapp_green",
-            data=data,
-            current_user=current_user,
-            success=success,
-            channel_msg_id=channel_msg_id,
-            raw_content=None,  # {"file_name": file.filename, "mime_type": file_info['mime_type']} if file and file_info else None
-        )
-
-        return MessageResponse.model_validate(message)
-
-    async def create_msg_waba(
-            self,
-            data: MessageCreate,
-            files: list[UploadFile] | None = None,
-            current_user: UserContext = Depends(get_current_user),
-    ) -> MessageResponse:
-        """Create new WABA message"""
-        # Получаем креды линии
-        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
-        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
-
-        log.info(f"\n\n ***** ChatService.create_msg_waba creds {creds} \n\n")
-
-        # Сохраняем сообщение в БД
-        conv, message = await self.conv_msg(data, current_user)
-
-        # Отправляем на фронт сразу
-        await manager.send_new_message(str(data.conversation_id), {
-            "id": str(message.id),
-            "text": message.text,
-            "direction": "outbound",    
-            "created_at": message.created_at.isoformat(),
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "status": "sent",
-            "media": data.media or [],
-        })
-
-        # Отправка через WABA
-        sender = SenderFactory.get_sender("waba")
-        sender.set_creds(creds)
-        success = False
-        channel_msg_id = None
-
-        try:
-            if files:
-                media_items = []
-                for file in files:
-                    media_id = uuid.uuid4()
-                    await self._save_uploaded_file(file, media_id)
-                    media_items.append({
-                        "id": str(media_id),
-                        "file_name": file.filename,
-                        "mime_type": file.content_type,
-                    })
-                data.media = media_items
-
-            result = await sender.send(data)
-            success = True if result else None
-            channel_msg_id = result.get("messages", [{}])[0].get("id")
-        except Exception as e:
-            log.error(f"WABA send failed: {e}")
-            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
-                await notify_connection_error(uuid.UUID(str(conv.line_id)), "waba", self.db)
-
-        # Финальное обновление
-        await self._finalize_message(
-            message=message,
-            conversation_id=data.conversation_id,
-            channel_type="waba",
-            data=data,
-            current_user=current_user,
-            success=success,
-            channel_msg_id=channel_msg_id,
-            raw_content=None
-        )
-
-        return MessageResponse.model_validate(message)
-
-
-
-
-    async def create_msg_vk(
-            self,
-            data: MessageCreate,
-            files: list[UploadFile] | None = None,
-            current_user: UserContext = Depends(get_current_user),
-    ) -> MessageResponse:
-        """Create new VK message"""
-        # Получаем креды линии
-        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(data.conversation_id)
-        creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
-
-        log.info(f"***** create_msg_vk files {files} data.media {data.media}")
-        log.info(f"\n\n ***** ChatService.create_msg_vk creds {creds} \n\n")
-
-        if files:
-            media_items = []
-            for file in files:
-                media_id = uuid.uuid4()
-                await self._save_uploaded_file(file, media_id)
-                media_items.append({
-                    "id": str(media_id),
-                    "file_name": file.filename,
-                    "mime_type": file.content_type,
-                })
-            data.media = media_items
-
-        # Сохраняем сообщение в БД
-        conv, message = await self.conv_msg(data, current_user)
-
-        # Отправляем на фронт сразу
-        await manager.send_new_message(str(data.conversation_id), {
-            "id": str(message.id),
-            "text": message.text,
-            "direction": "outbound",    
-            "created_at": message.created_at.isoformat(),
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "status": "sent",
-            "media": data.media or [],
-        })
-
-        data.message_id = message.id
-        # Отправка через VK
-        sender = SenderFactory.get_sender("vk")
-        sender.set_creds(creds)
-        success = False
-        channel_msg_id = None
-
-        log.info(f"\n\n ========== create_msg_vk data.message_id  {data.message_id} \n\n")
-
-        try:
-            result = await sender.send(data)
-            success = True if result else None
-            channel_msg_id = str(result) if isinstance(result, int) else result.get("message_id")
-        except Exception as e:
-            log.error(f"VK send failed: {e}")
-            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
-                await notify_connection_error(uuid.UUID(str(conv.line_id)), "vk", self.db)
-
-        # Финальное обновление
-        await self._finalize_message(
-            message=message,
-            conversation_id=data.conversation_id,
-            channel_type="vk",
-            data=data,
-            current_user=current_user,
-            success=success,
-            channel_msg_id=channel_msg_id,
-            raw_content=None
-        )
-
-        return MessageResponse.model_validate(message)
-    '''
-
 
 
     async def save_incoming_message(

@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from io import BytesIO
 from minio import Minio
 from fastapi import UploadFile
@@ -51,3 +52,11 @@ class StorageService:
 
     def public_url(self, media_id: uuid.UUID) -> str:
         return f"{settings.s3_external_url}/{settings.s3_bucket}/{media_id}"
+
+    def presigned_url(self, media_id: uuid.UUID, ttl_seconds: int = 3600) -> str:
+        url = self.client.presigned_get_object(
+            settings.s3_bucket,
+            str(media_id),
+            expires=timedelta(seconds=ttl_seconds),
+        )
+        return url.replace(f"http://{settings.s3_endpoint}/{settings.s3_bucket}/", "http://localhost/storage/")

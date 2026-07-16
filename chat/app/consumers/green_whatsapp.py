@@ -26,13 +26,12 @@ class GreenWhatsAppConnection:
         self.api_token = api_token
         self.line_id = line_id
         self.db = db
-        
 
     def api_url(self):
-        return f"{settings.proxy_green_url}/waInstance{self.id_instance}"
+        return f"https://api.green-api.com/waInstance{self.id_instance}"
 
     def media_url(self):
-        return f"{settings.proxy_green_url}/waInstance{self.id_instance}"
+        return f"https://api.green-api.com/waInstance{self.id_instance}"
 
     def send_text_url(self):
         return f"{self.api_url()}/sendMessage/{self.api_token}"
@@ -42,8 +41,9 @@ class GreenWhatsAppConnection:
 
     async def send(self, url, payload):
         log.info(f"\n\n ************ GreenWhatsAppConnection.send url {url} payload {payload} \n\n")
+        proxy_url = f"http://{settings.proxy_green_login}:{settings.proxy_green_password}@{settings.proxy_green_url}"
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(proxy=proxy_url) as client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
                 log.info(f"\n\n ****** GreenWhatsAppConnection.send response {type(response)} {response} \n\n")
