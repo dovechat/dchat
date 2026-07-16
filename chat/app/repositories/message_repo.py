@@ -102,12 +102,12 @@ class MessageRepository(BaseRepository[Message]):
             text=text,
             raw_content=raw_content or {}
         )
-    
-    async def set_message_status(self, id: str, status: str):
+
+    async def set_message_status(self, message_id: int, status: str):
         """Update status to active using base update logic"""
-        message = await self.get_by_id(id)
-        if message:
-            return await self.update(message, status=status)
+        stmt = update(Message).where(Message.id == message_id).values(status=status)
+        await self.session.execute(stmt)
+        await self.session.flush()
 
     async def get_message_by_channel_msg_id(self, id: str):
         msgs = await self.get_multi(
