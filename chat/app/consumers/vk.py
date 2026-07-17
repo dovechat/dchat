@@ -257,6 +257,7 @@ class VkListener:
         if not conv:
             log.warning(f"Conversation not found for line {line_id}, from_id {from_id}")
             return
+        conv_id = conv.id
 
         media_items = []
 
@@ -280,7 +281,7 @@ class VkListener:
                 media_items.append({"id": str(m_id), "file_name": fname, "mime_type": mtype, "url": self.storage.presigned_url(m_id)})
 
         message = await chat_service.save_incoming_vk(
-            conversation_id=conv.id,
+            conversation_id=conv_id,
             external_id=msg_id,
             text=text,
             msg_type="message_new",
@@ -297,7 +298,7 @@ class VkListener:
         if media_items:
             ws_message["media"] = media_items
 
-        await manager.send_new_message(conv.id, ws_message)
+        await manager.send_new_message(conv_id, ws_message)
 
         async with get_session() as db:
             try:
@@ -308,7 +309,7 @@ class VkListener:
                 line = await crm_uow.lines.get_by_id(line_id)
                 bx_chat_id = await crm_service.send_to_crm(
                     tenant_id=line.tenant_id,
-                    conversation_id=conv.id,
+                    conversation_id=conv_id,
                     client_phone=phone,
                     client_name="",
                     text=text or "",
