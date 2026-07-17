@@ -147,7 +147,7 @@ class ChannelAccountService:
         return ChannelAccountResponse.model_validate(account)
 
 
-    async def set_webhook(self, line_id, bot_token):
+    async def set_webhook(self, line_id, bot_token, secret_token):
         try:
             # raise Exception("Test retry")
             wh_url = f"{settings.tg_webhook_domain}/api/v1/bot/webhook/{line_id}"
@@ -157,7 +157,8 @@ class ChannelAccountService:
                 res = await client.post(
                     f"{settings.tg_bot_send_url}/bot{bot_token}/setWebhook",
                     json={
-                        "url": wh_url
+                        "url": wh_url,
+                        "secret_token": secret_token
                     },
                 )
                 log.info(f"res {res.json()}")
@@ -172,6 +173,12 @@ class ChannelAccountService:
             credentials: TelegramBotCredentials
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
+
+        import secrets
+        token = secrets.token_urlsafe(32)
+        creds_dict = credentials.model_dump()
+        creds_dict["secret_token"] = token
+
         encrypted = self._encrypt_credentials(credentials.model_dump())
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.TELEGRAM_BOT)
         if account:
