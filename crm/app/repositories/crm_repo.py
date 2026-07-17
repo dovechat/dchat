@@ -29,7 +29,7 @@ class CrmConnectionRepository(BaseRepository[CrmAccount]):
             )
             .limit(1)
         )
-        result = await self._session.execute(stmt)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_by_member_id(self, member_id: str) -> CrmAccount | None:
@@ -50,7 +50,7 @@ class CrmConnectionRepository(BaseRepository[CrmAccount]):
             )
             .limit(1)
         )
-        result = await self._session.execute(stmt)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_by_tenant_and_channel(self, tenant_id: uuid.UUID, channel_type: str) -> CrmAccount | None:
