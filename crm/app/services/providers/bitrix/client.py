@@ -64,7 +64,7 @@ class BitrixClient:
         msg = {
             "id": msg_id,
             "date": int(datetime.now(timezone.utc).timestamp()),
-            "text": text,
+            "text": text or (media[0]["file_name"] if media else " "),
         }
         if media:
             msg["files"] = [
