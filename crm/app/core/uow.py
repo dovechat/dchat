@@ -20,3 +20,4 @@ class CrmUnitOfWork:
         self.conversations = BaseRepository(Conversation, db)
         self.memberships = BaseRepository(Membership, db)
         self.users = BaseRepository(User, db)
+        self.crm_accounts = BaseRepository(CrmAccount, db)
