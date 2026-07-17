@@ -177,7 +177,6 @@ class ChannelAccountService:
 
         token = secrets.token_urlsafe(32)
         credentials.secret_token = token
-        creds_dict = credentials.model_dump()
 
         log.debug(f"\n\n ******* credentials {credentials} \n\n")
 
@@ -453,7 +452,9 @@ class ChannelAccountService:
             api_key: str
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
-        credentials = {"api_key": api_key}
+
+        token = secrets.token_urlsafe(32)
+        credentials = {"api_key": api_key, "token": token}
         encrypted = self._encrypt_credentials(credentials)
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.WABA)
         if account:
@@ -464,7 +465,7 @@ class ChannelAccountService:
                 channel_type=ChannelType.WABA,
                 credentials_encrypted=encrypted
             )
-        await self._set_waba_webhook(line_id, api_key)
+        await self._set_waba_webhook(line_id, api_key, token)
         return ChannelAccountResponse(
             id=updated.id,
             line_id=updated.line_id,
@@ -473,7 +474,7 @@ class ChannelAccountService:
             updated_at=updated.updated_at.isoformat() if updated.updated_at else None
         )
 
-    async def _set_waba_webhook(self, line_id, api_key):
+    async def _set_waba_webhook(self, line_id, api_key, token: str):
         log.info(f"\n\n line_id {line_id} api_key {api_key} \n\n")
         data = {
                         "url": f"{settings.host_url}/api/v1/webhooks/whatsapp/waba/{line_id}"
@@ -486,7 +487,8 @@ class ChannelAccountService:
                     waba_wh_url,
                     headers = {
                         "D360-API-KEY": api_key,
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        "X - Webhook - Secret": token
                     },
                     json = data
                 )
