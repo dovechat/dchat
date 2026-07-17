@@ -234,6 +234,18 @@ class VkListener:
             creds_json = decrypt(account.credentials_encrypted["encrypted_data"])
             return json.loads(creds_json)
 
+    @staticmethod
+    def detect_image_mime(data: bytes) -> str | None:
+        if data[:3] == b'\xff\xd8\xff':
+            return 'image/jpeg'
+        if data[:8] == b'\x89PNG\r\n\x1a\n':
+            return 'image/png'
+        if data[:6] in (b'GIF87a', b'GIF89a'):
+            return 'image/gif'
+        if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+            return 'image/webp'
+        return None
+
     async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService"):
         log.info(f"\n\n _handle_incoming_message payload {payload} \n\n")
         msg = payload.get("object", {}).get("message", {})
@@ -270,9 +282,14 @@ class VkListener:
                 if sizes:
                     best = max(sizes, key=lambda s: s.get("width", 0))
                     file_bytes = await self._download_file(best.get("url"))
-                    fname = f"{att_obj.get('id')}.jpg"
-                    await self.storage.save_file(file_bytes, m_id, fname, "image/jpeg")
-                    media_items.append({"id": str(m_id), "file_name": fname, "mime_type": "image/jpeg", "url": self.storage.presigned_url(m_id)})
+                    detected_mime = self.detect_image_mime(file_bytes)
+                    ext = detected_mime.split("/")[-1] if detected_mime else "jpg"
+                    fname = f"{att_obj.get('id')}.{ext}"
+                    await self.storage.save_file(file_bytes, m_id, fname, detected_mime or "application/octet-stream")
+                    media_items.append(
+                        {"id": str(m_id), "file_name": fname, "mime_type": detected_mime or "application/octet-stream",
+                         "url": self.storage.presigned_url(m_id)}
+                    )
             elif att_type == "doc":
                 file_bytes = await self._download_file(att_obj.get("url"))
                 fname = att_obj.get("title")
