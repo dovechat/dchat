@@ -174,10 +174,13 @@ class ChannelAccountService:
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
 
+
         import secrets
         token = secrets.token_urlsafe(32)
+        credentials.secret_token = token
         creds_dict = credentials.model_dump()
-        creds_dict["secret_token"] = token
+
+        log.debug(f"\n\n ******* credentials {credentials} \n\n")
 
         encrypted = self._encrypt_credentials(credentials.model_dump())
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.TELEGRAM_BOT)
