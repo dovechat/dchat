@@ -76,7 +76,7 @@ class CrmService:
                 log.error("CRM send failed tenant=%s: %s", tenant_id, e2, exc_info=True)
                 return
 
-        log.info(f"send_to_crm result {result}")log.info(f"send_to_crm result {result}")
+        log.info(f"send_to_crm result {result}")
 
         # --- AmoCRM ---
         if conn.crm_type == "amocrm":
