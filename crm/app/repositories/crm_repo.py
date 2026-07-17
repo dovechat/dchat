@@ -54,7 +54,7 @@ class CrmConnectionRepository(BaseRepository[CrmAccount]):
 
     async def get_by_tenant_and_channel(self, tenant_id: uuid.UUID, channel_type: str) -> CrmAccount | None:
         stmt = (
-            select(CrmAccount)
+            select(CrmAccount, CrmLineConnection)
             .join(CrmLineConnection, CrmLineConnection.crm_account_id == CrmAccount.id)
             .where(
                 CrmAccount.tenant_id == tenant_id,
@@ -64,7 +64,14 @@ class CrmConnectionRepository(BaseRepository[CrmAccount]):
             .limit(1)
         )
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        row = result.first()
+        if not row:
+            return None
+        account, line_conn = row
+        account.connector_id = line_conn.connector_id
+        account.crm_line_id = line_conn.crm_line_id
+        account.channel_type = line_conn.channel_type
+        return account
 
     async def upsert_amo(
         self,
