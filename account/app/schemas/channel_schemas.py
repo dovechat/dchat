@@ -9,6 +9,7 @@ class TelegramBotCredentials(BaseModel):
     """Credentials for Telegram Bot channel"""
     bot_token: str = Field(..., min_length=1, description="Telegram bot token from @BotFather")
     webhook_url: Optional[str] = Field(None, description="Webhook URL for receiving updates")
+    secret_token: Optional[str] = Field(None, description="Webhook secret")
 
 
 class TelegramUserCredentials(BaseModel):
