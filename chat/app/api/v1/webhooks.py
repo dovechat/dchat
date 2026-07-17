@@ -27,7 +27,7 @@ async def whatsapp_green_webhook(
 async def waba_webhook(line_id: str, token: str, request: Request):
     waba_listener = request.app.state.waba_listener
     payload = await request.json()
-    await waba_listener.handle_webhook(line_id, token, payload, request)
+    await waba_listener.handle_webhook(line_id, token, payload)
     return {"status": "ok"}
 
 
