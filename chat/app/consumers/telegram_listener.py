@@ -632,7 +632,7 @@ class TelegramListener:
                 "direction": "inbound",
                 "created_at": message.created_at.isoformat(),
                 "phone": peer_phone,
-                "media": [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}] if media_id else [],
+                "media": [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "url": self.storage.presigned_url(media_id)}] if media_id else [],
                 "is_new": True,
             })
         except Exception as e:
@@ -698,7 +698,7 @@ class TelegramListener:
                     "direction": "inbound",
                     "created_at": message.created_at.isoformat(),
                     "phone": first["peer_phone"],
-                    "media": [{"id": m["id"], "file_name": m["file_name"], "mime_type": m["mime_type"]} for m in items],
+                    "media": [{"id": m["id"], "file_name": m["file_name"], "mime_type": m["mime_type"], "url": self.storage.presigned_url(m["id"])} for m in items],
                     "is_new": True,
                 })
         except Exception as e:
