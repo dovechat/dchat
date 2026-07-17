@@ -110,7 +110,7 @@ class WabaListener:
         self.storage = StorageService()
         log.info("WabaListener initialized")
 
-    async def handle_webhook(self, line_id: str, payload: dict, request, token: str = None):
+    async def handle_webhook(self, line_id: str, token: str, payload: dict):
         from app.services.chat_service import ChatService
 
         log.info(f"\n\n  ******* token {token} \n\n")
