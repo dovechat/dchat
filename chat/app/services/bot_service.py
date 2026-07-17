@@ -80,6 +80,8 @@ class BotService:
         channel_acc = await self.channel_repo.get_by_line_and_type(line_id, "telegram_bot")
         creds = decrypt_credentials(channel_acc.credentials_encrypted)
         secret_token = request.headers.get("x-telegram-bot-api-secret-token")
+        db_secret_token = creds("secret_token")
+        log.info(f"\n\n **--**--** secret_token {secret_token} db_secret_token {db_secret_token} n\n ")
         if secret_token != creds.get("secret_token"):
             log.warning(f"Invalid Telegram secret_token for line {line_id}")
             return {"ok": True}
