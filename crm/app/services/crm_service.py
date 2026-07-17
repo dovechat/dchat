@@ -196,47 +196,44 @@ class CrmService:
         from infra.crypto import decrypt, encrypt
         from core.config import settings
         from crm.app.services.providers.bitrix.client import BitrixClient
-
         log.info(f"handle_bitrix_incoming full data: {data}")
-
         member_id = data.get("auth[member_id]")
         if not member_id:
             return
-
         connector_id = data.get("data[CONNECTOR]")
         conn = await self._uow.crm_connections.get_by_member_and_connector(member_id, connector_id)
         log.info(f"handle_bitrix_incoming conn={conn} line_id={conn.line_id if conn else None}")
         if not conn or not conn.line_id:
             log.warning(f"handle_bitrix_incoming: no conn or line_id for member_id={member_id}")
             return
-
+        account = await self._uow.crm_accounts.get_by_id(conn.crm_account_id)
+        if not account:
+            log.warning(f"handle_bitrix_incoming: no account for conn.crm_account_id={conn.crm_account_id}")
+            return
         event = data.get("event")
         if event != "ONIMCONNECTORMESSAGEADD":
             return
-
         # рефреш токена
         try:
             refreshed = await BitrixClient.refresh_tokens(
-                domain=conn.domain,
-                refresh_token=decrypt(conn.refresh_token_enc),
+                domain=account.domain,
+                refresh_token=decrypt(account.refresh_token_enc),
                 client_id=settings.BITRIX_CLIENT_ID,
                 client_secret=settings.BITRIX_CLIENT_SECRET,
             )
             access_token = refreshed["access_token"]
-            await self._uow.crm_connections.update(
-                conn,
+            await self._uow.crm_accounts.update(
+                account,
                 access_token_enc=encrypt(refreshed["access_token"]),
                 refresh_token_enc=encrypt(refreshed["refresh_token"]),
             )
         except Exception as e:
             log.error(f"handle_bitrix_incoming token refresh failed: {e}")
-            access_token = decrypt(conn.access_token_enc)
-
+            access_token = decrypt(account.access_token_enc)
         client_chat_id = data.get("data[MESSAGES][0][chat][id]")
         crm_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
         text = data.get("data[MESSAGES][0][message][text]", "")
         text = re.sub(r'\[/?b\]|\[/?br\]', '', text).strip()
-
         WABA_TEMPLATES = {
             "disclaimer": {"name": "disclaimer", "language": "ru", "components": []},
             "first_welcome_messsage": {"name": "first_welcome_messsage", "language": "en", "components": [
@@ -244,7 +241,7 @@ class CrmService:
         }
         template_match = re.match(r'^\[template:(\w+)\]$', text)
         template = WABA_TEMPLATES.get(template_match.group(1)) if template_match else None
-        
+
         convs = await self._uow.conversations.get_multi(
             filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id},
             limit=1,
@@ -252,9 +249,8 @@ class CrmService:
         if not convs:
             log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id}")
             return
-
+        conv = convs[0]
         files = await self._collect_bitrix_files(data)
-
         msg_json = MessageCreate(
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
@@ -263,13 +259,11 @@ class CrmService:
             status=MessageStatus.sent,
             template=template,
         ).model_dump_json()
-
         memberships = await self._uow.memberships.get_multi(
-            filters={"tenant_id": conn.tenant_id, "role": "owner"},
+            filters={"tenant_id": account.tenant_id, "role": "owner"},
             limit=1,
         )
         owner = await self._uow.users.get_by_id(memberships[0].user_id)
-
         async with httpx.AsyncClient() as client:
             try:
                 internal_url = "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-outgoing"
@@ -297,12 +291,11 @@ class CrmService:
                 log.info(f"crm-outgoing response: {resp.status_code} {resp.text}")
             except Exception as e:
                 log.error(f"crm-outgoing request failed: {e}")
-
         im_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
         im_message_id = data.get("data[MESSAGES][0][im][message_id]")
         if crm_chat_id and im_message_id:
             try:
-                bx = BitrixClient(domain=conn.domain, access_token=access_token)
+                bx = BitrixClient(domain=account.domain, access_token=access_token)
                 await bx.call("imconnector.send.status.delivery", {
                     "CONNECTOR": conn.connector_id,
                     "LINE": conn.crm_line_id,
@@ -532,11 +525,11 @@ class CrmService:
         access_token = bx_auth.get("access_token", "")
         refresh_token = bx_auth.get("refresh_token", "")
 
-        rows = await self._uow.crm_connections.get_multi(filters={"domain": domain}, limit=1)
-        conn_existing = rows[0] if rows else None
+        rows = await self._uow.crm_accounts.get_multi(filters={"domain": domain}, limit=1)
+        account = rows[0] if rows else None
 
         log.warning(
-            f"connect_line domain={domain} token_len={len(access_token)} token_start={access_token[:15]!r} conn_existing={bool(conn_existing)} refresh_token_start={refresh_token[:15]!r}")
+            f"connect_line domain={domain} token_len={len(access_token)} token_start={access_token[:15]!r} account_existing={bool(account)} refresh_token_start={refresh_token[:15]!r}")
 
         try:
             refreshed = await BitrixClient.refresh_tokens(
@@ -545,21 +538,34 @@ class CrmService:
             )
             access_token = refreshed["access_token"]
             refresh_token = refreshed["refresh_token"]
-            if conn_existing:
-                await self._uow.crm_connections.update(
-                    conn_existing,
-                    access_token_enc=encrypt(access_token),
-                    refresh_token_enc=encrypt(refresh_token),
-                )
         except Exception as e:
             log.error(f"connect_line token refresh failed: {e}")
             return {"error": "Ошибка обновления токена Битрикс"}
 
-        bx = BitrixClient(domain=domain, access_token=access_token)
-
         line = await self._uow.lines.get_by_id(line_id)
         if not line:
             return {"error": "Линия не найдена"}
+
+        if account:
+            await self._uow.crm_accounts.update(
+                account,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+                member_id=member_id,
+                is_active=True,
+            )
+        else:
+            account = await self._uow.crm_accounts.create(
+                tenant_id=line.tenant_id,
+                crm_type="bitrix24",
+                domain=domain,
+                member_id=member_id,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+                is_active=True,
+            )
+
+        bx = BitrixClient(domain=domain, access_token=access_token)
 
         connector_id = bx_auth.get("connector")
         channel_type_val = next(
@@ -571,47 +577,41 @@ class CrmService:
         reg_result = await bx.register_connector(connector_id)
         log.info(f"register_connector result: {reg_result}")
 
-        conn = await self._uow.crm_connections.get_by_member_and_connector(member_id, connector_id)
+        rows = await self._uow.crm_line_connections.get_multi(
+            filters={"line_id": line_id, "connector_id": connector_id}, limit=1
+        )
+        line_conn = rows[0] if rows else None
+
         crm_line_id = (
                 bx_auth.get("bx_line_id")
-                or (conn.crm_line_id if conn else None)
+                or (line_conn.crm_line_id if line_conn else None)
                 or await bx.create_open_line(line.name)
         )
         log.info(
-            f"connect_line crm_line_id={crm_line_id!r} member_id={member_id} connector_id={connector_id} conn={conn}"
+            f"connect_line crm_line_id={crm_line_id!r} member_id={member_id} connector_id={connector_id} line_conn={line_conn}"
         )
 
         link_result = await bx.link_connector(crm_line_id, connector_id)
-        await bx.activate_connector(crm_line_id, connector_id)
         log.info(f"link_connector result: {link_result}")
         activate_result = await bx.activate_connector(crm_line_id, connector_id)
         log.info(f"activate_connector result: {activate_result}")
 
-        if conn:
-            await self._uow.crm_connections.update(
-                conn,
-                tenant_id=line.tenant_id,
-                line_id=line_id,
+        if line_conn:
+            await self._uow.crm_line_connections.update(
+                line_conn,
+                crm_account_id=account.id,
                 channel_type=channel_type_val,
                 connector_id=connector_id,
                 crm_line_id=crm_line_id,
-                access_token_enc=encrypt(access_token),
-                refresh_token_enc=encrypt(refresh_token),
-                member_id=member_id,
                 is_active=True,
             )
         else:
-            await self._uow.crm_connections.create(
-                tenant_id=line.tenant_id,
+            await self._uow.crm_line_connections.create(
+                crm_account_id=account.id,
                 line_id=line_id,
-                crm_type="bitrix24",
                 channel_type=channel_type_val,
                 connector_id=connector_id,
                 crm_line_id=crm_line_id,
-                domain=domain,
-                member_id=member_id,
-                access_token_enc=encrypt(access_token),
-                refresh_token_enc=encrypt(refresh_token),
                 is_active=True,
             )
 

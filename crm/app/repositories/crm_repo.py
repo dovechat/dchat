@@ -18,16 +18,15 @@ class CrmConnectionRepository(BaseRepository[CrmAccount]):
         )
         return rows[0] if rows else None
 
-    async def get_by_member_and_connector(self, member_id: str, connector_id: str) -> CrmAccount | None:
+    async def get_by_member_and_connector(self, member_id: str, connector_id: str) -> CrmLineConnection | None:
         stmt = (
-            select(CrmAccount)
-            .join(CrmLineConnection, CrmLineConnection.crm_account_id == CrmAccount.id)
+            select(CrmLineConnection)
+            .join(CrmAccount, CrmLineConnection.crm_account_id == CrmAccount.id)
             .where(
                 CrmAccount.member_id == member_id,
                 CrmLineConnection.connector_id == connector_id,
                 CrmAccount.is_active.is_(True),
             )
-            .limit(1)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
