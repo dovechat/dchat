@@ -271,13 +271,13 @@ class VkListener:
                     file_bytes = await self._download_file(best.get("url"))
                     fname = f"{att_obj.get('id')}.jpg"
                     await self.storage.save_file(file_bytes, m_id, fname, "image/jpeg")
-                    media_items.append({"id": str(m_id), "file_name": fname, "mime_type": "image/jpeg"})
+                    media_items.append({"id": str(m_id), "file_name": fname, "mime_type": "image/jpeg", "url": self.storage.presigned_url(m_id)})
             elif att_type == "doc":
                 file_bytes = await self._download_file(att_obj.get("url"))
                 fname = att_obj.get("title")
                 mtype = att_obj.get("mime_type", "application/octet-stream")
                 await self.storage.save_file(file_bytes, m_id, fname, mtype)
-                media_items.append({"id": str(m_id), "file_name": fname, "mime_type": mtype})
+                media_items.append({"id": str(m_id), "file_name": fname, "mime_type": mtype, "url": self.storage.presigned_url(m_id)})
 
         message = await chat_service.save_incoming_vk(
             conversation_id=conv.id,
