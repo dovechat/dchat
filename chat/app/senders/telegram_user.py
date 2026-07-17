@@ -1,5 +1,6 @@
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
+from notification.notification_caller import notify_connection_error
 from app.senders.base import BaseSender
 from  app.schemas.chat_schemas import MessageCreate
 

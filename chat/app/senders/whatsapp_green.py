@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
+from services.storage_service import StorageService
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
 from app.consumers.green_whatsapp import GreenWhatsAppConnection
@@ -35,7 +36,7 @@ class WhatsAppGreenSender(BaseSender):
         if data.media:
             results = []
             for m in data.media:
-                file_url = f"{settings.s3_external_url}{settings.s3_bt_bucket}/{m['id']}"
+                file_url = StorageService().presigned_url(m['id'])
                 result = await conn.send_file(chat_id, file_url, data.text, file_name=m.get('file_name', 'file'))
                 results.append(result)
             return results[-1] if results else None

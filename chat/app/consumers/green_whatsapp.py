@@ -226,7 +226,8 @@ class GreenWhatsAppListener:
                 {
                     "id": str(media_id),
                     "file_name": original_file_name,
-                    "mime_type": mime_type
+                    "mime_type": mime_type,
+                    "url": chat_service.storage.presigned_url(media_id)
                 }
             ]
 
