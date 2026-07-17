@@ -481,6 +481,7 @@ class ChannelAccountService:
                     }
         log.info(f"\n\n data {data} \n\n")
         waba_wh_url = f"https://waba-sandbox.360dialog.io/v1/configs/webhook?{token}"
+        log.info(f"\n\n --- waba_wh_url {waba_wh_url}  \n\n")
         try:
             async with httpx.AsyncClient() as client:
                 res = await client.post(
