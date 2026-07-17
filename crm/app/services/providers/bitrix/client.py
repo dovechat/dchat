@@ -67,9 +67,11 @@ class BitrixClient:
             "text": text or " ",
         }
         if media:
+            from services.storage_service import StorageService
+            storage = StorageService()
             msg["files"] = [
                 {
-                    "url": f"{settings.s3_external_url}{settings.s3_bt_bucket}/{m['id']}",
+                    "url": storage.presigned_url(m["id"]),
                     "name": m["file_name"],
                 }
                 for m in media
