@@ -480,7 +480,7 @@ class ChannelAccountService:
                         "url": f"{settings.host_url}/api/v1/webhooks/whatsapp/waba/{line_id}"
                     }
         log.info(f"\n\n data {data} \n\n")
-        waba_wh_url = f"https://waba-sandbox.360dialog.io/v1/configs/webhook?{token}"
+        waba_wh_url = f"https://waba-sandbox.360dialog.io/v1/configs/webhook?token={token}"
         log.info(f"\n\n --- waba_wh_url {waba_wh_url}  \n\n")
         try:
             async with httpx.AsyncClient() as client:
