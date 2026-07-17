@@ -77,6 +77,13 @@ class BotService:
             log.error(f"Line {line_id} not found")
             return {"ok": False}
 
+        channel_acc = await self.channel_repo.get_by_line_and_type(line_id, "telegram_bot")
+        creds = decrypt_credentials(channel_acc.credentials_encrypted)
+        secret_token = request.headers.get("x-telegram-bot-api-secret-token")
+        if secret_token != creds.get("secret_token"):
+            log.warning(f"Invalid Telegram secret_token for line {line_id}")
+            return {"ok": True}
+
         log.info(f"\n\n ***---** update_data {update_data}")
 
         edited = update_data.get("edited_message")
@@ -114,9 +121,9 @@ class BotService:
 
         # Get bot token from line credentials
         log.info(f"\n\n *-**-*-*-*-*-*-*-*    self.channel_repo {dir(self.channel_repo)}   \n\n ")
-        channel_acc = await self.channel_repo.get_by_line_and_type(line_id, "telegram_bot")
-        log.info(f"\n\n *-**-*-*-*-*-*-*-*   BotService.handle_webhook channel_acc {dir(channel_acc)}   \n\n ")
-        creds = decrypt_credentials(channel_acc.credentials_encrypted)
+        # channel_acc = await self.channel_repo.get_by_line_and_type(line_id, "telegram_bot")
+        # log.info(f"\n\n *-**-*-*-*-*-*-*-*   BotService.handle_webhook channel_acc {dir(channel_acc)}   \n\n ")
+        # creds = decrypt_credentials(channel_acc.credentials_encrypted)
         bot_token = creds["bot_token"]
         raw_content = update_data
 
