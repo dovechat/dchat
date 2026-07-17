@@ -76,66 +76,51 @@ class CrmService:
                 log.error("CRM send failed tenant=%s: %s", tenant_id, e2, exc_info=True)
                 return
 
-        log.info(f"send_to_crm result {result}")
+        log.info(f"send_to_crm result {result}")log.info(f"send_to_crm result {result}")
 
         # --- AmoCRM ---
         if conn.crm_type == "amocrm":
-            if not link:
-                amo_chat_id = result.get("crm_chat_id", f"dc_{conversation_id}")
-                await self._uow.crm_dialog_links.create(
-                    conversation_id=conversation_id,
-                    crm_account_id=conn.id,
-                    crm_chat_id=amo_chat_id,
-                    crm_user_id=client_phone,
-                )
-                log.info(f"send_to_crm amo_chat_id={amo_chat_id}")
-                return amo_chat_id
-            return link.crm_chat_id
-
+            amo_chat_id = result.get("crm_chat_id", f"dc_{conversation_id}")
+            await self._uow.conversations.update(conversation, crm_chat_id=amo_chat_id)
+            log.info(f"send_to_crm amo_chat_id={amo_chat_id}")
+            return amo_chat_id
+        
         # --- Bitrix24 ---
-        if not link:
-            data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-            session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
-            bx_chat_id = f"dc_{conversation_id}"
-
-            await self._uow.crm_dialog_links.create(
-                conversation_id=conversation_id,
-                crm_connection_id=conn.id,
-                crm_chat_id=bx_chat_id,
-                crm_user_id=client_phone,
-            )
-            log.info(f"send_to_crm conversation_id {conversation_id}")
-
-            try:
-                bx = provider._client()
-                contact_id = await bx.find_contact_by_phone(client_phone)
-                log.info(f"find_contact_by_phone client_phone={client_phone} contact_id={contact_id}")
-                if contact_id:
-                    deal_id = await bx.find_open_deal(contact_id)
-                    log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
-                    if deal_id:
-                        attach_result = await bx.attach_deal_to_chat(
-                            session_chat_id,
-                            conn.crm_line_id,
-                            conn.connector_id,
-                            deal_id,
-                        )
-                        log.info(f"attach_deal_to_chat result={attach_result}")
-                    else:
-                        crm_settings = await self._uow.crm_settings.get_by_tenant(tenant_id)
-                        log.info(
-                            f"no deal found, crm_settings={crm_settings} "
-                            f"no_deal_action={crm_settings.no_deal_action if crm_settings else None}"
-                        )
+        data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+        session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
+        
+        if session_chat_id and session_chat_id != conversation.crm_chat_id:
+            await self._uow.conversations.update(conversation, crm_chat_id=session_chat_id)
+            log.info(f"send_to_crm session_chat_id={session_chat_id}")
+        
+        try:
+            bx = provider._client()
+            contact_id = await bx.find_contact_by_phone(client_phone)
+            log.info(f"find_contact_by_phone client_phone={client_phone} contact_id={contact_id}")
+            if contact_id:
+                deal_id = await bx.find_open_deal(contact_id)
+                log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
+                if deal_id:
+                    attach_result = await bx.attach_deal_to_chat(
+                        session_chat_id,
+                        conn.crm_line_id,
+                        conn.connector_id,
+                        deal_id,
+                    )
+                    log.info(f"attach_deal_to_chat result={attach_result}")
                 else:
-                    log.warning(f"contact not found for client_phone={client_phone}")
-            except Exception as e:
-                log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
-
-            log.info(f"send_to_crm bx_chat_id {bx_chat_id}")
-            return bx_chat_id
-        else:
-            return link.crm_chat_id
+                    crm_settings = await self._uow.crm_settings.get_by_tenant(tenant_id)
+                    log.info(
+                        f"no deal found, crm_settings={crm_settings} "
+                        f"no_deal_action={crm_settings.no_deal_action if crm_settings else None}"
+                    )
+            else:
+                log.warning(f"contact not found for client_phone={client_phone}")
+        except Exception as e:
+            log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
+        
+        log.info(f"send_to_crm session_chat_id {session_chat_id}")
+        return session_chat_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
         conn = await self._uow.crm_connections.get_by_tenant(tenant_id, crm_type)
