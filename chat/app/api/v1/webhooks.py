@@ -24,10 +24,10 @@ async def whatsapp_green_webhook(
 
 
 @router.post("/whatsapp/waba/{line_id}")
-async def waba_webhook(line_id: str, request: Request):
+async def waba_webhook(line_id: str, request: Request, token: str = None):
     waba_listener = request.app.state.waba_listener
     payload = await request.json()
-    await waba_listener.handle_webhook(line_id, payload, request)
+    await waba_listener.handle_webhook(line_id, payload, request, token)
     return {"status": "ok"}
 
 
