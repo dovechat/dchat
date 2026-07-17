@@ -1,6 +1,7 @@
 import httpx
 import uuid
 import json
+import secrets
 from typing import Optional
 from fastapi import HTTPException
 from app.repositories.line_repo import LineRepository
@@ -174,8 +175,6 @@ class ChannelAccountService:
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
 
-
-        import secrets
         token = secrets.token_urlsafe(32)
         credentials.secret_token = token
         creds_dict = credentials.model_dump()
