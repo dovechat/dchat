@@ -146,6 +146,11 @@ class VkListener:
     async def handle_webhook(self, line_id: str, payload: dict):
         from app.services.chat_service import ChatService
 
+        creds = await self._get_creds(line_id)
+        if payload.get("secret") != creds.get("secret_key"):
+            log.warning(f"Invalid VK secret for line {line_id}")
+            return "ok"  # VK ждёт 200, не 4xx, иначе ретраит и может отключить callback
+
         event_type = payload.get("type")
 
         if event_type == "message_new":

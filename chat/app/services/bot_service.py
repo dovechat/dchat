@@ -68,9 +68,10 @@ class BotService:
         return {"ok": True}
 
 
-    async def handle_webhook(self, line_id: uuid.UUID, update_data: dict):
+    async def handle_webhook(self, line_id: uuid.UUID, update_data: dict, request):
         """Handle incoming update from Telegram Bot API"""
         # Get line and bot token
+        log.info(f'"request.headers {request.headers}')
         line = await self.db.get(Line, line_id)
         if not line:
             log.error(f"Line {line_id} not found")

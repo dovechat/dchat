@@ -72,6 +72,8 @@ class AuthService:
         if not user or not self.jwt_service.verify_password(
             request.password, user.password_hash
         ):
+            if await is_throttled(f"login:{request.email}", 5):
+                raise HTTPException(status_code=429, detail="Too many requests")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
@@ -110,6 +112,9 @@ class AuthService:
 
         await rdb.setex(f"auth:{str(user.id)}", 600, code)
 
+        if await is_throttled(f"otp:{data.email}", 60):
+            raise HTTPException(status_code=429, detail="Too many requests")
+
         send_otp(data, code)
 
         return self.jwt_service.create_token_pair(
@@ -119,6 +124,10 @@ class AuthService:
 
     async def refresh(self, refresh_token: str) -> TokenPair:
         payload = self.jwt_service.verify_token(refresh_token, token_type=TokenType.REFRESH)
+
+        if await is_throttled(f"refresh:{payload.sub}", 5):
+            raise HTTPException(status_code=429, detail="Too many requests")
+
         log.info(f"\n\n ******* REFRESH refresh_token {refresh_token} \n\n")
         log.info(f"\n\n ******* REFRESH payload.tenant_id {payload.tenant_id} \n\n")
         log.info(f"\n\n ******* REFRESH getattr payload, tenant_id, {getattr(payload, 'tenant_id', None)} \n\n")
