@@ -441,6 +441,7 @@ class CrmService:
                 member_id=member_id,
                 access_token_enc=encrypt(access_token),
                 refresh_token_enc=encrypt(refresh_token),
+                bitrix_application_token_enc=encrypt(app_token),
             )
         else:
             await self._uow.crm_accounts.create(
@@ -450,6 +451,7 @@ class CrmService:
                 access_token_enc=encrypt(access_token),
                 refresh_token_enc=encrypt(refresh_token),
                 is_active=True,
+                bitrix_application_token_enc=encrypt(app_token),
             )
 
         from crm.app.services.providers.bitrix.client import BitrixClient
