@@ -61,10 +61,10 @@ class CrmSettings(Base):
 
 
 class CrmAccount(Base):
-    __tablename__ = " "
+    __tablename__ = "crm_accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True)
     crm_type = Column(String, nullable=False)
     domain = Column(String, nullable=False)
     access_token_enc = Column(String)
