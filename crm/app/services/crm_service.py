@@ -444,7 +444,6 @@ class CrmService:
             )
         else:
             await self._uow.crm_accounts.create(
-                tenant_id=line.tenant_id,
                 crm_type="bitrix24",
                 domain=domain,
                 member_id=member_id,
