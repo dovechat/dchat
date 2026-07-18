@@ -27,3 +27,7 @@ class CrmLineConnectionRepository(BaseRepository[CrmLineConnection]):
             limit=1,
         )
         return rows[0] if rows else None
+
+class CrmAccountRepository(BaseRepository[CrmAccount]):
+    def __init__(self, session):
+        super().__init__(CrmAccount, session)

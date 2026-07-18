@@ -12,7 +12,7 @@ from app.repositories.billing_repo import (
 from app.repositories.tenant_repo import RequisitsRepository, TenantRepository
 from app.repositories.line_repo import  LineRepository
 from repo.instance_repo import InstanceRepository
-from repo.crm_repo import CrmLineConnectionRepository
+from repo.crm_repo import CrmLineConnectionRepository, CrmAccountRepository
 from repo.crm_settings_repo import CrmSettingsRepository
 from repo.conversation_repo import ConversationRepository
 from repo.message_repo import MessageRepository
@@ -105,6 +105,9 @@ async def get_tenant_repo(db: AsyncSession = Depends(get_db)) -> TenantRepositor
 
 def get_crm_settings_repo(db: AsyncSession = Depends(get_db)) -> CrmSettingsRepository:
     return CrmSettingsRepository(db)
+
+def get_crm_account_repo(db: AsyncSession = Depends(get_db)) -> CrmAccountRepository:
+    return CrmAccountRepository(db)
 
 def check_tenant_access(tenant_id: uuid.UUID, current_user: UserContext = Depends(get_current_user)):
     if current_user.role == 'admin':

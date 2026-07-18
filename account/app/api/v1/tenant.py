@@ -6,8 +6,8 @@ from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
 
 from core.dependencies import get_db, get_current_user
 from app.core.dependencies import (
-    get_requisits_repo, check_tenant_access,
-    get_tenant_repo, get_tenant_uow, get_crm_settings_repo
+    get_requisits_repo, check_tenant_access, get_tenant_repo, 
+    get_tenant_uow, get_crm_account_repo, get_crm_settings_repo
 )
 from app.schemas.tenant_schemas import (
     BankDetailsRead, BankDetailsRUUpdate,
@@ -16,7 +16,7 @@ from app.schemas.tenant_schemas import (
 from app.services.tenant_services import RequisitsService, TenantCreateService, TenantService
 from schemas.auth_schemas import UserContext
 from services.auth_service import AuthService
-from repo.crm_settings_repo import CrmSettingsRepository
+from repo.crm_settings_repo import CrmAccountRepository, CrmSettingsRepository
 from app.services.crm_settings_service import CrmSettingsService
 from app.schemas.crm_settings_schemas import CrmSettingsRead, CrmSettingsUpdate
 
@@ -45,9 +45,10 @@ def get_requisits_service(
     return RequisitsService(requisits_repo)
 
 def get_crm_settings_service(
-    repo=Depends(get_crm_settings_repo),
+    settings_repo=Depends(get_crm_settings_repo),
+    account_repo=Depends(get_crm_account_repo),
 ) -> CrmSettingsService:
-    return CrmSettingsService(repo)
+    return CrmSettingsService(settings_repo, account_repo)
 
 @tenant_router.post("/create", response_model=TenantResponse, status_code=201)
 async def create_tenant_rt(

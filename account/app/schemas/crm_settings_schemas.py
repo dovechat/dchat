@@ -14,3 +14,5 @@ class CrmSettingsUpdate(BaseModel):
     no_deal_action: Optional[str] = None
     auto_create_contact: Optional[bool] = None
     responsible_user_id: Optional[str] = None
+    bitrix_client_id: Optional[str] = None
+    bitrix_client_secret: Optional[str] = None
