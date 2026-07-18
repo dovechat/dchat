@@ -523,21 +523,18 @@ class CrmService:
 
         rows = await self._uow.crm_accounts.get_multi(filters={"domain": domain}, limit=1)
         account = rows[0] if rows else None
-
-        log.warning(
-            f"connect_line domain={domain} token_len={len(access_token)} token_start={access_token[:15]!r} account_existing={bool(account)} refresh_token_start={refresh_token[:15]!r}")
-
-        try:
-            refreshed = await BitrixClient.refresh_tokens(
-                domain=domain, refresh_token=refresh_token,
-                client_id=settings.BITRIX_CLIENT_ID, client_secret=settings.BITRIX_CLIENT_SECRET,
-            )
-            access_token = refreshed["access_token"]
-            refresh_token = refreshed["refresh_token"]
-        except Exception as e:
-            log.error(f"connect_line token refresh failed: {e}")
-            return {"error": "Ошибка обновления токена Битрикс"}
-
+        if account and account.bitrix_client_id_enc and account.bitrix_client_secret_enc:
+            try:
+                refreshed = await BitrixClient.refresh_tokens(
+                    domain=domain, refresh_token=refresh_token,
+                    client_id=decrypt(account.bitrix_client_id_enc),
+                    client_secret=decrypt(account.bitrix_client_secret_enc),
+                )
+                access_token = refreshed["access_token"]
+                refresh_token = refreshed["refresh_token"]
+            except Exception as e:
+                log.error(f"connect_line token refresh failed: {e}")
+                return {"error": "Ошибка обновления токена Битрикс"}
         line = await self._uow.lines.get_by_id(line_id)
         if not line:
             return {"error": "Линия не найдена"}
