@@ -1,6 +1,6 @@
 import uuid
 from repo.base import BaseRepository
-from models.crm import CrmLineConnection
+from models.crm import CrmAccount, CrmLineConnection
 
 
 class CrmLineConnectionRepository(BaseRepository[CrmLineConnection]):
