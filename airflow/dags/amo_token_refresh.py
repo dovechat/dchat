@@ -20,15 +20,15 @@ DEFAULT_ARGS = {
 
 
 async def _refresh_amo_tokens() -> None:
-    from models.crm import CrmConnection
+    from models.crm import CrmAccount
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         try:
             result = await session.execute(
-                select(CrmConnection).where(
-                    CrmConnection.crm_type == "amocrm",
-                    CrmConnection.is_active.is_(True),
+                select(CrmAccount).where(
+                    CrmAccount.crm_type == "amocrm",
+                    CrmAccount.is_active.is_(True),
                 )
             )
             connections = result.scalars().all()

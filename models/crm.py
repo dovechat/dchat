@@ -61,7 +61,7 @@ class CrmSettings(Base):
 
 
 class CrmAccount(Base):
-    __tablename__ = "crm_accounts"
+    __tablename__ = " "
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)

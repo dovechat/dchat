@@ -442,6 +442,16 @@ class CrmService:
                 access_token_enc=encrypt(access_token),
                 refresh_token_enc=encrypt(refresh_token),
             )
+        else:
+            await self._uow.crm_accounts.create(
+                tenant_id=line.tenant_id,
+                crm_type="bitrix24",
+                domain=domain,
+                member_id=member_id,
+                access_token_enc=encrypt(access_token),
+                refresh_token_enc=encrypt(refresh_token),
+                is_active=True,
+            )
 
         from crm.app.services.providers.bitrix.client import BitrixClient
         from core.config import settings
@@ -534,6 +544,7 @@ class CrmService:
         if account:
             await self._uow.crm_accounts.update(
                 account,
+                tenant_id=line.tenant_id,
                 access_token_enc=encrypt(access_token),
                 refresh_token_enc=encrypt(refresh_token),
                 member_id=member_id,

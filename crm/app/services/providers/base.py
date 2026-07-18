@@ -1,10 +1,10 @@
 """Abstract CRM provider."""
 from abc import ABC, abstractmethod
-from models.crm import CrmConnection
+from models.crm import CrmAccount
 
 
 class CrmProvider(ABC):
-    def __init__(self, conn: CrmConnection):
+    def __init__(self, conn: CrmAccount):
         self.conn = conn
 
     @abstractmethod
