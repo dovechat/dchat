@@ -78,6 +78,9 @@ class CrmAccount(Base):
     no_deal_action = Column(String, default="nothing")
     auto_create_contact = Column(Boolean, default=True)
     responsible_user_id = Column(String)
+    bitrix_application_token_enc = Column(String)
+    bitrix_client_id_enc = Column(String)
+    bitrix_client_secret_enc = Column(String)
 
 
 class CrmLineConnection(Base):
