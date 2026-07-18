@@ -412,9 +412,9 @@ class CrmService:
         log.info(f"onappinstall app_token={app_token}")
         log.info(f"onappinstall data={data}")
 
-        if app_token != settings.BITRIX_APPLICATION_TOKEN:
-            log.warning(f"onappinstall: bad application_token expected={settings.BITRIX_APPLICATION_TOKEN}")
-            return
+        # if app_token != settings.BITRIX_APPLICATION_TOKEN:
+        #    log.warning(f"onappinstall: bad application_token expected={settings.BITRIX_APPLICATION_TOKEN}")
+        #   return
 
         log.info(f"\n\n if event  ONAPPINSTALL \n\n")
 
