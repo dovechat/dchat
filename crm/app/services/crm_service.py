@@ -45,7 +45,7 @@ class CrmService:
             media: list[dict] = [],
     ) -> str | None:
         log.info(f"start send_to_crm tenant_id {tenant_id} channel_type {channel_type}")
-        conn = await self._uow.crm_connections.get_by_tenant_and_channel(tenant_id, channel_type)
+        conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
         log.info(f"send_to_crm conn {conn}")
         if not conn:
             return
@@ -65,7 +65,7 @@ class CrmService:
         except Exception as e:
             try:
                 new_tokens = await provider.refresh_tokens()
-                await self._uow.crm_connections.update(conn, **new_tokens)
+                await self._uow.crm_accounts.update(conn, **new_tokens)
                 conn.access_token_enc = new_tokens["access_token_enc"]
                 conn.refresh_token_enc = new_tokens["refresh_token_enc"]
                 result = await provider.send_message(
@@ -123,7 +123,7 @@ class CrmService:
         return session_chat_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
-        conn = await self._uow.crm_connections.get_by_tenant(tenant_id, crm_type)
+        conn = await self._uow.crm_accounts.get_by_tenant(tenant_id, crm_type)
         if not conn:
             return {}
         provider = get_provider(conn)
@@ -186,7 +186,7 @@ class CrmService:
         if not member_id:
             return
         connector_id = data.get("data[CONNECTOR]")
-        conn = await self._uow.crm_connections.get_by_member_and_connector(member_id, connector_id)
+        conn = await self._uow.crm_accounts.get_by_member_and_connector(member_id, connector_id)
         log.info(f"handle_bitrix_incoming conn={conn} line_id={conn.line_id if conn else None}")
         if not conn or not conn.line_id:
             log.warning(f"handle_bitrix_incoming: no conn or line_id for member_id={member_id}")
@@ -430,13 +430,13 @@ class CrmService:
             log.warning("onappinstall: missing auth fields")
             return
 
-        rows = await self._uow.crm_connections.get_multi(filters={"domain": domain}, limit=1)
+        rows = await self._uow.crm_accounts.get_multi(filters={"domain": domain}, limit=1)
         conn = rows[0] if rows else None
 
         log.info(f"save_install_tokens updating conn member_id={member_id} domain={domain}")
         if conn:
             log.info(f"save_install_tokens updating conn if conn member_id={member_id} domain={domain}")
-            await self._uow.crm_connections.update(
+            await self._uow.crm_accounts.update(
                 conn,
                 member_id=member_id,
                 access_token_enc=encrypt(access_token),
@@ -665,7 +665,7 @@ class CrmService:
         return RedirectResponse(url="/crm/html/install_finish.html", status_code=303)
 
     async def get_lines_for_member(self, member_id: str) -> dict:
-        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        conn = await self._uow.crm_accounts.get_by_member_id(member_id)
         if not conn:
             return {"lines": []}
         line = await self._uow.lines.get_by_id(conn.line_id)
@@ -686,7 +686,7 @@ class CrmService:
         from core.config import settings
         from crm.app.services.providers.bitrix.client import BitrixClient
     
-        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        conn = await self._uow.crm_accounts.get_by_member_id(member_id)
         if not conn:
             return {"error": "Подключение не найдено"}
     
@@ -698,7 +698,7 @@ class CrmService:
                 client_secret=settings.BITRIX_CLIENT_SECRET,
             )
             access_token = refreshed["access_token"]
-            await self._uow.crm_connections.update(
+            await self._uow.crm_accounts.update(
                 conn,
                 access_token_enc=encrypt(refreshed["access_token"]),
                 refresh_token_enc=encrypt(refreshed["refresh_token"]),
@@ -757,7 +757,7 @@ class CrmService:
                 f"handle_robot missing fields: event_token={event_token} member_id={member_id} phone={phone} line_id={line_id_str}")
             return {"status": "error"}
 
-        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        conn = await self._uow.crm_accounts.get_by_member_id(member_id)
         if not conn:
             log.error(f"handle_robot no connection for member_id={member_id}")
             return {"status": "error"}
@@ -770,7 +770,7 @@ class CrmService:
                 client_secret=settings.BITRIX_CLIENT_SECRET,
             )
             access_token = refreshed["access_token"]
-            await self._uow.crm_connections.update(
+            await self._uow.crm_accounts.update(
                 conn,
                 access_token_enc=encrypt(refreshed["access_token"]),
                 refresh_token_enc=encrypt(refreshed["refresh_token"]),
@@ -938,7 +938,7 @@ class CrmService:
             log.error(f"check_wa_tg missing fields: {data}")
             return {"status": "error"}
 
-        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        conn = await self._uow.crm_accounts.get_by_member_id(member_id)
         if not conn:
             log.error(f"check_wa_tg no conn for member_id={member_id}")
             return {"status": "error"}
@@ -951,7 +951,7 @@ class CrmService:
                 client_secret=settings.BITRIX_CLIENT_SECRET,
             )
             access_token = refreshed["access_token"]
-            await self._uow.crm_connections.update(
+            await self._uow.crm_accounts.update(
                 conn,
                 access_token_enc=encrypt(refreshed["access_token"]),
                 refresh_token_enc=encrypt(refreshed["refresh_token"]),
@@ -1012,7 +1012,7 @@ class CrmService:
             log.error(f"check_wa_tg missing fields: {data}")
             return {"status": "error"}
     
-        conn = await self._uow.crm_connections.get_by_member_id(member_id)
+        conn = await self._uow.crm_accounts.get_by_member_id(member_id)
         if not conn:
             log.error(f"check_wa_tg no conn for member_id={member_id}")
             return {"status": "error"}
@@ -1025,7 +1025,7 @@ class CrmService:
                 client_secret=settings.BITRIX_CLIENT_SECRET,
             )
             access_token = refreshed["access_token"]
-            await self._uow.crm_connections.update(
+            await self._uow.crm_accounts.update(
                 conn,
                 access_token_enc=encrypt(refreshed["access_token"]),
                 refresh_token_enc=encrypt(refreshed["refresh_token"]),
@@ -1107,7 +1107,7 @@ class CrmService:
         account_id = str(account["id"])
         amojo_id = account.get("amojo_id", "")
     
-        await self._uow.crm_connections.upsert_amo(
+        await self._uow.crm_accounts.upsert_amo(
             domain=domain,
             account_id=account_id,
             amojo_id=amojo_id,
@@ -1122,7 +1122,7 @@ class CrmService:
         from core.config import settings
         import json
 
-        conn = await self._uow.crm_connections.get_by_amojo_id(amojo_id)
+        conn = await self._uow.crm_accounts.get_by_amojo_id(amojo_id)
         if not conn:
             log.error(f"handle_amo_incoming: connection not found amojo_id={amojo_id}")
             return
@@ -1204,7 +1204,7 @@ class CrmService:
         from crm.app.services.providers.amocrm.client import AmoCrmClient
         from core.config import settings
     
-        conn = await self._uow.crm_connections.get_by_tenant(
+        conn = await self._uow.crm_accounts.get_by_tenant(
             tenant_id=tenant_id,
             crm_type="amocrm",
         )
@@ -1217,7 +1217,7 @@ class CrmService:
             account_id=conn.amojo_id,
         )
         result = await client.connect_account()
-        await self._uow.crm_connections.update(
+        await self._uow.crm_accounts.update(
             conn,
             amojo_id=result.get("account_id"),
         )
@@ -1232,7 +1232,7 @@ class CrmService:
 
 
     async def list_amo_accounts(self) -> list:
-        return await self._uow.crm_connections.get_multi(
+        return await self._uow.crm_accounts.get_multi(
             filters={"crm_type": "amocrm", "is_active": True},
         )
     
@@ -1278,7 +1278,7 @@ class CrmService:
                 algorithm=settings.algorithm,
             )
             return link.conversation_id, embed_token
-        accounts = await self._uow.crm_connections.get_multi(filters={"crm_type": "amocrm"})
+        accounts = await self._uow.crm_accounts.get_multi(filters={"crm_type": "amocrm"})
         for account in accounts:
             provider = AmoCrmProvider(account)
             phone = await provider.get_lead_contact_phone(

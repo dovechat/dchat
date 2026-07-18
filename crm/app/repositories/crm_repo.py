@@ -5,7 +5,7 @@ from repo.base import BaseRepository
 from models.crm import CrmAccount, CrmLineConnection, CrmDialogLink
 
 
-class CrmConnectionRepository(BaseRepository[CrmAccount]):
+class CrmAccountRepository(BaseRepository[CrmAccount]):
     def __init__(self, session):
         super().__init__(CrmAccount, session)
 

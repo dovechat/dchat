@@ -12,7 +12,7 @@ from models.tenants import Membership, User
 
 class CrmUnitOfWork:
     def __init__(self, db: AsyncSession):
-        self.crm_connections = CrmConnectionRepository(db)
+        self.crm_accounts = CrmAccountRepository(db)
         self.crm_dialog_links = CrmDialogLinkRepository(db)
         self.crm_settings = CrmSettingsRepository(db)
         self.crm_line_connections = CrmLineConnectionRepository(db)
@@ -21,4 +21,3 @@ class CrmUnitOfWork:
         self.conversations = BaseRepository(Conversation, db)
         self.memberships = BaseRepository(Membership, db)
         self.users = BaseRepository(User, db)
-        self.crm_accounts = BaseRepository(CrmAccount, db)
