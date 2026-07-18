@@ -5,14 +5,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from core.config import settings
 from core.database import AsyncSessionLocal
-from crm.app.repositories.crm_repo import CrmConnectionRepository
+from crm.app.repositories.crm_repo import CrmAccountRepository
 from crm.app.services.providers.bitrix.client import BitrixClient
 from infra.crypto import decrypt
 
 
 async def main(domain: str):
     async with AsyncSessionLocal() as session:
-        repo = CrmConnectionRepository(session)
+        repo = CrmAccountRepository(session)
         rows = await repo.get_multi(filters={"domain": domain}, limit=1)
         if not rows:
             print(f"Connection not found for domain={domain}")

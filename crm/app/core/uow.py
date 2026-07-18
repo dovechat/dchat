@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from repo.base import BaseRepository
 from models.lines import ChannelAccount, Line
 from models.crm import CrmAccount
-from crm.app.repositories.crm_repo import CrmConnectionRepository, CrmDialogLinkRepository
+from crm.app.repositories.crm_repo import CrmAccountRepository, CrmDialogLinkRepository
 from repo.crm_repo import CrmLineConnectionRepository
 from repo.crm_settings_repo import CrmSettingsRepository
 from models.crm import CrmSettings
