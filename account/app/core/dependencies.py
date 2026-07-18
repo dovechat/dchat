@@ -13,7 +13,7 @@ from app.repositories.tenant_repo import RequisitsRepository, TenantRepository
 from app.repositories.line_repo import  LineRepository
 from repo.instance_repo import InstanceRepository
 from repo.crm_repo import CrmLineConnectionRepository, CrmAccountRepository
-from repo.crm_settings_repo import CrmSettingsRepository
+from repo.crm_repo import CrmSettingsRepository
 from repo.conversation_repo import ConversationRepository
 from repo.message_repo import MessageRepository
 from repo.user import UserRepository

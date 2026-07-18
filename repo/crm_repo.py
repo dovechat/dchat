@@ -28,6 +28,15 @@ class CrmLineConnectionRepository(BaseRepository[CrmLineConnection]):
         )
         return rows[0] if rows else None
 
+    async def get_by_tenant(
+        self, tenant_id: uuid.UUID, crm_type: str = "bitrix24"
+    ) -> CrmAccount | None:
+        rows = await self.get_multi(
+            filters={"tenant_id": tenant_id, "crm_type": crm_type, "is_active": True},
+            limit=1,
+        )
+        return rows[0] if rows else None
+
 class CrmAccountRepository(BaseRepository[CrmAccount]):
     def __init__(self, session):
         super().__init__(CrmAccount, session)

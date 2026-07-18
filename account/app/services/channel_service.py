@@ -5,7 +5,7 @@ import secrets
 from typing import Optional
 from fastapi import HTTPException
 from app.repositories.line_repo import LineRepository
-from repo.crm_settings_repo import CrmSettingsRepository
+from repo.crm_repo import CrmSettingsRepository
 from repo.instance_repo import InstanceRepository
 from repo.line_repo import ChannelAccountRepository
 from app.schemas.channel_schemas import (

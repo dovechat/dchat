@@ -4,7 +4,7 @@ from models.lines import ChannelAccount, Line
 from models.crm import CrmAccount
 from crm.app.repositories.crm_repo import CrmAccountRepository, CrmDialogLinkRepository
 from repo.crm_repo import CrmLineConnectionRepository
-from repo.crm_settings_repo import CrmSettingsRepository
+from repo.crm_repo import CrmSettingsRepository
 from models.crm import CrmSettings
 from models.messages import Conversation
 from models.tenants import Membership, User

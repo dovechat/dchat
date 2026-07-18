@@ -1,5 +1,5 @@
 import uuid
-from repo.crm_settings_repo import CrmAccountRepository, CrmSettingsRepository
+from repo.crm_repo import CrmAccountRepository, CrmSettingsRepository
 from models.crm import CrmAccount, CrmSettings
 
 

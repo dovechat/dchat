@@ -16,7 +16,7 @@ from app.schemas.tenant_schemas import (
 from app.services.tenant_services import RequisitsService, TenantCreateService, TenantService
 from schemas.auth_schemas import UserContext
 from services.auth_service import AuthService
-from repo.crm_settings_repo import CrmAccountRepository, CrmSettingsRepository
+from repo.crm_repo import CrmAccountRepository, CrmSettingsRepository
 from app.services.crm_settings_service import CrmSettingsService
 from app.schemas.crm_settings_schemas import CrmSettingsRead, CrmSettingsUpdate
 
