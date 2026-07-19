@@ -1,5 +1,5 @@
-# /mono/chat/app/consumers/outgoing_consumer.py
 import json
+import os
 import asyncio
 import logging
 import uuid
@@ -46,14 +46,14 @@ async def process_message(
     await handler(**kwargs)
 
 
-async def start_consumer(tg_listener: TelegramListener | None = None):
+async def start_consumer(tg_listener: TelegramListener | None = None, group_id: str = "outgoing-consumer-group", topics: list[str] | None = None):
     if tg_listener is None:
         tg_listener = TelegramListener()
 
     consumer = AIOKafkaConsumer(
-        *settings.TOPICS,
+        *(topics or settings.TOPICS),
         bootstrap_servers=settings.kafka_bootstrap_servers,
-        group_id="outgoing-consumer-group",
+        group_id=group_id,
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest',
         enable_auto_commit=False,
@@ -87,16 +87,10 @@ async def start_consumer(tg_listener: TelegramListener | None = None):
                     await consumer.commit()
                     log.info(f"Message committed topic={message.topic}")
                 except Exception as e:
-                    log.error(f"Send failed topic={message.topic} attempt={attempt}: {e}")
-                    if attempt >= MAX_RETRIES:
-                        event_data["_attempt"] = attempt
-                        event_data["_error"] = str(e)
-                        await dlt_producer.send_and_wait(DLT_TOPIC, value=event_data)
-                        log.info(f"Message sent to DLT after {attempt} attempts topic={message.topic}")
-                        await consumer.commit()
-                    else:
-                        event_data["_attempt"] = attempt
-                        await asyncio.sleep(2 ** attempt)
+                    log.error(f"Send failed topic={message.topic}: {e}")
+                    event_data["_error"] = str(e)
+                    await dlt_producer.send_and_wait(DLT_TOPIC, value=event_data)
+                    await consumer.commit()
     finally:
         await consumer.stop()
         await dlt_producer.stop()
@@ -104,4 +98,7 @@ async def start_consumer(tg_listener: TelegramListener | None = None):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(start_consumer())
+    group_id = os.getenv("KAFKA_GROUP_ID", "outgoing-consumer-group")
+    topics_env = os.getenv("KAFKA_TOPICS")
+    topics = topics_env.split(",") if topics_env else None
+    asyncio.run(start_consumer(group_id=group_id, topics=topics))
