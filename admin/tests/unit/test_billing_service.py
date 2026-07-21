@@ -1,6 +1,8 @@
 """Unit tests for AdminBillingService."""
 from datetime import datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
+
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -16,7 +18,11 @@ def make_uow(*, entries=None, balance=None):
     uow.commit = AsyncMock()
     uow.billing.get_ledger = AsyncMock(return_value=entries or [])
     uow.billing.create_adjustment = AsyncMock(return_value=MagicMock())
+    uow.balance.get_by_tenant = AsyncMock(return_value=balance)
     uow.audit.log = AsyncMock()
+    uow.balance.create = AsyncMock()
+    uow.billing.update = AsyncMock()
+    uow.memberships.get_multi = AsyncMock(return_value=[])
     return uow
 
 
@@ -78,7 +84,7 @@ class TestGetLedger:
 class TestGetBalance:
 
     async def test_returns_main_and_bonus(self):
-        uow = make_uow(balance={"main": 500.0, "bonus": 50.0})
+        uow = make_uow(balance=SimpleNamespace(main_balance=500.0, bonus_balance=50.0))
         service = AdminBillingService(uow)
 
         result = await service.get_balance(uuid4(), actor_id=uuid4())
@@ -87,7 +93,7 @@ class TestGetBalance:
         assert result.bonus == 50.0
 
     async def test_zero_balance(self):
-        uow = make_uow(balance={"main": 0.0, "bonus": 0.0})
+        uow = make_uow(balance=SimpleNamespace(main_balance=0.0, bonus_balance=0.0))
         service = AdminBillingService(uow)
 
         result = await service.get_balance(uuid4(), actor_id=uuid4())

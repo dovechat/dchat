@@ -14,7 +14,7 @@ from core.database import engine
 from core.security import create_access_token
 from models.tenants import AuditLog, Membership, UserRole, Tenant, TenantPayment, TenantStatus, User
 from models.lines import ChannelAccount, Line, Instance, InstanceStatus
-from models.billing import BalanceLedger, LedgerOperationType
+from models.billing import Balance, BalanceLedger, LedgerOperationType
 
 test_engine = create_async_engine(
     settings.database_url,
@@ -311,6 +311,10 @@ async def test_ledger_entry(test_tenant):
             description="Test deposit",
         )
         session.add(entry)
+
+        balance = Balance(tenant_id=test_tenant.id, main_balance=100.00, bonus_balance=0.00)
+        session.add(balance)
+
         await session.commit()
         await session.refresh(entry)
         yield entry
@@ -319,4 +323,8 @@ async def test_ledger_entry(test_tenant):
             obj = await s.get(BalanceLedger, entry.id)
             if obj:
                 await s.delete(obj)
-                await s.commit()
+            bal = await s.get(Balance, test_tenant.id)
+            if bal:
+                await s.delete(bal)
+            await s.commit()
+

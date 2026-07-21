@@ -217,7 +217,7 @@ class BotService:
 
     async def _process_media_message(
             self, message: dict, bot_token: str, raw_content: dict
-    ) -> tuple[str | None, str | None, str | None, dict | None]:
+    ) -> tuple[str | None, str | None, str | None, dict | None, int | None]:
         """
         Process media from Telegram message, download and save to S3
         Returns: (media_id, file_name, mime_type)

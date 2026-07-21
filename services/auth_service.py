@@ -128,10 +128,6 @@ class AuthService:
         if await is_throttled(f"refresh:{payload.sub}", 5):
             raise HTTPException(status_code=429, detail="Too many requests")
 
-        log.info(f"\n\n ******* REFRESH refresh_token {refresh_token} \n\n")
-        log.info(f"\n\n ******* REFRESH payload.tenant_id {payload.tenant_id} \n\n")
-        log.info(f"\n\n ******* REFRESH getattr payload, tenant_id, {getattr(payload, 'tenant_id', None)} \n\n")
-
         return self.jwt_service.create_token_pair(
             user_id=payload.sub,
             role=payload.role,
@@ -189,7 +185,6 @@ class AuthService:
         """
         Switch user context and issue a new token pair.
         """
-        log.info(f"\n\n ******* switch_context tenant_id {tenant_id} \n\n")
         user_repo = UserRepository(db)
         result = await user_repo.get_membership(user_id, tenant_id)
 
@@ -205,8 +200,6 @@ class AuthService:
             membership = result
 
         user = await user_repo.get_by_id(user_id)
-
-        log.info(f"\n\n ******* switch_context user.role={user.role} membership.role={membership.role} \n\n")
 
         res = self.jwt_service.create_token_pair(
             user_id=user_id,

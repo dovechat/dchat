@@ -6,8 +6,9 @@ import pytest
 class TestBillingLedgerAPI:
 
     async def test_admin_can_view_ledger(self, client, admin_headers):
-        response = await client.get("/api/v1/admin/billing/ledger", headers=admin_headers)
-
+        print("client base_url", client.base_url)
+        response = await client.get("/api/v1/billing/ledger", headers=admin_headers)
+        print("status", response.status_code, "body", response.text)
         assert response.status_code == 200
         data = response.json()
         assert "items" in data
@@ -15,7 +16,7 @@ class TestBillingLedgerAPI:
 
     async def test_filter_by_tenant(self, client, admin_headers, test_tenant, test_ledger_entry):
         response = await client.get(
-            "/api/v1/admin/billing/ledger",
+            "/api/v1/billing/ledger",
             params={"tenant_id": str(test_tenant.id)},
             headers=admin_headers,
         )
@@ -26,7 +27,7 @@ class TestBillingLedgerAPI:
 
     async def test_filter_by_operation_type(self, client, admin_headers, test_ledger_entry):
         response = await client.get(
-            "/api/v1/admin/billing/ledger",
+            "/api/v1/billing/ledger",
             params={"operation_type": "deposit"},
             headers=admin_headers,
         )
@@ -35,7 +36,7 @@ class TestBillingLedgerAPI:
 
     async def test_invalid_operation_type_returns_400(self, client, admin_headers):
         response = await client.get(
-            "/api/v1/admin/billing/ledger",
+            "/api/v1/billing/ledger",
             params={"operation_type": "invalid_type"},
             headers=admin_headers,
         )
@@ -43,7 +44,7 @@ class TestBillingLedgerAPI:
         assert response.status_code == 400
 
     async def test_member_gets_403(self, client, member_headers):
-        response = await client.get("/api/v1/admin/billing/ledger", headers=member_headers)
+        response = await client.get("/api/v1/billing/ledger", headers=member_headers)
 
         assert response.status_code == 403
 
@@ -52,7 +53,7 @@ class TestBillingBalanceAPI:
 
     async def test_get_balance_for_tenant(self, client, admin_headers, test_tenant, test_ledger_entry):
         response = await client.get(
-            f"/api/v1/admin/billing/balance/{test_tenant.id}",
+            f"/api/v1/billing/balance/{test_tenant.id}",
             headers=admin_headers,
         )
 
@@ -66,7 +67,7 @@ class TestBillingBalanceAPI:
     async def test_balance_for_tenant_without_operations(self, client, admin_headers, test_tenant):
         # Новый тенант без операций
         response = await client.get(
-            f"/api/v1/admin/billing/balance/{test_tenant.id}",
+            f"/api/v1/billing/balance/{test_tenant.id}",
             headers=admin_headers,
         )
 
@@ -80,7 +81,7 @@ class TestBillingAdjustmentAPI:
 
     async def test_positive_adjustment(self, client, admin_headers, test_tenant):
         response = await client.post(
-            f"/api/v1/admin/billing/adjustment/{test_tenant.id}",
+            f"/api/v1/billing/adjustment/{test_tenant.id}",
             json={
                 "amount": "200.00",
                 "balance_type": "main",
@@ -94,7 +95,7 @@ class TestBillingAdjustmentAPI:
 
     async def test_negative_adjustment(self, client, admin_headers, test_tenant):
         response = await client.post(
-            f"/api/v1/admin/billing/adjustment/{test_tenant.id}",
+            f"/api/v1/billing/adjustment/{test_tenant.id}",
             json={
                 "amount": "-50.00",
                 "balance_type": "main",
@@ -107,7 +108,7 @@ class TestBillingAdjustmentAPI:
 
     async def test_bonus_balance_adjustment(self, client, admin_headers, test_tenant):
         response = await client.post(
-            f"/api/v1/admin/billing/adjustment/{test_tenant.id}",
+            f"/api/v1/billing/adjustment/{test_tenant.id}",
             json={
                 "amount": "25.00",
                 "balance_type": "bonus",
@@ -120,7 +121,7 @@ class TestBillingAdjustmentAPI:
 
     async def test_invalid_balance_type_returns_422(self, client, admin_headers, test_tenant):
         response = await client.post(
-            f"/api/v1/admin/billing/adjustment/{test_tenant.id}",
+            f"/api/v1/billing/adjustment/{test_tenant.id}",
             json={
                 "amount": "100.00",
                 "balance_type": "invalid",
@@ -133,7 +134,7 @@ class TestBillingAdjustmentAPI:
 
     async def test_empty_description_returns_422(self, client, admin_headers, test_tenant):
         response = await client.post(
-            f"/api/v1/admin/billing/adjustment/{test_tenant.id}",
+            f"/api/v1/billing/adjustment/{test_tenant.id}",
             json={
                 "amount": "100.00",
                 "balance_type": "main",
@@ -148,7 +149,7 @@ class TestBillingAdjustmentAPI:
 class TestDashboardStatsAPI:
 
     async def test_admin_can_get_stats(self, client, admin_headers):
-        response = await client.get("/api/v1/admin/stats", headers=admin_headers)
+        response = await client.get("/api/v1/stats", headers=admin_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -162,14 +163,14 @@ class TestDashboardStatsAPI:
             assert field in data, f"Missing field: {field}"
 
     async def test_stats_counts_are_non_negative(self, client, admin_headers):
-        response = await client.get("/api/v1/admin/stats", headers=admin_headers)
+        response = await client.get("/api/v1/stats", headers=admin_headers)
 
         assert response.status_code == 200
         for key, value in response.json().items():
             assert value >= 0, f"Negative count for {key}: {value}"
 
     async def test_member_gets_403(self, client, member_headers):
-        response = await client.get("/api/v1/admin/stats", headers=member_headers)
+        response = await client.get("/api/v1/stats", headers=member_headers)
 
         assert response.status_code == 403
 
@@ -177,7 +178,7 @@ class TestDashboardStatsAPI:
 class TestDashboardAuditAPI:
 
     async def test_admin_can_view_audit(self, client, admin_headers):
-        response = await client.get("/api/v1/admin/audit", headers=admin_headers)
+        response = await client.get("/api/v1/audit", headers=admin_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -186,7 +187,7 @@ class TestDashboardAuditAPI:
 
     async def test_filter_by_entity_type(self, client, admin_headers):
         response = await client.get(
-            "/api/v1/admin/audit",
+            "/api/v1/audit",
             params={"entity_type": "user"},
             headers=admin_headers,
         )
@@ -195,7 +196,7 @@ class TestDashboardAuditAPI:
 
     async def test_filter_by_action(self, client, admin_headers):
         response = await client.get(
-            "/api/v1/admin/audit",
+            "/api/v1/audit",
             params={"action": "list_users"},
             headers=admin_headers,
         )
@@ -204,7 +205,7 @@ class TestDashboardAuditAPI:
 
     async def test_pagination(self, client, admin_headers):
         response = await client.get(
-            "/api/v1/admin/audit",
+            "/api/v1/audit",
             params={"skip": 0, "limit": 5},
             headers=admin_headers,
         )

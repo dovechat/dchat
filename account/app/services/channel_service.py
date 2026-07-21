@@ -407,6 +407,7 @@ class ChannelAccountService:
                     green_wh_url,
                     json={
                         "webhookUrl": our_wh_url,
+                        "webhookUrlToken": settings.green_api_token,
                         "outgoingWebhook": "yes",
                         "stateWebhook": "yes",
                         "incomingWebhook": "yes",
@@ -423,10 +424,9 @@ class ChannelAccountService:
             log.error(msg)
             raise HTTPException(status_code=504, detail=msg)
         except Exception as e:
-            msg = f"!!! --- ERROR: Send green set_webhook failed : {e}"
+            msg = f"!!! --- ERROR: Send green set_webhook failed : {e} "
             log.error(msg)
-            status = res.status_code if 'res' in dir() else 500
-            raise HTTPException(status_code=status, detail=msg)
+            raise HTTPException(status_code=400, detail=msg)
 
     async def get_qr_from_green(self, id_instance: str, api_token: str) -> str:
         log.info(f"get_qr_from_green id_instance={id_instance}")

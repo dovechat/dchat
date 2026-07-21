@@ -6,10 +6,12 @@ import uuid
 
 from datetime import datetime
 from io import BytesIO
+from types import SimpleNamespace
 from typing import List, Optional, Tuple
 from fastapi import Depends, HTTPException, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from minio import Minio
+from core.redis import rdb
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository, LineRepository
@@ -406,12 +408,17 @@ class ChatService:
         current_user: UserContext = Depends(get_current_user),
     ) -> Tuple[Conversation, Message]:
         # Verify conversation exists and belongs to tenant
-        # log.info(f"+++++ chat_service ChatService.create_message current_user {current_user}")
-        # log.info(f"chat_service ChatService.create_message data {data}")
-        conv = await self.conv_repo.get_by_id(data.conversation_id)
-        if not conv:
-            raise ValueError("Conversation not found")
-        # log.info(f"chat_service ChatService.create_message conv {conv}")
+
+        cached = await rdb.get(f"conv:{data.conversation_id}")
+        if cached:
+            conv = SimpleNamespace(**json.loads(cached))
+        else:
+            conv = await self.conv_repo.get_by_id(data.conversation_id)
+            if not conv:
+                raise ValueError("Conversation not found")
+            await rdb.set(f"conv:{data.conversation_id}", json.dumps({"id": str(conv.id), "is_closed": conv.is_closed}),
+                          ex=300)
+
 
         # Автооткрытие закрытого чата при новом сообщении
         if conv.is_closed:
@@ -605,37 +612,6 @@ class ChatService:
         )
         _, message = await self.conv_msg(data, None)
         return MessageResponse.model_validate(message)
-
-    '''
-    async def upload_file(self, file: UploadFile, media_id: uuid.UUID) -> dict:
-        """Upload file to S3"""
-        # 1. Читаем файл
-        content = await file.read()
-    
-        # 2. Генерируем метаданные
-        metadata = {
-            "filename": file.filename,
-            "content_type": file.content_type,
-            "size": len(content)
-        }
-    
-        # 3. Сохраняем в S3 под ключом = media_id
-        await self.s3_client.put_object(
-            Bucket=settings.S3_BUCKET,
-            Key=str(media_id),
-            Body=content,
-            Metadata=metadata,
-            ContentType=file.content_type
-        )
-    
-        # 4. Возвращаем информацию
-        return {
-            "media_id": media_id,
-            "filename": file.filename,
-            "mime_type": file.content_type,
-            "size": len(content)
-        }
-    '''
 
     async def close_or_open_conversation(
         self,

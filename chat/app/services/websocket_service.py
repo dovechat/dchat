@@ -57,10 +57,9 @@ class WebSocketService:
         # Create message record
         new_message = Message(
             conversation_id=conversation_id,
-            direction=MessageDirection.outgoing,
+            direction=MessageDirection.outbound,
             status=MessageStatus.sent,
             text=message.get("text"),
-            media_id=message.get("media_id"),
             raw_content=message
         )
 

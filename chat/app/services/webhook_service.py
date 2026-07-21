@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from abc import ABC, abstractmethod
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,7 +76,7 @@ class StateChangedHandler(WebhookHandler):
                     account,
                     connection_status="connected",
                     phone=phone,
-                    last_checked_at=func.now()
+                    last_checked_at=datetime.now(timezone.utc)
                 )
                 log.info(f"Line {line_id} authorized, phone: {phone}")
 

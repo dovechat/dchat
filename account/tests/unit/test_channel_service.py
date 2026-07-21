@@ -49,7 +49,8 @@ def channel_service():
     return ChannelAccountService(
         channel_repo=mock_channel_repo,
         line_repo=mock_line_repo,
-        instance_repo=AsyncMock()
+        instance_repo=AsyncMock(),
+        crm_line_repo=AsyncMock()
     )
 
 
@@ -63,7 +64,8 @@ def channel_service_waba():
     return ChannelAccountService(
         channel_repo=mock_channel,
         line_repo=mock_line,
-        instance_repo=mock_instance
+        instance_repo=mock_instance,
+        crm_line_repo=AsyncMock()
     )
 
 

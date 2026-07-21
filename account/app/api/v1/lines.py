@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPBearer
 from pydantic import ValidationError
 from core.dependencies import get_current_user
-from app.core.dependencies import get_line_service
+from app.core.dependencies import check_tenant_access, get_line_service
 from app.schemas.line_schemas import (
     ChannelCreate,
     ChannelRenew,
@@ -27,11 +27,11 @@ line_router = APIRouter(
     dependencies=[Depends(auth_scheme)]
 )
 
-def check_tenant_access(tenant_id: uuid.UUID, current_user: UserContext = Depends(get_current_user)):
-    if current_user.tenant_id != tenant_id:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Token tenant_id mismatch")
-    return tenant_id
+# def check_tenant_access(tenant_id: uuid.UUID, current_user: UserContext = Depends(get_current_user)):
+#    if current_user.tenant_id != tenant_id:
+#        from fastapi import HTTPException
+#        raise HTTPException(status_code=403, detail="Token tenant_id mismatch")
+#    return tenant_id
 
 @line_router.post("/", response_model=LineResponse, status_code=status.HTTP_201_CREATED)
 async def create_line(

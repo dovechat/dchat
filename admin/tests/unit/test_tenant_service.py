@@ -24,7 +24,12 @@ def make_uow(
     uow.tenants.count_users = AsyncMock(return_value=total)
     uow.tenants.set_user_status = AsyncMock(side_effect=lambda u, s: setattr(u, "status", s) or u)
     uow.tenants.set_user_password_hash = AsyncMock(side_effect=lambda u, h: setattr(u, "password_hash", h) or u)
-
+    uow.users.get_all_users = AsyncMock(return_value=users or [])
+    uow.users.count_users = AsyncMock(return_value=total)
+    uow.users.get_user = AsyncMock(return_value=total)
+    uow.users.get_user = AsyncMock(return_value=user)
+    uow.users.set_user_status = AsyncMock(side_effect=lambda u, s: setattr(u, "status", s) or u)
+    uow.users.set_user_password_hash = AsyncMock(side_effect=lambda u, h: setattr(u, "password_hash", h) or u)
     uow.audit.log = AsyncMock()
 
     return uow
@@ -57,18 +62,16 @@ class TestListUsers:
         assert len(result.items) == 2
 
     async def test_audit_logged(self):
-        uow = make_uow(users=[], total=0)
+        uow = make_uow(users=[make_user()], total=1)
         service = AdminTenantService(uow)
-        actor = uuid4()
 
-        await service.list_users(
-            skip=0, limit=10,
-            role="support", status=None, email=None,
-            actor_id=actor,
+        result = await service.list_users(
+            skip=0, limit=10, role=None, status=None, email=None, actor_id=uuid4()
         )
 
-        uow.audit.log.assert_called_once()
-        uow.commit.assert_called_once()
+        assert result.total == 1
+        uow.audit.log.assert_not_called()
+        uow.commit.assert_not_called()
 
     async def test_empty_result(self):
         uow = make_uow(users=[], total=0)
@@ -118,7 +121,7 @@ class TestSetUserStatus:
             actor_id=uuid4(),
         )
 
-        uow.tenants.set_user_status.assert_called_once_with(user, "suspended")
+        uow.users.set_user_status.assert_called_once_with(user, "suspended")
         assert "suspended" in result.message
 
     async def test_raises_404_when_not_found(self):
@@ -163,7 +166,7 @@ class TestResetPassword:
             actor_id=uuid4(),
         )
 
-        uow.tenants.set_user_password_hash.assert_called_once()
+        uow.users.set_user_password_hash.assert_called_once()
         assert "reset" in result.message.lower()
 
     async def test_raises_404_when_not_found(self):

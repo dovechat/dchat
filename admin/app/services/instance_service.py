@@ -64,7 +64,6 @@ class AdminInstanceService:
         if not instance:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found")
 
-        '''
         await self._uow.audit.log(
             actor_id=actor_id,
             action="get_instance",
@@ -73,7 +72,7 @@ class AdminInstanceService:
         )
         await self._uow.commit()
         return InstanceOut.model_validate(instance)
-        '''
+
 
 
     async def create_instance(

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.dependencies import get_current_user
+from account.app.core.dependencies import check_tenant_access
 from schemas.auth_schemas import UserContext
 from account.app.repositories.notification_repo import NotificationRepository
 from account.app.repositories.membership_repo import MembershipRepository

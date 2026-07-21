@@ -56,6 +56,7 @@ class TestListLines:
             skip=0, limit=100,
             tenant_id=None, channel_type=None, status=None,
             actor_id=uuid4(),
+            name=None,
         )
 
         assert result.total == 2
@@ -70,11 +71,12 @@ class TestListLines:
             skip=0, limit=10,
             tenant_id=tid, channel_type="telegram_bot", status="active",
             actor_id=uuid4(),
+            name=None,
         )
 
         uow.lines.get_all_lines.assert_called_once_with(
             skip=0, limit=10,
-            tenant_id=tid, channel_type="telegram_bot", status="active",
+            tenant_id=tid, channel_type="telegram_bot", status="active", name=None,
         )
 
 

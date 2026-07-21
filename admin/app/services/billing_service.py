@@ -61,11 +61,9 @@ class AdminBillingService:
         )
 
     async def get_balance(self, tenant_id: uuid.UUID, actor_id: uuid.UUID) -> BalanceOut:
-        # Check if the tenant exists
-        user = await self._uow.users.get_all_users(
-            filters={"tenant_id": tenant_id}, limit=1
-        ) if False else None  # заглушка — в реальном коде проверка через tenant repo
         balance = await self._uow.balance.get_by_tenant(tenant_id)
+        if balance is None:
+            return BalanceOut(main=0.0, bonus=0.0)
         return BalanceOut(main=balance.main_balance, bonus=balance.bonus_balance)
 
     async def create_adjustment(
@@ -76,6 +74,9 @@ class AdminBillingService:
     ) -> MessageResponse:
         # get current balance
         balance = await self._uow.balance.get_by_tenant(tenant_id)
+        if balance is None:
+            balance = await self._uow.balance.create(tenant_id=tenant_id, main_balance=0, bonus_balance=0)
+
         new_main = balance.main_balance + Decimal(
             str(request.amount)) if request.balance_type == "main" else balance.main_balance
         new_bonus = balance.bonus_balance + Decimal(

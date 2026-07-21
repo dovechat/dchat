@@ -46,7 +46,8 @@ async def test_update_whatsapp_green_creates_new_account(mock_repos):
     service = ChannelAccountService(
         channel_repo=mock_repos["channel_repo"],
         line_repo=mock_repos["line_repo"],
-        instance_repo=mock_repos["instance_repo"]
+        instance_repo=mock_repos["instance_repo"],
+        crm_line_repo=AsyncMock()
     )
 
     # Act
@@ -98,7 +99,8 @@ async def test_update_whatsapp_green_updates_existing_account(mock_repos):
     service = ChannelAccountService(
         channel_repo=mock_repos["channel_repo"],
         line_repo=mock_repos["line_repo"],
-        instance_repo=mock_repos["instance_repo"]
+        instance_repo=mock_repos["instance_repo"],
+        crm_line_repo=AsyncMock()
     )
 
     # Act
@@ -131,7 +133,8 @@ async def test_update_whatsapp_green_line_not_found(mock_repos):
     service = ChannelAccountService(
         channel_repo=mock_repos["channel_repo"],
         line_repo=mock_repos["line_repo"],
-        instance_repo=mock_repos["instance_repo"]
+        instance_repo=mock_repos["instance_repo"],
+        crm_line_repo=AsyncMock()
     )
 
     # Act & Assert

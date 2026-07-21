@@ -10,7 +10,7 @@ from app.schemas.admin_schemas import CreateInstanceRequest, BulkCleanRequest
 from models.lines import InstanceStatus
 
 
-def make_uow(*, instance=None, instances=None, existing=None, idle_count=0, allocated_count=0):
+def make_uow(*, instance=None, instances=None, existing=None, idle_count=0, allocated_count=0, channels=None):
     uow = MagicMock()
     uow.commit = AsyncMock()
 
@@ -22,13 +22,18 @@ def make_uow(*, instance=None, instances=None, existing=None, idle_count=0, allo
         "idle": idle_count,
         "allocated": allocated_count,
     }.get(s, 0))
-    uow.instances.create_instance = AsyncMock(side_effect=lambda provider, external_id: make_instance(
+    uow.instances.create_instance = AsyncMock(side_effect=lambda provider, external_id, token=None: make_instance(
         provider=provider, external_id=external_id
     ))
     uow.instances.release = AsyncMock(side_effect=lambda i: setattr(i, "status", "idle") or i)
     uow.instances.delete = AsyncMock()
 
     uow.audit.log = AsyncMock()
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = channels or []
+    uow._session = MagicMock()
+    uow._session.execute = AsyncMock(return_value=mock_result)
 
     return uow
 
@@ -42,6 +47,8 @@ def make_instance(**kwargs):
     inst.allocated_to_line_id = kwargs.get("allocated_to_line_id", None)
     inst.last_cleanup_at = None
     inst.health = None
+    inst.line_name = kwargs.get("line_name", None)
+
     return inst
 
 
@@ -70,12 +77,12 @@ class TestCreateInstance:
         service = AdminInstanceService(uow)
 
         result = await service.create_instance(
-            CreateInstanceRequest(provider="green", external_id="ext-123"),
+            CreateInstanceRequest(provider="green", external_id="ext-123", token="test-token"),
             actor_id=uuid4(),
         )
 
         uow.instances.create_instance.assert_called_once_with(
-            provider="green", external_id="ext-123"
+            provider="green", external_id="ext-123", token=uow.instances.create_instance.call_args.kwargs["token"]
         )
 
     async def test_raises_409_if_duplicate_external_id(self):
@@ -84,7 +91,7 @@ class TestCreateInstance:
 
         with pytest.raises(HTTPException) as exc_info:
             await service.create_instance(
-                CreateInstanceRequest(provider="green", external_id="ext-dupe"),
+                CreateInstanceRequest(provider="green", external_id="ext-dupe", token="test-token"),
                 actor_id=uuid4(),
             )
 

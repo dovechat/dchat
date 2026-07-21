@@ -274,7 +274,7 @@ class LineService:
         accounts = await self.channel_account_repo.get_by_line(line_id)
         for account in accounts:
             print(f"account.channel_type {account.channel_type}")
-            if account.channel_type.value == "whatsapp_green":
+            if account.channel_type == "whatsapp_green":
                 instance = await self.instance_repo.get_instance_by_line(line.id)
                 if instance:
                     await self.instance_repo.release_instance(instance)

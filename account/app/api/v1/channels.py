@@ -86,22 +86,6 @@ async def vk_oauth_confirm(
     return await service.confirm_group(body.payload, body.group_id)
 
 
-
-
-
-'''
-@channel_router.get("/", response_model=ChannelAccountResponse)
-async def get_channel_account(
-        line_id: uuid.UUID,
-        channel_type: ChannelType,
-        current_user: UserContext = Depends(get_current_user),
-        tenant_id: uuid.UUID = Depends(check_tenant_access),
-        channel_service: ChannelAccountService = Depends(get_channel_service)
-) -> ChannelAccountResponse:
-    """Get channel account info (without decrypted credentials)"""
-    return await channel_service.get_account(line_id, tenant_id, channel_type)
-'''
-
 @channel_router.get("/", response_model=list[ChannelAccountResponse])
 async def get_channel_accounts(
         line_id: uuid.UUID,

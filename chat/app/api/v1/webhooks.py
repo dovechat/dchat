@@ -1,6 +1,6 @@
 
 import uuid
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Header, Request, Depends
 from fastapi.responses import PlainTextResponse
 from app.services.webhook_service import WebhookService
 from app.core.dependencies import get_webhook_service
@@ -19,7 +19,8 @@ async def whatsapp_green_webhook(
     payload = await request.json()
     log.info(f'@router.post(/whatsapp/green/{line_id} payload {payload}')
     green_listener = request.app.state.green_listener
-    await green_listener.handle_webhook(line_id, payload)
+    auth_header = request.headers.get("authorization")
+    await green_listener.handle_webhook(line_id, payload, auth_header)
     return {"status": "ok"}
 
 

@@ -32,7 +32,6 @@ class JWTService:
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify password against hash"""
-        log.info(f"\n\n ************* plain_password {plain_password} hashed_password {hashed_password}")
         return bcrypt.checkpw(
             plain_password.encode("utf-8"),
             hashed_password.encode("utf-8"),
@@ -54,10 +53,10 @@ class JWTService:
             "role": role.value if hasattr(role, 'value') else role,
             "tenant_id": str(tenant_id) if tenant_id else None,
             "member": member,
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(UTC),
         }
 
-        expire = datetime.utcnow() + (
+        expire = datetime.now(UTC) + (
             self.access_expires if token_type == TokenType.ACCESS else self.refresh_expires
         )
         payload.update({"exp": expire})

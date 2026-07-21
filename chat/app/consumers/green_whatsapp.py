@@ -110,9 +110,11 @@ class GreenWhatsAppListener:
         self.connections: Dict[str, GreenWhatsAppConnection] = {}
         log.info("GreenWhatsAppListener initialized")
 
-    async def handle_webhook(self, line_id: str, payload: dict):
+    async def handle_webhook(self, line_id: str, payload: dict, auth_header):
         """Обработать входящий вебхук от Green API"""
         from app.services.chat_service import ChatService
+        log.debug(f"\n\n --- **** --- \n auth_header {auth_header} \n --- **** --- \n\n")
+
         event_type = payload.get("typeWebhook")
         log.info(f"Green webhook for line {line_id}, type: {event_type}")
 
