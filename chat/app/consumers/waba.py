@@ -127,7 +127,7 @@ class WabaListener:
         if "messages" in value:
             async with get_session() as db:
                 chat_service = ChatService(db)
-                await self._handle_incoming_message(line_id, value, chat_service)
+                await self._handle_incoming_message(line_id, value, chat_service, token)
 
         elif "statuses" in value:
             await self._handle_message_status(line_id, value)
@@ -155,7 +155,7 @@ class WabaListener:
             # 3. Ничего не работает
             resp.raise_for_status()
 
-    async def _handle_incoming_message(self, line_id: str, value: dict, chat_service: "ChatService"):
+    async def _handle_incoming_message(self, line_id: str, value: dict, chat_service: "ChatService", token: str):
         db = chat_service.conv_repo.session
         repo = ChannelAccountRepository(db)
         account = await repo.get_by_line_and_type(uuid.UUID(line_id), "waba")
@@ -163,6 +163,9 @@ class WabaListener:
             raise ValueError(f"No channel account for line {line_id}")
         creds = decrypt(account.credentials_encrypted["encrypted_data"])
         api_key = json.loads(creds)["api_key"]
+        creds_token =  json.loads(creds)["token"]
+        
+        log.info(f"\n\n -- token {token}  {creds_token} creds_token {creds_token} \n\n")
 
         for msg in value.get("messages", []):
             msg_id = msg["id"]
