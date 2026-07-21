@@ -162,6 +162,10 @@ class WabaListener:
         creds_token =  json.loads(creds)["token"]
         
         log.info(f"\n\n -- token {token}  {creds_token} creds_token {creds_token} \n\n")
+        
+        if creds_token != token:
+            raise HTTPException(status_code=403, detail="Secure token mismatch")
+            
 
         for msg in value.get("messages", []):
             msg_id = msg["id"]
