@@ -1,7 +1,7 @@
-# app/services/bot_service.py
 import httpx
 import json
 import uuid
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
@@ -84,8 +84,8 @@ class BotService:
         db_secret_token = creds.get("secret_token", "")
         log.info(f"\n\n **--**--** secret_token {secret_token} db_secret_token {db_secret_token} n\n ")
         if secret_token != creds.get("secret_token"):
-            log.warning(f"Invalid Telegram secret_token for line {line_id}")
-            return {"ok": True}
+            log.error(f"!!! -- ERROR --- Invalid Telegram secret_token for line {line_id}")
+            raise HTTPException(status_code=403, detail="Bot secure token mismatch")
 
         log.info(f"\n\n ***---** update_data {update_data}")
 
