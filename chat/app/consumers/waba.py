@@ -4,7 +4,7 @@ import json
 import uuid
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
-from fastapi import Request
+from fastapi import HTTPException, Request
 from core.database import get_db
 from core.redis import rdb
 from infra.crypto import decrypt
