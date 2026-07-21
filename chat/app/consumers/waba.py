@@ -115,6 +115,10 @@ class WabaListener:
 
         log.info(f"\n\n  ******* token {token} \n\n")
 
+        creds = self._decrypt_credentials(credentials)
+
+        log.info(f"\n\n  ******* creds {creds} \n\n")
+
         # Парсим структуру Meta
         entry = payload.get("entry", [{}])[0]
         changes = entry.get("changes", [{}])[0]

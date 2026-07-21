@@ -56,7 +56,6 @@ class GreenWhatsAppConnection:
                 log.error(f"notify_connection_error failed: {ne}")
 
 
-
     async def send_message(self, chat_id: str, text: str) -> dict:
         """Отправить сообщение через Green API"""
         url = self.send_text_url()

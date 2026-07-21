@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     kafka_topic: str = ""
     kafka_group_id: str = ""
     green_api_token: str = ""
+    waba_token: str = ""
     tg_api_id: str = ""
     tg_api_hash: str = ""
     tg_webhook_url: str = ""
