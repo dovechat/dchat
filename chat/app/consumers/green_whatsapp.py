@@ -118,6 +118,8 @@ class GreenWhatsAppListener:
             token = auth_header.split()[1]
             if token != settings.green_api_token:
                 raise HTTPException(status_code=401, detail="Green webhook auth token mismatch")
+            else:
+                log.info(f"\n\n --- **** --- \n auth_header {auth_header} token has been passed! \n --- **** --- \n\n")
 
         event_type = payload.get("typeWebhook")
         log.info(f"Green webhook for line {line_id}, type: {event_type}")
