@@ -114,6 +114,7 @@ class WabaListener:
         from app.services.chat_service import ChatService
 
         log.info(f"\n\n  ******* token {token} \n\n")
+        log.info(f"\n\n  ******* payload {payload} \n\n")
 
         # Парсим структуру Meta
         entry = payload.get("entry", [{}])[0]
@@ -165,7 +166,6 @@ class WabaListener:
         
         if creds_token != token:
             raise HTTPException(status_code=403, detail="Secure token mismatch")
-            
 
         for msg in value.get("messages", []):
             msg_id = msg["id"]
