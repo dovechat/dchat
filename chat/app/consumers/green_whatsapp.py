@@ -113,13 +113,16 @@ class GreenWhatsAppListener:
     async def handle_webhook(self, line_id: str, payload: dict, auth_header):
         """Обработать входящий вебхук от Green API"""
         from app.services.chat_service import ChatService
-        log.info(f"\n\n --- **** --- \n auth_header {auth_header} \n --- **** --- \n\n")
+        log.info(f"\n\n --- **** --- \n auth_header {auth_header}   {settings.green_api_token} \n --- **** --- \n\n")
         if "Bearer" in auth_header:
             token = auth_header.split()[1]
             if token != settings.green_api_token:
                 msg = "Green webhook auth token mismatch"
                 log.error(f"!!! -- ERROR -- {msg}")
                 raise HTTPException(status_code=401, detail=msg)
+        else:
+            log.info(
+                f"\n\n --- **** --- \n auth_header {auth_header} is equal to  {settings.green_api_token} and authentication has been passed \n --- **** --- \n\n")
 
         event_type = payload.get("typeWebhook")
         log.info(f"Green webhook for line {line_id}, type: {event_type}")
