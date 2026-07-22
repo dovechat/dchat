@@ -107,44 +107,40 @@ class WebhookService:
     async def process_green_webhook(self, payload: dict):
         event_type = payload.get("typeWebhook")
         log.info(f"Green webhook received, type: {event_type}")
+        # Получаем номер телефона из payload
+        instance_data = payload.get("instanceData", {})
+        instance_id = str(instance_data.get("idInstance", ""))
 
-        # prometheus wrap
-        with webhook_processing_seconds.labels(channel_type="whatsapp_green", event_type=event_type or "unknown").time():
-            log.info(f"Green webhook received, type: {event_type}")
-            # Получаем номер телефона из payload
-            instance_data = payload.get("instanceData", {})
-            instance_id = str(instance_data.get("idInstance", ""))
-    
-            if not instance_id:
-                log.error("Wrong instance_id in webhook")
-                return
-    
-            sender_data = payload.get("senderData", {})
-            chat_id = sender_data.get("chatId", "")
-            phone = chat_id.replace("@c.us", "")
-            if not phone.startswith("+"):
-                phone = f"+{phone}"
-    
-            if not chat_id:
-                log.error("No chatId in webhook")
-                return
-    
-            line = await self.instance_repo.get_line_by_instance_id(instance_id)
-            if not line:
-                log.error(f"Line not found for instance_id {instance_id}")
-                return
-    
-            line_id = str(line.id)
-    
-            # Ищем чат по номеру
-            conv = await self.chat_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
-            log.info(f" \n\n ---------- WebhookService.process_green_webhook conv.id {conv.id} phone {phone} line_id {line_id}  \n\n")
-    
-            handler = WebhookHandlerFactory.get_handler(event_type)
-            if handler:
-                await handler.handle(conv.id, payload, self.services)
-            else:
-                log.warning(f"Unhandled webhook type: {event_type}")
+        if not instance_id:
+            log.error("Wrong instance_id in webhook")
+            return
+
+        sender_data = payload.get("senderData", {})
+        chat_id = sender_data.get("chatId", "")
+        phone = chat_id.replace("@c.us", "")
+        if not phone.startswith("+"):
+            phone = f"+{phone}"
+
+        if not chat_id:
+            log.error("No chatId in webhook")
+            return
+
+        line = await self.instance_repo.get_line_by_instance_id(instance_id)
+        if not line:
+            log.error(f"Line not found for instance_id {instance_id}")
+            return
+
+        line_id = str(line.id)
+
+        # Ищем чат по номеру
+        conv = await self.chat_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
+        log.info(f" \n\n ---------- WebhookService.process_green_webhook conv.id {conv.id} phone {phone} line_id {line_id}  \n\n")
+
+        handler = WebhookHandlerFactory.get_handler(event_type)
+        if handler:
+            await handler.handle(conv.id, payload, self.services)
+        else:
+            log.warning(f"Unhandled webhook type: {event_type}")
 
 
 
