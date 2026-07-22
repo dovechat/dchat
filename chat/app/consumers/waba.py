@@ -16,7 +16,7 @@ from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from services.storage_service import StorageService
 
-from app.services.webhook_service import webhook_processing_seconds
+from core.metrics import webhook_processing_seconds
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
