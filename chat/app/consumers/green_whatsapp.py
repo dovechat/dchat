@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
-from prometheus_client import Counter
 from core.config import settings
 from core.database import get_db
 from app.repositories.chat_repo import ChatRepository

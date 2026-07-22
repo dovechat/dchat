@@ -1,4 +1,5 @@
-from prometheus_client import Histogram
+from prometheus_client import Counter, Histogram
+
 
 webhook_processing_seconds = Histogram(
     "dovechat_webhook_processing_seconds",
