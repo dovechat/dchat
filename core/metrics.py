@@ -5,3 +5,9 @@ webhook_processing_seconds = Histogram(
     "Time spent processing incoming webhooks",
     ["channel_type", "event_type"],
 )
+
+webhook_errors_total = Counter(
+    "dovechat_webhook_requests_total",
+    "Webhook requests by status",
+    ["channel_type", "status"],
+)
