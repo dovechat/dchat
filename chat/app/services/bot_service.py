@@ -9,6 +9,7 @@ from app.services.websocket_manager import manager
 from app.services.chat_service import ChatService
 from core.config import settings
 from core.database import get_db
+from core.metrics import webhook_processing_seconds, webhook_errors_total
 from infra.crypto import decrypt
 from models.lines import Line
 from repo.line_repo import ChannelAccountRepository
@@ -73,7 +74,7 @@ class BotService:
     async def handle_webhook(self, line_id: uuid.UUID, update_data: dict, request):
         """Handle incoming update from Telegram Bot API"""
         # Get line and bot token
-
+        
         # prometheus wrap
         try:
             with webhook_processing_seconds.labels(channel_type="telegram_bot", event_type="message").time():
