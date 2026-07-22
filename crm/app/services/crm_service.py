@@ -73,7 +73,11 @@ class CrmService:
                     text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
                 log.info(f"CRM result after refresh: {result}")
             except Exception as e2:
-                log.error("CRM send failed tenant=%s: %s", tenant_id, e2, exc_info=True)
+                if "wrong_client" in str(e2) or "expired_token" in str(e2):
+                    log.warning(f"CRM tokens invalid for tenant={tenant_id}, re-auth required: {e2}")
+                    await self._uow.crm_accounts.update(conn, is_active=False)
+                else:
+                    log.error("CRM send failed tenant=%s: %s", tenant_id, e2, exc_info=True)
                 return
 
         log.info(f"send_to_crm result {result}")
