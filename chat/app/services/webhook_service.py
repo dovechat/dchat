@@ -11,14 +11,6 @@ from infra.crypto import decrypt
 from repo.line_repo import ChannelAccountRepository, InstanceRepository, LineRepository
 from schemas.line_schemas import ChannelType
 
-from prometheus_client import Histogram
-
-webhook_processing_seconds = Histogram(
-    "dovechat_webhook_processing_seconds",
-    "Time spent processing incoming webhooks",
-    ["channel_type", "event_type"],
-)
-
 
 log = logging.getLogger(__name__)
 
