@@ -17,13 +17,7 @@ from repo.message_repo import MediaRepository
 from services.storage_service import StorageService
 from app.utils import decrypt_credentials
 
-from prometheus_client import Histogram
-
-webhook_processing_seconds = Histogram(
-    "dovechat_webhook_processing_seconds",
-    "Time spent processing incoming webhooks",
-    ["channel_type", "event_type"],
-)
+from app.services.webhook_service import webhook_processing_seconds
 
 import logging
 log = logging.getLogger("uvicorn.error")

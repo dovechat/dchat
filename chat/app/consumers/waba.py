@@ -16,14 +16,7 @@ from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from services.storage_service import StorageService
 
-from prometheus_client import Histogram
-
-webhook_processing_seconds = Histogram(
-    "dovechat_webhook_processing_seconds",
-    "Time spent processing incoming webhooks",
-    ["channel_type", "event_type"],
-)
-
+from app.services.webhook_service import webhook_processing_seconds
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
