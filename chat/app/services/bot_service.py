@@ -78,6 +78,7 @@ class BotService:
         # prometheus wrap
         try:
             with webhook_processing_seconds.labels(channel_type="telegram_bot", event_type="message").time():
+                raise HTTPException(status_code=403, detail="test prometheus errors")
                 log.info(f'"request.headers {request.headers}')
                 line = await self.db.get(Line, line_id)
                 if not line:
