@@ -14,6 +14,7 @@ from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
 
+from core.metrics import webhook_processing_seconds
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
@@ -110,37 +111,39 @@ class GreenWhatsAppListener:
         log.info("GreenWhatsAppListener initialized")
 
     async def handle_webhook(self, line_id: str, payload: dict, auth_header):
-        """Обработать входящий вебхук от Green API"""
-        from app.services.chat_service import ChatService
-        log.info(f"\n\n --- **** --- \n auth_header {auth_header}   {settings.green_api_token} \n --- **** --- \n\n")
-        if "Bearer" in auth_header:
-            token = auth_header.split()[1]
-            if token != settings.green_api_token:
-                msg = "Green webhook auth token mismatch"
-                log.error(f"!!! -- ERROR -- {msg}")
-                return
-        else:
-            log.info(
-                f"\n\n --- **** --- \n auth_header {auth_header} is equal to  {settings.green_api_token} and authentication has been passed \n --- **** --- \n\n")
-
-        event_type = payload.get("typeWebhook")
-        log.info(f"Green webhook for line {line_id}, type: {event_type}")
-
-        # !!! ----  remove after wa queue will stop to spam ---- !!!
-        # if event_type != "incomingMessageReceived":
-        #    return
-
-        if event_type == "incomingMessageReceived":
-            async with get_session() as db:
-                log.info(f"--- get session db {db}")
-                chat_service = ChatService(db)
-                await self._handle_incoming_message(line_id, payload, chat_service, db)
-        elif event_type == "outgoingMessageStatus":
-            await self._handle_message_status(line_id, payload)
-        elif event_type == "stateInstanceChanged":
-            await self._handle_instance_state(line_id, payload)
-        else:
-            log.warning(f"Unhandled webhook type: {event_type}")
+        # prometheus metrics
+        with webhook_processing_seconds.labels(channel_type="whatsapp_green", event_type="message").time():
+            """Обработать входящий вебхук от Green API"""
+            from app.services.chat_service import ChatService
+            log.info(f"\n\n --- **** --- \n auth_header {auth_header}   {settings.green_api_token} \n --- **** --- \n\n")
+            if "Bearer" in auth_header:
+                token = auth_header.split()[1]
+                if token != settings.green_api_token:
+                    msg = "Green webhook auth token mismatch"
+                    log.error(f"!!! -- ERROR -- {msg}")
+                    return
+            else:
+                log.info(
+                    f"\n\n --- **** --- \n auth_header {auth_header} is equal to  {settings.green_api_token} and authentication has been passed \n --- **** --- \n\n")
+    
+            event_type = payload.get("typeWebhook")
+            log.info(f"Green webhook for line {line_id}, type: {event_type}")
+    
+            # !!! ----  remove after wa queue will stop to spam ---- !!!
+            # if event_type != "incomingMessageReceived":
+            #    return
+    
+            if event_type == "incomingMessageReceived":
+                async with get_session() as db:
+                    log.info(f"--- get session db {db}")
+                    chat_service = ChatService(db)
+                    await self._handle_incoming_message(line_id, payload, chat_service, db)
+            elif event_type == "outgoingMessageStatus":
+                await self._handle_message_status(line_id, payload)
+            elif event_type == "stateInstanceChanged":
+                await self._handle_instance_state(line_id, payload)
+            else:
+                log.warning(f"Unhandled webhook type: {event_type}")
 
     async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession):
         """Обработка входящего сообщения"""
