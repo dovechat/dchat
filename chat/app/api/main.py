@@ -106,3 +106,12 @@ app.include_router(tenant_router, prefix=prefix)
 app.include_router(websocket_router, prefix="/ws")
 app.include_router(line_router, prefix=prefix)
 app.include_router(webhooks_router, prefix=prefix)
+
+
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response
+
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
