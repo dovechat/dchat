@@ -12,7 +12,6 @@ class StatusService:
     def __init__(self, db, telegram_listener=None):
         self.db = db
         self.channel_repo = ChannelAccountRepository(db)
-        self.telegram_listener = telegram_listener
 
     async def check_all(self) -> None:
         accounts = await self.channel_repo.get_one_per_channel_type()
@@ -23,6 +22,27 @@ class StatusService:
             elif acc.channel_type.value == "telegram_user":
                 is_up = await self.check_platform_alive()
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
+            elif acc.channel_type.value == "whatsapp_green":
+                is_up = await self._check_url("https://api.green-api.com")
+                provider_status.labels(channel_type="whatsapp_green").set(1 if is_up else 0)
+            elif acc.channel_type.value == "waba":
+                is_up = await self._check_url("https://waba-v2.360dialog.io/")
+                provider_status.labels(channel_type="waba").set(1 if is_up else 0)
+            elif acc.channel_type.value == "vk":
+                is_up = await self._check_url("https://api.vk.com/method/utils.getServerTime?v=5.199")
+                provider_status.labels(channel_type="vk").set(1 if is_up else 0)
+
+    async def _check_url(self, url: str) -> bool:
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(url)
+                return resp.status_code < 500
+        except Exception:
+            log.exception(f"provider check failed url={url}")
+            return False
+
+
 
     async def check_platform_alive(self) -> bool:
         import asyncio
