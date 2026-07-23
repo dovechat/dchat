@@ -29,11 +29,11 @@ class StatusService:
 
     async def check_platform_alive(self) -> bool:
         from telethon import TelegramClient
-        from telethon.sessions import MemorySession
+        from telethon.sessions import MemorySession, StringSession
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         client = TelegramClient(
-            MemorySession(),
+            StringSession(""),
             settings.tg_api_id,
             settings.tg_api_hash,
             connection=ConnectionTcpMTProxyRandomizedIntermediate,
