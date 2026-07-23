@@ -28,37 +28,46 @@ class StatusService:
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
     async def check_platform_alive(self) -> bool:
-        from telethon import TelegramClient
-        from telethon.sessions import MemorySession, StringSession
-        from telethon.network.mtprotosender import MTProtoSender
-        from telethon.crypto import AuthKey
-        from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
+        import logging
         from collections import defaultdict
 
-        loggers = defaultdict(lambda: logging.getLogger("telethon"))
-
-        sender = MTProtoSender(
-            None,
-            loggers=loggers,
+        from telethon.network.connection.tcpmtproxy import (
+            ConnectionTcpMTProxyRandomizedIntermediate,
         )
+        from telethon.network.mtprotosender import MTProtoSender
+
+        sender = None
 
         try:
-            await sender.connect(
-                ConnectionTcpMTProxyRandomizedIntermediate,
-                (
+            loggers = defaultdict(lambda: logging.getLogger("telethon"))
+
+            sender = MTProtoSender(
+                None,
+                loggers=loggers,
+            )
+
+            connection = ConnectionTcpMTProxyRandomizedIntermediate(
+                proxy=(
                     settings.tg_proxy_host,
                     int(settings.tg_proxy_port),
                     settings.tg_proxy_secret,
-                ),
+                )
             )
+
+            await sender.connect(connection)
+
             return sender.is_connected()
 
-        except Exception as e:
-            log.exception(f"Telegram unavailable: {e}")
+        except Exception:
+            log.exception("Telegram MTProto healthcheck failed")
             return False
 
         finally:
-            await sender.disconnect()
+            if sender:
+                try:
+                    await sender.disconnect()
+                except Exception:
+                    pass
 
 
 
