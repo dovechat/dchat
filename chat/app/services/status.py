@@ -42,16 +42,19 @@ class StatusService:
             loggers = defaultdict(lambda: logging.getLogger("telethon"))
 
             sender = MTProtoSender(
-                None,
+                auth_key=None,
                 loggers=loggers,
             )
 
             connection = ConnectionTcpMTProxyRandomizedIntermediate(
+                settings.tg_proxy_host,
+                int(settings.tg_proxy_port),
+                2,
                 proxy=(
                     settings.tg_proxy_host,
                     int(settings.tg_proxy_port),
                     settings.tg_proxy_secret,
-                )
+                ),
             )
 
             await sender.connect(connection)
@@ -68,6 +71,5 @@ class StatusService:
                     await sender.disconnect()
                 except Exception:
                     pass
-
 
 
