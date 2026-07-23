@@ -41,7 +41,8 @@ class StatusService:
         )
         try:
             return await client.connect()
-        except Exception:
+        except Exception as e:
+            log.error(f"!!! --- ERROR --- can't connect Telegram e={e}")
             return False
         finally:
             await client.disconnect()
