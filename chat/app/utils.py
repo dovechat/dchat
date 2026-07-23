@@ -34,6 +34,7 @@ def decrypt_credentials(encrypted: dict) -> dict:
 
 
 from functools import wraps
+from core.metrics import webhook_processing_seconds, webhook_errors_total
 
 def prometheus_metrics(channel_type: str, event_type: str = "message"):
     def decorator(func):
