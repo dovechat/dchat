@@ -159,8 +159,6 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             .distinct(self.model.channel_type)
             .order_by(self.model.channel_type, Conversation.created_at.desc())
         )
-        if channel_type:
-            query = query.where(self.model.channel_type == channel_type)
 
         result = await self.session.execute(query)
         return result.scalars().all()
