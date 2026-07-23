@@ -37,9 +37,11 @@ class StatusService:
         logger = logging.getLogger("telethon.network.mtprotosender")
 
         sender = MTProtoSender(
-            AuthKey(None),
+            None,
             loggers={
-                "mtproto": logging.getLogger("telethon.mtproto"),
+                "telethon.network.mtprotosender": logging.getLogger(
+                    "telethon.network.mtprotosender"
+                ),
             },
         )
 
