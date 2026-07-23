@@ -31,6 +31,7 @@ class StatusService:
         from telethon import TelegramClient
         from telethon.sessions import MemorySession, StringSession
         from telethon.network.mtprotosender import MTProtoSender
+        from telethon.crypto import AuthKey
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         sender = MTProtoSender(
