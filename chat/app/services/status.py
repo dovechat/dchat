@@ -21,7 +21,7 @@ class StatusService:
                 is_up = await BotService(self.db).check_alive(acc)
                 provider_status.labels(channel_type="telegram_bot").set(1 if is_up else 0)
             elif acc.channel_type.value == "telegram_user":
-                is_up = await self._check_telegram_user_alive(acc)
+                is_up = await self._check_telegram_user_alive()
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
 
