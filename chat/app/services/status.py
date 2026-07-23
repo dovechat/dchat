@@ -75,7 +75,12 @@ class StatusService:
 
             log.info(f"\n\n Telegram MTProto healthcheck connect connection {connection} \n\n")
 
-            await sender.connect(connection, timeout=10)
+            import asyncio
+
+            await asyncio.wait_for(
+                sender.connect(connection),
+                timeout=10,
+            )
             log.info(f"\n\n Telegram MTProto healthcheck connect sender.is_connected() {sender.is_connected()} \n\n")
             return sender.is_connected()
 
