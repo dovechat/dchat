@@ -41,6 +41,11 @@ class StatusService:
         try:
             loggers = defaultdict(lambda: logging.getLogger("telethon"))
 
+            secret = settings.tg_proxy_secret.strip()
+
+            if len(secret) == 66 and secret[:2] in ("dd", "ee"):
+                secret = secret[2:]
+
             sender = MTProtoSender(
                 auth_key=None,
                 loggers=loggers,
@@ -53,7 +58,7 @@ class StatusService:
                 proxy=(
                     settings.tg_proxy_host,
                     int(settings.tg_proxy_port),
-                    settings.tg_proxy_secret,
+                    secret,
                 ),
                 loggers=loggers,
             )
