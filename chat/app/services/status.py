@@ -25,22 +25,36 @@ class StatusService:
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
     async def _check_telegram_user_alive(self, acc) -> bool:
-        if self.telegram_listener and any(
-            c.is_connected() for c in self.telegram_listener.clients.values()
-        ):
+        has_live = bool(
+            self.telegram_listener
+            and any(c.is_connected() for c in self.telegram_listener.clients.values())
+        )
+        log.info(f"telegram_user check: acc.id={acc.id} has_live_client={has_live}")
+        if has_live:
             return True
         return await self._ping_session(acc)
 
     async def _ping_session(self, acc) -> bool:
+        import traceback
         from telethon import TelegramClient
         from telethon.sessions import StringSession
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         session_string = acc.session_string
+        log.info(f"telegram_user ping: acc.id={acc.id} session_string_present={bool(session_string)} len={len(session_string) if session_string else 0}")
         if not session_string:
+            log.warning(f"telegram_user ping: no session_string for acc.id={acc.id}")
             return False
+
+        try:
+            string_session = StringSession(session_string)
+            log.info(f"telegram_user ping: acc.id={acc.id} StringSession parsed ok")
+        except Exception as e:
+            log.error(f"telegram_user ping: acc.id={acc.id} StringSession parse failed: {e}\n{traceback.format_exc()}")
+            return False
+
         client = TelegramClient(
-            StringSession(session_string),
+            string_session,
             settings.tg_api_id,
             settings.tg_api_hash,
             connection=ConnectionTcpMTProxyRandomizedIntermediate,
@@ -48,10 +62,18 @@ class StatusService:
         )
         try:
             await client.connect()
-            return await client.is_user_authorized()
-        except Exception:
+            log.info(f"telegram_user ping: acc.id={acc.id} connect ok, is_connected={client.is_connected()}")
+            authorized = await client.is_user_authorized()
+            log.info(f"telegram_user ping: acc.id={acc.id} is_user_authorized={authorized}")
+            return authorized
+        except Exception as e:
+            log.error(f"telegram_user ping: acc.id={acc.id} connect/auth failed: {e}\n{traceback.format_exc()}")
             return False
         finally:
-            await client.disconnect()
+            try:
+                await client.disconnect()
+                log.info(f"telegram_user ping: acc.id={acc.id} disconnect ok")
+            except Exception as e:
+                log.error(f"telegram_user ping: acc.id={acc.id} disconnect failed: {e}")
 
 
