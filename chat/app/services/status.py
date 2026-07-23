@@ -34,15 +34,18 @@ class StatusService:
         from telethon.crypto import AuthKey
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
-        logger = logging.getLogger("telethon.network.mtprotosender")
+        loggers = {
+            "telethon.network.mtprotosender": logging.getLogger(
+                "telethon.network.mtprotosender"
+            ),
+            "telethon.network.mtprotostate": logging.getLogger(
+                "telethon.network.mtprotostate"
+            ),
+        }
 
         sender = MTProtoSender(
             None,
-            loggers={
-                "telethon.network.mtprotosender": logging.getLogger(
-                    "telethon.network.mtprotosender"
-                ),
-            },
+            loggers=loggers,
         )
 
         try:
