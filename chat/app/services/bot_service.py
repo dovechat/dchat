@@ -324,3 +324,20 @@ class BotService:
             )
             response.raise_for_status()
             return response.json()
+
+    async def check_alive(self, acc) -> bool:
+        creds = decrypt_credentials(acc.credentials_encrypted)
+        bot_token = creds.get("bot_token")
+        log.info(f"bot_token {bot_token}")
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+                return resp.status_code == 200
+        except Exception:
+            return False
+
+
+
+
+

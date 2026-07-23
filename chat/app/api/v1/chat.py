@@ -247,6 +247,17 @@ async def telegram_bot_webhook(
     return await bot_service.handle_webhook(line_id, data, request)
 
 
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response
+from app.services.status import StatusService
+from app.core.dependencies import get_status_service
+
+@router.get("/metrics")
+async def metrics(status_service: StatusService = Depends(get_status_service)):
+    await status_service.check_all()
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @router.get("/lines", response_model=List[LineResponse])
 async def get_my_lines(
     current_user: User = Depends(get_current_user),

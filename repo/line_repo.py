@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from sqlalchemy import select
+from sqlalchemy import select, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.lines import ChannelAccount, Line, LineStatus
 from models.tenants import Tenant
@@ -142,6 +142,20 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
                 ChannelAccount.expires_at < now,
             )
         )
+        return result.scalars().all()
+
+    async def get_one_per_channel_type(self, connection_status: str = "connected"):
+        from sqlalchemy import select
+        from models.messages import Conversation
+
+        query = (
+            select(self.model)
+            .join(Conversation, Conversation.line_id == self.model.line_id)
+            .distinct(self.model.channel_type)
+            .where(self.model.connection_status == connection_status)
+            .order_by(self.model.channel_type, self.model.updated_at.desc())
+        )
+        result = await self.session.execute(query)
         return result.scalars().all()
 
 

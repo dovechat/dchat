@@ -113,11 +113,6 @@ class TelegramConnection:
         log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
 
         await self.client.connect()
-        await self.client.disconnect()
-        await asyncio.sleep(1)
-        await self.client.connect()
-
-        await self.client.connect()
         
         log.info(f"+++++++++ Connecting to Telegram self.client after connect")
 

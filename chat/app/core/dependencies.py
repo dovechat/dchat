@@ -8,6 +8,7 @@ from schemas.auth_schemas import UserContext
 from app.repositories.chat_repo import ChatRepository
 from app.services.chat_service import ChatService
 # from app.services.message_service import MessageService
+from app.services.status import StatusService
 from app.services.websocket_service import WebSocketService
 from app.services.webhook_service import WebhookService
 
@@ -26,6 +27,9 @@ async def get_websocket_service(db: AsyncSession = Depends(get_db)) -> WebSocket
 
 async def get_webhook_service(db: AsyncSession = Depends(get_db)) -> WebhookService:
     return WebhookService(db)
+
+async def get_status_service(db: AsyncSession = Depends(get_db)) -> StatusService:
+    return StatusService(db)
 
 '''
 def check_conversation_access(
