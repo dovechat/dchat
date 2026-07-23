@@ -34,11 +34,12 @@ class StatusService:
 
     async def _check_url(self, url: str) -> bool:
         import httpx
+        log.info(f"connection {url} start")
         try:
             async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(url)
-                return resp.status_code < 500
                 log.info(f"connection {url} established statis  {resp.status_code}")
+                return resp.status_code < 500
         except Exception:
             log.exception(f"provider check failed url={url}")
             return False
