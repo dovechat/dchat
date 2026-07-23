@@ -33,7 +33,7 @@ class StatusService:
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         client = TelegramClient(
-            StringSession(),
+            MemorySession(),
             settings.tg_api_id,
             settings.tg_api_hash,
             connection=ConnectionTcpMTProxyRandomizedIntermediate,
