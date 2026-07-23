@@ -59,6 +59,8 @@ class StatusService:
                 loggers=loggers,
             )
 
+            log.info(f"\n\n Telegram MTProto healthcheck connect sender {sender} \n\n")
+
             connection = ConnectionTcpMTProxyRandomizedIntermediate(
                 settings.tg_proxy_host,
                 int(settings.tg_proxy_port),
@@ -70,6 +72,8 @@ class StatusService:
                 ),
                 loggers=loggers,
             )
+
+            log.info(f"\n\n Telegram MTProto healthcheck connect connection {connection} \n\n")
 
             await sender.connect(connection)
             log.info(f"\n\n Telegram MTProto healthcheck connect sender.is_connected() {sender.is_connected()} \n\n")
