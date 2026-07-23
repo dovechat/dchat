@@ -111,6 +111,9 @@ class WabaListener:
         self.storage = StorageService()
         log.info("WabaListener initialized")
 
+    from core.metrics import prometheus_metrics
+
+    @prometheus_metrics("waba")
     async def handle_webhook(self, line_id: str, token: str, payload: dict):
         # prometheus metrics
         try:

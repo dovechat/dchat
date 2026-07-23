@@ -143,6 +143,10 @@ class VkListener:
             "text": text,
         })
 
+
+    from core.metrics import prometheus_metrics
+
+    @prometheus_metrics("vk")
     async def handle_webhook(self, line_id: str, payload: dict):
         from app.services.chat_service import ChatService
 
