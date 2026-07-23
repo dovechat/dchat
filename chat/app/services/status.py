@@ -55,6 +55,7 @@ class StatusService:
                     int(settings.tg_proxy_port),
                     settings.tg_proxy_secret,
                 ),
+                loggers=loggers,
             )
 
             await sender.connect(connection)
