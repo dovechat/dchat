@@ -31,3 +31,21 @@ def decrypt_credentials(encrypted: dict) -> dict:
         creds = json.loads(creds_js)
         return creds
     return {}
+
+
+from functools import wraps
+
+def prometheus_metrics(channel_type: str, event_type: str = "message"):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                with webhook_processing_seconds.labels(channel_type=channel_type, event_type=event_type).time():
+                    result = await func(*args, **kwargs)
+                webhook_errors_total.labels(channel_type=channel_type, status="success").inc()
+                return result
+            except Exception:
+                webhook_errors_total.labels(channel_type=channel_type, status="error").inc()
+                raise
+        return wrapper
+    return decorator
