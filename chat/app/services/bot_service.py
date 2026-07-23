@@ -18,7 +18,6 @@ from repo.message_repo import MediaRepository
 from services.storage_service import StorageService
 from app.utils import decrypt_credentials
 
-from core.metrics import webhook_processing_seconds
 
 import logging
 log = logging.getLogger("uvicorn.error")
