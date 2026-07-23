@@ -33,6 +33,7 @@ class StatusService:
         from telethon.network.mtprotosender import MTProtoSender
         from telethon.crypto import AuthKey
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
+        from collections import defaultdict
 
         loggers = defaultdict(lambda: logging.getLogger("telethon"))
 
