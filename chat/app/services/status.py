@@ -24,7 +24,7 @@ class StatusService:
                 is_up = await self._check_telegram_user_alive(acc)
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
-    async def _check_telegram_user_alive(self) -> bool:
+    async def check_platform_alive(self) -> bool:
         import logging
         from collections import defaultdict
 
@@ -40,7 +40,7 @@ class StatusService:
 
             secret = settings.tg_proxy_secret.strip()
 
-            if secret.startswith(("dd", "ee")):
+            if len(secret) == 66 and secret[:2] in ("dd", "ee"):
                 secret = secret[2:]
 
             sender = MTProtoSender(
@@ -62,7 +62,7 @@ class StatusService:
 
             await sender.connect(connection)
 
-            return True
+            return sender.is_connected()
 
         except Exception:
             log.exception("Telegram MTProto healthcheck failed")
