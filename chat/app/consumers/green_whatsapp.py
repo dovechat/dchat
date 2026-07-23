@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
 from core.config import settings
 from core.database import get_db
-from core.metrics import webhook_processing_seconds, webhook_errors_total, prometheus_metrics
+from core.metrics import webhook_processing_seconds, webhook_errors_total
+from app.services.status import prometheus_metrics
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository
