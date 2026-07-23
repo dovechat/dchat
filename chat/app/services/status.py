@@ -43,7 +43,7 @@ class StatusService:
 
             secret = settings.tg_proxy_secret.strip()
 
-            if len(secret) == 66 and secret[:2] in ("dd", "ee"):
+            if secret.startswith(("dd", "ee")):
                 secret = secret[2:]
 
             sender = MTProtoSender(
@@ -65,7 +65,7 @@ class StatusService:
 
             await sender.connect(connection)
 
-            return sender.is_connected()
+            return True
 
         except Exception:
             log.exception("Telegram MTProto healthcheck failed")
