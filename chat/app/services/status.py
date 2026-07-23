@@ -9,73 +9,49 @@ log = logging.getLogger("uvicorn.error")
 
 
 class StatusService:
-    def __init__(self, db):
+    def __init__(self, db, telegram_listener=None):
         self.db = db
         self.channel_repo = ChannelAccountRepository(db)
+        self.telegram_listener = telegram_listener
 
     async def check_all(self) -> None:
         accounts = await self.channel_repo.get_one_per_channel_type()
-        log.info(f"check_all accounts: {accounts}")
         for acc in accounts:
-            log.info(f"acc.channel_type: {acc.channel_type}")
             if acc.channel_type.value == "telegram_bot":
                 is_up = await BotService(self.db).check_alive(acc)
-                log.info(f"check_all telegram_bot is_up={is_up}")
                 provider_status.labels(channel_type="telegram_bot").set(1 if is_up else 0)
             elif acc.channel_type.value == "telegram_user":
-                is_up = await self.check_platform_alive()
-                log.info(f"check_all telegram_user is_up={is_up}")
+                is_up = await self._check_telegram_user_alive(acc)
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
-    async def check_platform_alive(self) -> bool:
-        import logging
-        from collections import defaultdict
-
-        from telethon.network.connection.tcpmtproxy import (
-            ConnectionTcpMTProxyRandomizedIntermediate,
-        )
-        from telethon.network.mtprotosender import MTProtoSender
-
-        sender = None
-
-        try:
-            loggers = defaultdict(lambda: logging.getLogger("telethon"))
-
-            secret = settings.tg_proxy_secret.strip()
-
-            if secret.startswith(("dd", "ee")):
-                secret = secret[2:]
-
-            sender = MTProtoSender(
-                auth_key=None,
-                loggers=loggers,
-            )
-
-            connection = ConnectionTcpMTProxyRandomizedIntermediate(
-                settings.tg_proxy_host,
-                int(settings.tg_proxy_port),
-                2,
-                proxy=(
-                    settings.tg_proxy_host,
-                    int(settings.tg_proxy_port),
-                    secret,
-                ),
-                loggers=loggers,
-            )
-
-            await sender.connect(connection)
-
+    async def _check_telegram_user_alive(self, acc) -> bool:
+        if self.telegram_listener and any(
+            c.is_connected() for c in self.telegram_listener.clients.values()
+        ):
             return True
+        return await self._ping_session(acc)
 
-        except Exception:
-            log.exception("Telegram MTProto healthcheck failed")
+    async def _ping_session(self, acc) -> bool:
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+        from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
+
+        session_string = acc.session_string
+        if not session_string:
             return False
-
+        client = TelegramClient(
+            StringSession(session_string),
+            settings.tg_api_id,
+            settings.tg_api_hash,
+            connection=ConnectionTcpMTProxyRandomizedIntermediate,
+            proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
+        )
+        try:
+            await client.connect()
+            return await client.is_user_authorized()
+        except Exception:
+            return False
         finally:
-            if sender:
-                try:
-                    await sender.disconnect()
-                except Exception:
-                    pass
+            await client.disconnect()
 
 
