@@ -112,7 +112,6 @@ class GreenWhatsAppListener:
 
     async def handle_webhook(self, line_id: str, payload: dict, auth_header):
         # prometheus metrics
-
         try:
             with webhook_processing_seconds.labels(channel_type="whatsapp_green", event_type="message").time():
                 """Обработать входящий вебхук от Green API"""

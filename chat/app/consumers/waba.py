@@ -111,25 +111,34 @@ class WabaListener:
         log.info("WabaListener initialized")
 
     async def handle_webhook(self, line_id: str, token: str, payload: dict):
-        from app.services.chat_service import ChatService
+        # prometheus metrics
+        try:
+            with webhook_processing_seconds.labels(channel_type="waba", event_type="message").time():
+                from app.services.chat_service import ChatService
+        
+                log.info(f"\n\n  ******* token {token} \n\n")
+                log.info(f"\n\n  ******* payload {payload} \n\n")
+        
+                # Парсим структуру Meta
+                entry = payload.get("entry", [{}])[0]
+                changes = entry.get("changes", [{}])[0]
+                value = changes.get("value", {})
+        
+                if "messages" in value:
+                    async with get_session() as db:
+                        chat_service = ChatService(db)
+                        await self._handle_incoming_message(line_id, value, chat_service, token)
+        
+                elif "statuses" in value:
+                    await self._handle_message_status(line_id, value)
+                else:
+                    log.warning(f"Unhandled webhook structure: {value.keys()}")
+            webhook_errors_total.labels(channel_type="waba", status="success").inc()
+        except Exception:
+            webhook_errors_total.labels(channel_type="waba", status="error").inc()
+            raise
 
-        log.info(f"\n\n  ******* token {token} \n\n")
-        log.info(f"\n\n  ******* payload {payload} \n\n")
 
-        # Парсим структуру Meta
-        entry = payload.get("entry", [{}])[0]
-        changes = entry.get("changes", [{}])[0]
-        value = changes.get("value", {})
-
-        if "messages" in value:
-            async with get_session() as db:
-                chat_service = ChatService(db)
-                await self._handle_incoming_message(line_id, value, chat_service, token)
-
-        elif "statuses" in value:
-            await self._handle_message_status(line_id, value)
-        else:
-            log.warning(f"Unhandled webhook structure: {value.keys()}")
 
     async def download_media(self, media_url: str, api_key: str) -> bytes:  # передавай полный url из webhook
         log.info(f"\n\n ** WabaListener.download_media media_url {media_url} api_key {api_key} \n\n")
