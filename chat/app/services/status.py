@@ -24,7 +24,78 @@ class StatusService:
                 is_up = await self._check_telegram_user_alive(acc)
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
-    async def _check_telegram_user_alive(self, acc) -> bool:
+    async def _check_telegram_user_alive(self) -> bool:
+        import logging
+        from collections import defaultdict
+
+        from telethon.network.connection.tcpmtproxy import (
+            ConnectionTcpMTProxyRandomizedIntermediate,
+        )
+        from telethon.network.mtprotosender import MTProtoSender
+
+        sender = None
+
+        try:
+            loggers = defaultdict(lambda: logging.getLogger("telethon"))
+
+            secret = settings.tg_proxy_secret.strip()
+
+            if secret.startswith(("dd", "ee")):
+                secret = secret[2:]
+
+            sender = MTProtoSender(
+                auth_key=None,
+                loggers=loggers,
+            )
+
+            connection = ConnectionTcpMTProxyRandomizedIntermediate(
+                settings.tg_proxy_host,
+                int(settings.tg_proxy_port),
+                2,
+                proxy=(
+                    settings.tg_proxy_host,
+                    int(settings.tg_proxy_port),
+                    secret,
+                ),
+                loggers=loggers,
+            )
+
+            await sender.connect(connection)
+
+            return True
+
+        except Exception:
+            log.exception("Telegram MTProto healthcheck failed")
+            return False
+
+        finally:
+            if sender:
+                try:
+                    await sender.disconnect()
+                except Exception:
+                    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    async def _check_telegram_user_alive____(self, acc) -> bool:
         has_live = bool(
             self.telegram_listener
             and any(c.is_connected() for c in self.telegram_listener.clients.values())
@@ -41,6 +112,7 @@ class StatusService:
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         session_string = acc.session_string
+        log.info(f"session_string {session_string}")
         log.info(f"telegram_user ping: acc.id={acc.id} session_string_present={bool(session_string)} len={len(session_string) if session_string else 0}")
         if not session_string:
             log.warning(f"telegram_user ping: no session_string for acc.id={acc.id}")
