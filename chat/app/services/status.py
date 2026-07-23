@@ -29,7 +29,7 @@ class StatusService:
 
     async def check_platform_alive(self) -> bool:
         from telethon import TelegramClient
-        from telethon.sessions import StringSession
+        from telethon.sessions import MemorySession
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         client = TelegramClient(
