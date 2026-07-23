@@ -8,7 +8,6 @@ from fastapi import Request
 from core.config import settings
 from core.database import get_db
 from core.metrics import webhook_processing_seconds, webhook_errors_total
-from app.services.status import prometheus_metrics
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository
@@ -110,6 +109,8 @@ class GreenWhatsAppListener:
     def __init__(self):
         self.connections: Dict[str, GreenWhatsAppConnection] = {}
         log.info("GreenWhatsAppListener initialized")
+
+    from app.services.status import prometheus_metrics
 
     @prometheus_metrics("whatsapp_green")
     async def handle_webhook(self, line_id: str, payload: dict, auth_header):
