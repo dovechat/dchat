@@ -40,7 +40,9 @@ class StatusService:
             proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
         )
         try:
-            return await client.connect()
+            res = await client.connect()
+            log.info(f"client.connect res={res}")
+            return True
         except Exception as e:
             log.error(f"!!! --- ERROR --- can't connect Telegram e={e}")
             return False
