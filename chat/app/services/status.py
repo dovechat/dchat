@@ -24,6 +24,7 @@ class StatusService:
                 provider_status.labels(channel_type="telegram_bot").set(1 if is_up else 0)
             elif acc.channel_type.value == "telegram_user":
                 is_up = await self.check_platform_alive()
+                log.info(f"check_all telegram_user is_up={is_up}")
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
     async def check_platform_alive(self) -> bool:
