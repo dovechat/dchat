@@ -40,7 +40,7 @@ class StatusService:
                 resp = await client.get(url)
                 log.info(f"connection {url} established statis  {resp.status_code}")
                 res = resp.status_code < 500
-                log.info(f"connection res {res} 
+                log.info(f"connection res {res}")
                 return res
         except Exception:
             log.exception(f"provider check failed url={url}")
