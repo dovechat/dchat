@@ -1,5 +1,7 @@
 from prometheus_client import Counter, Gauge, Histogram
 
+import logging
+log = logging.getLogger("uvicorn.error")
 
 webhook_processing_seconds = Histogram(
     "dovechat_webhook_processing_seconds",
