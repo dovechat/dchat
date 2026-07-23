@@ -21,79 +21,38 @@ class StatusService:
                 is_up = await BotService(self.db).check_alive(acc)
                 provider_status.labels(channel_type="telegram_bot").set(1 if is_up else 0)
             elif acc.channel_type.value == "telegram_user":
-                is_up = await self._check_telegram_user_alive()
+                is_up = await self.check_platform_alive()
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
-
-
-
-
-
-
-
-
-
-    async def _check_telegram_user_alive(self) -> bool:
-        import logging
-        from collections import defaultdict
-
-        from telethon.network.connection.tcpmtproxy import (
-            ConnectionTcpMTProxyRandomizedIntermediate,
-        )
-        from telethon.network.mtprotosender import MTProtoSender
-
-        sender = None
+    async def check_platform_alive(self) -> bool:
+        import asyncio
 
         try:
-            loggers = defaultdict(lambda: logging.getLogger("telethon"))
-
-            secret = settings.tg_proxy_secret.strip()
-
-            log.info(f"\n\n Telegram MTProto healthcheck connect secret {secret} \n\n")
-
-            if len(secret) == 66 and secret[:2] in ("dd", "ee"):
-                secret = secret[2:]
-
-            sender = MTProtoSender(
-                auth_key=None,
-                loggers=loggers,
+            log.info(
+                "Telegram MTProxy healthcheck start host=%s port=%s",
+                settings.tg_proxy_host,
+                settings.tg_proxy_port,
             )
 
-            log.info(f"\n\n Telegram MTProto healthcheck connect sender {sender} \n\n")
-
-            connection = ConnectionTcpMTProxyRandomizedIntermediate(
-                settings.tg_proxy_host,
-                int(settings.tg_proxy_port),
-                2,
-                proxy=(
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(
                     settings.tg_proxy_host,
                     int(settings.tg_proxy_port),
-                    secret,
                 ),
-                loggers=loggers,
-            )
-
-            log.info(f"\n\n Telegram MTProto healthcheck connect connection {connection} \n\n")
-
-            import asyncio
-
-            await asyncio.wait_for(
-                sender.connect(connection),
                 timeout=10,
             )
-            log.info(f"\n\n Telegram MTProto healthcheck connect sender.is_connected() {sender.is_connected()} \n\n")
-            return sender.is_connected()
+
+            log.info("Telegram MTProxy TCP connection established")
+
+            writer.close()
+            await writer.wait_closed()
+
+            log.info("Telegram MTProxy healthcheck success")
+            return True
 
         except Exception:
-            log.exception("Telegram MTProto healthcheck failed")
+            log.exception("Telegram MTProxy healthcheck failed")
             return False
-
-        finally:
-            if sender:
-                try:
-                    await sender.disconnect()
-                except Exception:
-                    pass
 
 
 
