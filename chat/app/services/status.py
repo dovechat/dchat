@@ -49,6 +49,8 @@ class StatusService:
 
             secret = settings.tg_proxy_secret.strip()
 
+            log.info(f"\n\n Telegram MTProto healthcheck connect secret {secret} \n\n")
+
             if len(secret) == 66 and secret[:2] in ("dd", "ee"):
                 secret = secret[2:]
 
@@ -70,7 +72,7 @@ class StatusService:
             )
 
             await sender.connect(connection)
-
+            log.info(f"\n\n Telegram MTProto healthcheck connect sender.is_connected() {sender.is_connected()} \n\n")
             return sender.is_connected()
 
         except Exception:
