@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Optional
 from fastapi import HTTPException, Request
 from core.database import get_db
+from core.metrics import webhook_processing_seconds, webhook_errors_total
 from core.redis import rdb
 from infra.crypto import decrypt
 from app.repositories.chat_repo import ChatRepository

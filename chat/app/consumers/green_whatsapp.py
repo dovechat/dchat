@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
 from core.config import settings
 from core.database import get_db
+from core.metrics import webhook_processing_seconds, webhook_errors_total
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.message_repo import MessageRepository
 from repo.line_repo import ChannelAccountRepository
@@ -14,7 +15,6 @@ from app.services.websocket_manager import manager
 from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
 
-from core.metrics import webhook_processing_seconds
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
