@@ -39,7 +39,9 @@ class StatusService:
             async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(url)
                 log.info(f"connection {url} established statis  {resp.status_code}")
-                return resp.status_code < 500
+                res = resp.status_code < 500
+                log.info(f"connection res {res} 
+                return res
         except Exception:
             log.exception(f"provider check failed url={url}")
             return False
