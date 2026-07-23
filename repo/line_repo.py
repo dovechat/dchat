@@ -144,17 +144,24 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
         )
         return result.scalars().all()
 
-    async def get_one_per_channel_type(self, connection_status: str = "connected"):
+    async def get_one_per_channel_type(self, channel_type: str | None = None):
         from sqlalchemy import select
         from models.messages import Conversation
 
         query = (
             select(self.model)
-            .join(Conversation, Conversation.line_id == self.model.line_id)
+            .join(
+                Conversation,
+                (Conversation.line_id == self.model.line_id)
+                & (Conversation.channel_type == self.model.channel_type),
+            )
+            .where(self.model.credentials_encrypted.isnot(None))
             .distinct(self.model.channel_type)
-            .where(self.model.connection_status == connection_status)
-            .order_by(self.model.channel_type, self.model.updated_at.desc())
+            .order_by(self.model.channel_type, Conversation.created_at.desc())
         )
+        if channel_type:
+            query = query.where(self.model.channel_type == channel_type)
+
         result = await self.session.execute(query)
         return result.scalars().all()
 
