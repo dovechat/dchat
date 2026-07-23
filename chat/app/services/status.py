@@ -28,25 +28,28 @@ class StatusService:
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
     async def check_platform_alive(self) -> bool:
-        from telethon import TelegramClient
-        from telethon.sessions import MemorySession, StringSession
-        from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
-
-        client = TelegramClient(
-            StringSession(""),
-            settings.tg_api_id,
-            settings.tg_api_hash,
-            connection=ConnectionTcpMTProxyRandomizedIntermediate,
-            proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
+        sender = MTProtoSender(
+            None,
+            retries=1,
+            delay=1,
         )
+
         try:
-            res = await client.connect()
-            log.info(f"client.connect res={res}")
-            return True
+            await sender.connect(
+                ConnectionTcpMTProxyRandomizedIntermediate,
+                (
+                    settings.tg_proxy_host,
+                    int(settings.tg_proxy_port),
+                    settings.tg_proxy_secret,
+                ),
+            )
+            return sender.is_connected()
+
         except Exception as e:
-            log.error(f"!!! --- ERROR --- can't connect Telegram e={e}")
+            log.exception(f"Telegram unavailable: {e}")
             return False
+
         finally:
-            await client.disconnect()
+            await sender.disconnect()
 
 
