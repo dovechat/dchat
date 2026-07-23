@@ -3,9 +3,9 @@ from core.config import settings
 from core.metrics import provider_status
 from app.services.bot_service import BotService
 
+
 import logging
 log = logging.getLogger("uvicorn.error")
-
 
 
 class StatusService:
@@ -26,14 +26,20 @@ class StatusService:
                 is_up = await self.check_platform_alive()
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
-
     async def check_platform_alive(self) -> bool:
         from telethon import TelegramClient
         from telethon.sessions import StringSession
-        client = TelegramClient(StringSession(), settings.tg_api_id, settings.tg_api_hash)
+        from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
+
+        client = TelegramClient(
+            StringSession(),
+            settings.tg_api_id,
+            settings.tg_api_hash,
+            connection=ConnectionTcpMTProxyRandomizedIntermediate,
+            proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
+        )
         try:
-            await client.connect()
-            return True
+            return await client.connect()
         except Exception:
             return False
         finally:
