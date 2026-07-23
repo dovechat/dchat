@@ -110,7 +110,7 @@ class GreenWhatsAppListener:
         self.connections: Dict[str, GreenWhatsAppConnection] = {}
         log.info("GreenWhatsAppListener initialized")
 
-    from app.utils import prometheus_metrics
+    from core.metrics import prometheus_metrics
 
     @prometheus_metrics("whatsapp_green")
     async def handle_webhook(self, line_id: str, payload: dict, auth_header):
