@@ -34,9 +34,10 @@ class StatusService:
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 
         sender = MTProtoSender(
-            None,
-            retries=1,
-            delay=1,
+            AuthKey(None),
+            loggers={
+                "mtproto": logging.getLogger("telethon.mtproto"),
+            },
         )
 
         try:
@@ -56,5 +57,6 @@ class StatusService:
 
         finally:
             await sender.disconnect()
+
 
 
