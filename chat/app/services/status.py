@@ -28,6 +28,11 @@ class StatusService:
                 provider_status.labels(channel_type="telegram_user").set(1 if is_up else 0)
 
     async def check_platform_alive(self) -> bool:
+        from telethon import TelegramClient
+        from telethon.sessions import MemorySession, StringSession
+        from telethon.network.mtprotosender import MTProtoSender
+        from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
+
         sender = MTProtoSender(
             None,
             retries=1,
