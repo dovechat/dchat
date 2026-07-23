@@ -173,6 +173,9 @@ class VkListener:
         else:
             log.warning(f"Ignoring VK webhook type: {event_type}")
 
+
+
+
     async def vk_handle_reply(self, line_id, payload):
         msg = payload.get("object", {})
         if not msg:
