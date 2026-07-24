@@ -395,6 +395,7 @@ class CrmService:
                     use_json=True,
                 )
                 log.info(f"robot registered: {robot_code}")
+                log.info(f"{settings.host_url}/crm/api/v1/robots/{robot_code}")
             except Exception as e:
                 log.warning(f"bizproc.robot.add {robot_code} failed: {e}")
 
