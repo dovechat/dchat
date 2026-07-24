@@ -343,6 +343,19 @@ class CrmService:
                     "Multiple": "N",
                 },
             }
+            properties["channel_type"] = {
+                "Name": "Канал",
+                "Type": "select",
+                "Required": "Y",
+                "Multiple": "N",
+                "Options": {
+                    "telegram_bot": "Telegram Bot",
+                    "telegram_user": "Telegram User",
+                    "whatsapp_green": "WhatsApp (Green)",
+                    "waba": "WhatsApp Business API",
+                    "vk": "VK",
+                },
+            }
             if robot_code == "dovechat_send_file":
                 properties["file_url"] = {
                     "Name": "Ссылка на файл",
@@ -762,6 +775,7 @@ class CrmService:
         member_id = data.get("auth[member_id]")
         phone = data.get("properties[phone]") or data.get("PROPERTIES[phone]")
         line_id_str = data.get("properties[line_id]") or data.get("PROPERTIES[line_id]")
+        channel_type = data.get("properties[channel_type]") or data.get("PROPERTIES[channel_type]")
 
         log.info(f"handle_robot code={robot_code} member_id={member_id} phone={phone} line_id={line_id_str}")
 
@@ -804,7 +818,10 @@ class CrmService:
             return_values = await self._robot_check_account(phone, line_id)
             log.info(f"robot dovechat_check_account return_values {return_values}")
         else:
-            return_values = await self._robot_send(robot_code, data, conn, line_id, phone)
+            return_values = await self._robot_send(
+                robot_code, data, conn,
+                line_id, phone, channel_type
+            )
 
         try:
             log_message = return_values.get("error") or "Получен ответ от приложения."
@@ -823,7 +840,7 @@ class CrmService:
 
         return {"status": "ok"}
 
-    async def _robot_send(self, robot_code: str, data: dict, conn, line_id: uuid.UUID, phone: str) -> dict:
+    async def _robot_send(self, robot_code: str, data: dict, conn, line_id: uuid.UUID, phone: str, channel_type: str) -> dict:
         import time
         text = data.get("properties[text]") or data.get("PROPERTIES[text]") or ""
         file_url = data.get("properties[file_url]") or data.get("PROPERTIES[file_url]")
@@ -835,7 +852,7 @@ class CrmService:
         error_msg = ""
 
         line_conns = await self._uow.crm_line_connections.get_multi(
-            filters={"crm_account_id": conn.id, "line_id": line_id, "is_active": True},
+            filters={"crm_account_id": conn.id, "line_id": line_id, "channel_type": channel_type, "is_active": True},
             limit=1,
         )
         line_conn = line_conns[0] if line_conns else None
