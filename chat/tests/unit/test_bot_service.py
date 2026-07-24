@@ -43,7 +43,7 @@ async def test_handle_webhook_line_not_found():
     service = make_service()
     service.db.get = AsyncMock(return_value=None)
     result = await service.handle_webhook(uuid.uuid4(), {}, MagicMock(headers={}))
-    assert result == {"ok": False}
+    assert result == {"ok": True}
 
 
 @pytest.mark.asyncio

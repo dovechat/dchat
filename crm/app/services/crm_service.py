@@ -834,6 +834,14 @@ class CrmService:
         message_id = ""
         error_msg = ""
 
+        line_conns = await self._uow.crm_line_connections.get_multi(
+            filters={"crm_account_id": conn.id, "line_id": line_id, "is_active": True},
+            limit=1,
+        )
+        line_conn = line_conns[0] if line_conns else None
+        if not line_conn:
+            return {"status": "error", "message_id": "", "error": "Нет активной связки линии с CRM"}
+
         try:
             payload: dict = {
                 "line_id": str(line_id),
@@ -841,9 +849,9 @@ class CrmService:
                 "text": text,
                 "crm_connection_id": str(conn.id),
                 "contact_id": "",
-                "crm_line_id": conn.crm_line_id,
-                "connector_id": conn.connector_id,
-                "channel_type": conn.channel_type,
+                "crm_line_id": line_conn.crm_line_id,
+                "connector_id": line_conn.connector_id,
+                "channel_type": line_conn.channel_type,
                 "channel_account_id": None,
                 "media": [],
             }

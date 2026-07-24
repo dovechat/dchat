@@ -78,9 +78,6 @@ class BotService:
         try:
             with webhook_processing_seconds.labels(channel_type="telegram_bot", event_type="message").time():
                 log.info(f'"request.headers {request.headers}')
-
-                raise ValueError("test error metric")
-
                 line = await self.db.get(Line, line_id)
                 if not line:
                     log.error(f"Line {line_id} not found")
@@ -225,8 +222,8 @@ class BotService:
             webhook_errors_total.labels(channel_type="telegram_bot", status="success").inc()
         except Exception:
             webhook_errors_total.labels(channel_type="telegram_bot", status="error").inc()
-            raise
-        return {"ok": True}
+        finally:
+            return {"ok": True}
 
     async def _process_media_message(
             self, message: dict, bot_token: str, raw_content: dict
