@@ -323,6 +323,7 @@ class CrmService:
                     "error": {"Name": "Ошибка", "Type": "string", "Multiple": "N"},
                 }
 
+
             properties = {
                 "phone": {
                     "Name": "Телефон клиента",
