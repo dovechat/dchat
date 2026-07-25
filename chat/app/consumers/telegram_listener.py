@@ -222,8 +222,9 @@ class TelegramConnection:
 
     async def _handle_message(self, event):
         # Проверка на дубликат
+        log.info(f"_handle_message start event {event}")
         if hasattr(self, 'processed_msgs') and event.id in self.processed_msgs:
-            # log.info(f"Duplicate message {event.id}, skipping")
+            log.info(f"Duplicate message {event.id}, skipping")
             return
         if not hasattr(self, 'processed_msgs'):
             self.processed_msgs = set()
@@ -232,7 +233,7 @@ class TelegramConnection:
             self.processed_msgs = set(list(self.processed_msgs)[-500:])
 
         if not event.is_private:
-            # log.info(f"Not private, skipping")
+            log.info(f"Not private, skipping")
             return
 
         if not event.out:
