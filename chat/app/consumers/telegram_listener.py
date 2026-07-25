@@ -112,7 +112,7 @@ class TelegramConnection:
 
         @self.client.on(events.NewMessage)
         async def handler(event):
-            log.error(f"+*+*+*+*+*+*+*+*  handler NewMessage Telegram")
+            log.error(f"\n\n +*+*+*+*+*+*+*+*  handler NewMessage Telegram \n\n ")
             with open("/tmp/tg_debug.log", "a") as f:
                 f.write(f"RAW HANDLER FIRED event_id={event.id}\n")
                 f.flush()
