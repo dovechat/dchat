@@ -566,16 +566,18 @@ class TelegramListener:
 
     async def _save_and_notify(self, db: AsyncSession, conversation_id: str, peer_phone: str, event):
         """Сохраняет сообщение в БД и уведомляет фронт."""
+        log.info(f"_save_and_notify ENTER conv={conversation_id} peer={peer_phone}")
         service = ChatService(db)
-    
+
         media_id = None
         file_name = None
         mime_type = None
-    
+
         if event.media:
+            log.info(f"_save_and_notify has media conv={conversation_id}")
             file_bytes = await event.download_media(bytes)
             media_id = uuid.uuid4()
-    
+
             if hasattr(event.media, 'document') and event.media.document:
                 mime_type = event.media.document.mime_type
                 file_name = None
@@ -589,12 +591,14 @@ class TelegramListener:
             else:
                 mime_type = "image/jpeg"
                 file_name = f"photo_{media_id}.jpg"
-    
+
             await self.storage.save_file(file_bytes, media_id, file_name, mime_type)
-    
+            log.info(f"_save_and_notify media saved id={media_id}")
+
             media_group_id = getattr(event.message, 'grouped_id', None)
             if media_group_id:
                 media_group_id = str(media_group_id)
+                log.info(f"_save_and_notify album buffered group={media_group_id}")
                 self._album_buffer.setdefault(media_group_id, []).append({
                     "id": str(media_id),
                     "file_name": file_name,
@@ -604,7 +608,7 @@ class TelegramListener:
                     "conversation_id": conversation_id,
                     "peer_phone": peer_phone,
                 })
-    
+
                 if media_group_id in self._album_tasks:
                     self._album_tasks[media_group_id].cancel()
 
@@ -612,7 +616,8 @@ class TelegramListener:
                     self._flush_album(media_group_id, event)
                 )
                 return
-    
+
+        log.info(f"_save_and_notify calling save_incoming_message conv={conversation_id}")
         try:
             message = await service.save_incoming_message(
                 conversation_id=conversation_id,
@@ -622,6 +627,7 @@ class TelegramListener:
                 file_name=file_name,
                 mime_type=mime_type,
             )
+            log.info(f"_save_and_notify saved message id={message.id} conv={conversation_id}")
             await manager.send_new_message(conversation_id, {
                 "id": str(message.id),
                 "text": message.text,
@@ -631,6 +637,7 @@ class TelegramListener:
                 "media": [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "url": self.storage.presigned_url(media_id)}] if media_id else [],
                 "is_new": True,
             })
+            log.info(f"_save_and_notify send_new_message done conv={conversation_id}")
         except Exception as e:
             log.error(f"Failed: {e}", exc_info=True)
             raise
@@ -641,6 +648,7 @@ class TelegramListener:
             f"{getattr(sender, 'last_name', '') or ''}"
         ).strip()
 
+        log.info(f"_save_and_notify starting crm send_to_crm conv={conversation_id}")
         try:
             from crm.app.services.crm_service import CrmService
             from crm.app.core.uow import CrmUnitOfWork
@@ -664,7 +672,6 @@ class TelegramListener:
                 await service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
-
 
 
     async def _flush_album(self, mgid: str, event):
