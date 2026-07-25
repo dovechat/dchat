@@ -161,7 +161,7 @@ class TelegramConnection:
             log.info(f"Disconnected {self.conversation_id}")
 
     async def run(self):
-        log.info(f"Run started for {self.conversation_id}")
+        log.error(f"Run started for {self.conversation_id}")
 
         while self._running:
             try:
@@ -225,9 +225,9 @@ class TelegramConnection:
 
     async def _handle_message(self, event):
         # Проверка на дубликат
-        log.info(f"_handle_message start event {event}")
+        log.error(f"_handle_message start event {event}")
         if hasattr(self, 'processed_msgs') and event.id in self.processed_msgs:
-            log.info(f"Duplicate message {event.id}, skipping")
+            log.error(f"Duplicate message {event.id}, skipping")
             return
         if not hasattr(self, 'processed_msgs'):
             self.processed_msgs = set()
@@ -236,13 +236,13 @@ class TelegramConnection:
             self.processed_msgs = set(list(self.processed_msgs)[-500:])
 
         if not event.is_private:
-            log.info(f"Not private, skipping")
+            log.error(f"Not private, skipping")
             return
 
         if not event.out:
             sender = await event.get_sender()
             if not sender:
-                log.info(f"No sender, skipping")
+                log.error(f"No sender, skipping")
                 return
             sender_phone = getattr(sender, 'phone', '') or ''
             log.info(f"Incoming from {sender_phone}, expected {self.peer_phone}")
@@ -286,7 +286,7 @@ class TelegramConnection:
 
 
     async def wait_for_client(self, timeout=30):
-        log.info(f"Waiting for client for {self.conversation_id}")
+        log.error(f"Waiting for client for {self.conversation_id}")
         start = asyncio.get_event_loop().time()
         while self.client is None and self._running:
             if asyncio.get_event_loop().time() - start > timeout:
