@@ -88,7 +88,7 @@ class TelegramConnection:
         
 
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
-        logging.getLogger('telethon').setLevel(logging.DEBUG)
+        # logging.getLogger('telethon').setLevel(logging.DEBUG)
         self.client = TelegramClient(
             StringSession(session_string),
             settings.tg_api_id,
