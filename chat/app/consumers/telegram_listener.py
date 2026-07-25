@@ -32,6 +32,8 @@ from services.storage_service import StorageService
 log = logging.getLogger("uvicorn.error")
 get_session = asynccontextmanager(get_db)
 
+log.info("\n\n !!! ******* start telegram listener !!! \n\n")
+
 class TelegramConnection:
     def __init__(self, conversation_id: str, my_phone: str, peer_phone: str, message_callback: Callable):
         self.conversation_id = conversation_id
