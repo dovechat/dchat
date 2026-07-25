@@ -30,7 +30,6 @@ from notification.notification_caller import notify_connection_error
 from services.storage_service import StorageService
 
 log = logging.getLogger(__name__)
-log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 get_session = asynccontextmanager(get_db)
 
@@ -47,7 +46,7 @@ class TelegramConnection:
         self._reconnect_delay = 1
         self._connection_error_notified = False
 
-        log.info(f"TelegramConnection created for {conversation_id}")
+        log.error(f"\n\n TelegramConnection created for {conversation_id} \n\n")
 
     def decrypt(self, enc_data: str) -> dict:
         """Decode  data from encoded strinig to dictionary"""
