@@ -105,14 +105,15 @@ class TelegramConnection:
         
         log.info(f"+++++++++ Connecting to Telegram self.client after connect")
 
+        
+
         try:
-            if not await self.client.is_user_authorized():
-                log.error(f"\n\n -*-*-*-*-*-*-* Not authorized for {self.my_phone} \n\n")
-                raise ValueError(f"Not authorized for {self.my_phone}")
+            autorized = await self.client.is_user_authorized()
+            log.error(f"user_authorized {autorized}")
         except Exception as e:
             log.error(f"\n\n -*-*-*-*-*-*-* EX Not authorized {e} \n\n")
 
-        log.info(f"+++++++++ Connecting to Telegram self.client after is_user_authorized events {events}")
+        log.info(f"+++++++++ Connecting to Telegram self.client after is_user_authorized")
 
         @self.client.on(events.NewMessage)
         async def handler(event):
