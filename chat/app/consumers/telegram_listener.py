@@ -99,20 +99,6 @@ class TelegramConnection:
             retry_delay=1
         )
 
-        '''
-        self.client = TelegramClient(
-            StringSession(session_string),
-            settings.tg_api_id,
-            settings.tg_api_hash,
-            connection=ConnectionTcpMTProxyRandomizedIntermediate,
-            proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
-            auto_reconnect=True,
-            connection_retries=5,
-            retry_delay=1,
-        )
-
-        '''
-
         log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
 
         await self.client.connect()
