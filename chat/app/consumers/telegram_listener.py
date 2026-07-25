@@ -110,7 +110,7 @@ class TelegramConnection:
                 log.error(f"\n\n -*-*-*-*-*-*-* Not authorized for {self.my_phone} \n\n")
                 raise ValueError(f"Not authorized for {self.my_phone}")
         except Exception as e:
-            log.error(f"\n\n -*-*-*-*-*-*-* EX Not authorized {e} } \n\n")
+            log.error(f"\n\n -*-*-*-*-*-*-* EX Not authorized {e} \n\n")
 
         log.info(f"+++++++++ Connecting to Telegram self.client after is_user_authorized events {events}")
 
