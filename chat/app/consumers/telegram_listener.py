@@ -87,7 +87,7 @@ class TelegramConnection:
 
 
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
-
+        logging.getLogger('telethon').setLevel(logging.DEBUG)
         self.client = TelegramClient(
             StringSession(session_string),
             settings.tg_api_id,
@@ -96,7 +96,8 @@ class TelegramConnection:
             proxy=(settings.tg_proxy_host, int(settings.tg_proxy_port), settings.tg_proxy_secret),
             auto_reconnect=True,
             connection_retries=5,
-            retry_delay=1
+            retry_delay=1,
+            timeout=5,
         )
 
         log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
