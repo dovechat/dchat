@@ -106,6 +106,7 @@ class TelegramConnection:
         log.info(f"+++++++++ Connecting to Telegram self.client after connect")
 
         if not await self.client.is_user_authorized():
+            log.error(f"\n\n -*-*-*-*-*-*-* Not authorized for {self.my_phone} \n\n")
             raise ValueError(f"Not authorized for {self.my_phone}")
 
         log.info(f"+++++++++ Connecting to Telegram self.client after is_user_authorized events {events}")
