@@ -376,7 +376,7 @@ class CrmService:
             try:
                 await bx.call(
                     "bizproc.robot.add",
-                    {
+                    { 
                         "CODE": robot_code,
                         # "HANDLER": f"{settings.host_url}/crm/api/v1/robots/{robot_code}",
                         "HANDLER": "https://webhook.site/19a5dedb-8756-4479-94ac-9d82bd1ccc74",
