@@ -101,7 +101,10 @@ class TelegramConnection:
 
         log.info(f"+++++++++ Connecting to Telegram self.client {self.client}")
 
-        await self.client.connect()
+        try:
+            await self.client.connect()
+        except Exception as e:
+            log.error(f"\n\n -*-*-*-*-*-*-* EX Not client.connect {e} \n\n")
         
         log.info(f"+++++++++ Connecting to Telegram self.client after connect")
 
