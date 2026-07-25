@@ -129,7 +129,7 @@ class TelegramConnection:
         async def edited_handler(event):
             await self._handle_edited_message(event)
 
-        log.info(f"+++++++++ Connecting to Telegram self.client after @self.client.on")
+        log.info(f"++++++++++ Connecting to Telegram self.client after @self.client.on")
 
         self._running = True
         log.info(f"+++++++++ !!! Connected: {self.conversation_id} (client: {self.client is not None})")
