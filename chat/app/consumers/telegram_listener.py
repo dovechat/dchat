@@ -29,7 +29,7 @@ from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
 from services.storage_service import StorageService
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(__name__).setLevel(logging.INFO)
 get_session = asynccontextmanager(get_db)
 
 log.info("\n\n !!! ******* start telegram listener !!! \n\n")
