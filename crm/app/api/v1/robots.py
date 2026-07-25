@@ -21,8 +21,15 @@ async def robot_webhook(
     request: Request,
     crm_service: CrmService = Depends(get_crm_service),
 ):
+    log.info(f"\n\n ROBOT HIT code={robot_code} \n\n")
     body = await request.body()
     parsed = parse_qs(body.decode())
     data = {k: v[0] for k, v in parsed.items()}
     log.info(f"robot_webhook raw data: {data}")
     return await crm_service.handle_robot(robot_code, data)
+
+
+@robots_router.post("/test_robot_123")
+async def test_robot(request: Request):
+    log.info("TEST ROBOT HIT")
+    return {"STATUS": "OK"}

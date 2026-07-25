@@ -323,7 +323,6 @@ class CrmService:
                     "error": {"Name": "Ошибка", "Type": "string", "Multiple": "N"},
                 }
 
-
             properties = {
                 "phone": {
                     "Name": "Телефон клиента",
@@ -398,6 +397,38 @@ class CrmService:
                 log.info(f"{settings.host_url}/crm/api/v1/robots/{robot_code}")
             except Exception as e:
                 log.warning(f"bizproc.robot.add {robot_code} failed: {e}")
+
+
+
+
+
+
+
+
+
+
+        # Add test robot
+        log.info("start register robot: test_robot_123")
+        try:
+            await bx.call(
+                "bizproc.robot.add",
+                {
+                    "CODE": "test_robot_123",
+                    "HANDLER": f"{settings.host_url}/crm/api/v1/robots/test_robot_123",
+                    "AUTH_USER_ID": 1,
+                    "USE_SUBSCRIPTION": "Y",
+                    "NAME": "Test robot 123",
+                },
+                use_json=True,
+            )
+            log.info("robot registered: test_robot_123")
+        except Exception as e:
+            log.warning(f"test robot failed: {e}")
+
+
+
+
+
 
         try:
             await bx.call(
