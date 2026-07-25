@@ -378,8 +378,7 @@ class CrmService:
                     "bizproc.robot.add",
                     { 
                         "CODE": robot_code,
-                        # "HANDLER": f"{settings.host_url}/crm/api/v1/robots/{robot_code}",
-                        "HANDLER": "https://webhook.site/19a5dedb-8756-4479-94ac-9d82bd1ccc74",
+                        "HANDLER": f"{settings.host_url}/crm/api/v1/robots/{robot_code}",
                         "AUTH_USER_ID": 1,
                         "USE_SUBSCRIPTION": "Y",
                         "NAME": robot_name,
