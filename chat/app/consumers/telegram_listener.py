@@ -107,8 +107,8 @@ class TelegramConnection:
 
         try:
             if not await self.client.is_user_authorized():
-            log.error(f"\n\n -*-*-*-*-*-*-* Not authorized for {self.my_phone} \n\n")
-            raise ValueError(f"Not authorized for {self.my_phone}")
+                log.error(f"\n\n -*-*-*-*-*-*-* Not authorized for {self.my_phone} \n\n")
+                raise ValueError(f"Not authorized for {self.my_phone}")
         except Exception as e:
             log.error(f"\n\n -*-*-*-*-*-*-* EX Not authorized {e} } \n\n")
 
