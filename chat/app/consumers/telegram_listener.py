@@ -83,8 +83,9 @@ class TelegramConnection:
         if not session_string:
             raise ValueError(f"No session for {self.my_phone}")
 
-        log.info(f"\n\n +++++++++ Connecting to Telegram settings.tg_proxy_host {settings.tg_proxy_host} settings.tg_proxy_port {settings.tg_proxy_port} \n\n ")
+        log.info(f"\n\n +++++++++ Connecting to Telegram settings.tg_proxy_host {settings.tg_proxy_host} settings.tg_proxy_port {settings.tg_proxy_port}  {settings.tg_proxy_secret} \n\n ")
 
+        
 
         from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
         logging.getLogger('telethon').setLevel(logging.DEBUG)
