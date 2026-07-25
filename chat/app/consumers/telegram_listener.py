@@ -86,7 +86,7 @@ class TelegramConnection:
         log.info(f"\n\n +++++++++ Connecting to Telegram settings.tg_proxy_host {settings.tg_proxy_host} settings.tg_proxy_port {settings.tg_proxy_port} \n\n ")
 
         with open("/tmp/tg_debug.log", "a") as f:
-            f.write(f"RAW HANDLER FIRED event_id={event.id}\n")
+            f.write(f"IIIIIIIIIIDDDDDDDDDDDDDD\n")
             f.flush()
 
 
