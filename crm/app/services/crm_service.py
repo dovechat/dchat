@@ -778,7 +778,7 @@ class CrmService:
         line_id_str = data.get("properties[line_id]") or data.get("PROPERTIES[line_id]")
         channel_type = data.get("properties[channel_type]") or data.get("PROPERTIES[channel_type]")
 
-        log.info(f"handle_robot code={robot_code} member_id={member_id} phone={phone} line_id={line_id_str}")
+        log.info(f"handle_robot code={robot_code} member_id={member_id} phone={phone} line_id={line_id_str} channel_type={channel_type}")
 
         if not all([event_token, member_id, phone, line_id_str]):
             log.error(
@@ -816,7 +816,7 @@ class CrmService:
         bx = BitrixClient(domain=conn.domain, access_token=data.get("auth[access_token]"))
 
         if robot_code == "dovechat_check_account":
-            return_values = await self._robot_check_account(phone, line_id)
+            return_values = await self._robot_check_account(phone, line_id, channel_type)
             log.info(f"robot dovechat_check_account return_values {return_values}")
             doc_id_raw = data.get("document_id[2]") or data.get("DOCUMENT_ID[2]")
             log.info(f"handle_robot doc_id_raw={doc_id_raw!r}")
@@ -928,14 +928,16 @@ class CrmService:
 
         return {"status": status, "message_id": message_id, "error": error_msg}
 
-    async def _robot_check_account(self, phone: str, line_id: uuid.UUID) -> dict:
+    async def _robot_check_account(self, phone: str, line_id: uuid.UUID, channel_type: str) -> dict:
         from models.lines import ChannelType
-        res = None
-        accounts = await self._uow.channel_accounts.get_multi(
-            filters={"line_id": line_id, "channel_type": ChannelType.telegram_user},
-            limit=1,
-        )
-        if accounts and accounts[0].session_string:
+
+        if channel_type == ChannelType.telegram_user.value:
+            accounts = await self._uow.channel_accounts.get_multi(
+                filters={"line_id": line_id, "channel_type": ChannelType.telegram_user},
+                limit=1,
+            )
+            if not accounts or not accounts[0].session_string:
+                return {"exists": "N"}
             session_string = accounts[0].session_string
             try:
                 async with httpx.AsyncClient() as client:
@@ -944,42 +946,41 @@ class CrmService:
                         json={"phone": phone, "session_string": session_string},
                         timeout=15,
                     )
-                    log.info(f"_robot_check_account resp: {resp.status_code} {resp.text}")
                     result = resp.json()
                 exists = "Y" if result.get("exists") else "N"
-                user_id = str(result.get("user_id") or "")
-                res = {"exists": exists, "user_id": user_id, "error": ""}
             except Exception as e:
-                log.error(f"_robot_check_account failed: {e}")
-                res = {"exists": "N", "user_id": "", "error": str(e)}
-        else:
+                log.error(f"_robot_check_account tg failed: {e}")
+                exists = "N"
+            return {"exists": exists}
+
+        elif channel_type == ChannelType.whatsapp_green.value:
             wa_accounts = await self._uow.channel_accounts.get_multi(
                 filters={"line_id": line_id, "channel_type": ChannelType.whatsapp_green},
                 limit=1,
             )
             if not wa_accounts:
-                log.error(f"_robot_check_account no channel account for line_id={line_id}")
-                res = {"exists": "N", "user_id": "", "error": "Нет активного канала"}
-            else:
-                from infra.crypto import decrypt
-                creds = json.loads(decrypt(wa_accounts[0].credentials_encrypted["encrypted_data"]))
-                id_instance = creds.get("id_instance")
-                api_token = creds.get("api_token")
-                try:
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.post(
-                            f"{settings.proxy_green_url}/waInstance{id_instance}/checkWhatsapp/{api_token}",
-                            json={"phoneNumber": int(phone)},
-                            timeout=15,
-                        )
-                        log.info(f"_robot_check_account wa resp: {resp.status_code} {resp.text}")
-                        result = resp.json()
-                    exists = "Y" if result.get("existsWhatsapp") else "N"
-                    res = {"exists": exists, "user_id": "", "error": ""}
-                except Exception as e:
-                    log.error(f"_robot_check_account wa failed: {e}")
-                    res = {"exists": "N", "user_id": "", "error": str(e)}
-        return {"exists": "Y" if res["exists"] == "Y" else "N"}
+                return {"exists": "N"}
+            from infra.crypto import decrypt
+            creds = json.loads(decrypt(wa_accounts[0].credentials_encrypted["encrypted_data"]))
+            id_instance = creds.get("id_instance")
+            api_token = creds.get("api_token")
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(
+                        f"{settings.proxy_green_url}/waInstance{id_instance}/checkWhatsapp/{api_token}",
+                        json={"phoneNumber": int(phone)},
+                        timeout=15,
+                    )
+                    result = resp.json()
+                exists = "Y" if result.get("existsWhatsapp") else "N"
+            except Exception as e:
+                log.error(f"_robot_check_account wa failed: {e}")
+                exists = "N"
+            return {"exists": exists}
+
+        else:
+            log.error(f"_robot_check_account unsupported channel_type={channel_type}")
+            return {"exists": "N", "error": "Неподдерживаемый канал"}
 
     async def check_wa_tg(self, data: dict) -> dict:
         from crm.app.services.providers.bitrix.client import BitrixClient
