@@ -820,6 +820,10 @@ class CrmService:
             log.info(f"robot dovechat_check_account return_values {return_values}")
 
             doc_id_raw = data.get("document_id[2]") or data.get("DOCUMENT_ID[2]")
+
+            log.info(f"handle_robot doc_id_raw={doc_id_raw!r}")
+            if doc_id_raw and doc_id_raw.startswith("DEAL_"):
+
             if doc_id_raw and doc_id_raw.startswith("DEAL_"):
                 deal_id = doc_id_raw.replace("DEAL_", "")
                 try:
