@@ -822,7 +822,7 @@ class CrmService:
             log.info(f"handle_robot doc_id_raw={doc_id_raw!r}")
             if doc_id_raw and doc_id_raw.startswith("DEAL_"):
                 deal_id = doc_id_raw.replace("DEAL_", "")
-                fields_payload = {"DOVECHAT_WA_TG_STATUS": return_values.get("exists")}
+                fields_payload = {"UF_CRM_DOVECHAT_WA_TG_STATUS": return_values.get("exists")}
                 log.info(f"handle_robot crm.deal.update about to call deal_id={deal_id} fields={fields_payload}")
                 try:
                     r = await bx.call("crm.deal.update", {
