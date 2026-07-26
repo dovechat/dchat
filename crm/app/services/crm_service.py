@@ -822,7 +822,7 @@ class CrmService:
             doc_id_raw = data.get("document_id[2]") or data.get("DOCUMENT_ID[2]")
 
             log.info(f"handle_robot doc_id_raw={doc_id_raw!r}")
-            if doc_id_raw and doc_id_raw.startswith("DEAL_"):
+
 
             if doc_id_raw and doc_id_raw.startswith("DEAL_"):
                 deal_id = doc_id_raw.replace("DEAL_", "")
