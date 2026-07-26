@@ -751,8 +751,12 @@ class ChatService:
 
     from typing import Any
     async def robot_send(self, data: CrmMessageOut, tg_listener: Any=None) -> dict:
+        filters = {"line_id": data.line_id, "client_phone": data.client_phone}
+        if data.channel_type:
+            filters["channel_type"] = data.channel_type
+        
         convs = await self.conv_repo.get_multi(
-            filters={"line_id": data.line_id, "client_phone": data.client_phone},
+            filters=filters,
             limit=1,
         )
         if convs:
