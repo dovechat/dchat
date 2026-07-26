@@ -314,10 +314,11 @@ async def crm_incoming(
 
 @router.post("/internal/crm-robot-send")
 async def crm_robot_send(
+    request: Request, 
     data: CrmMessageOut,
     chat_service: ChatService = Depends(get_chat_service),
 ):
-    return await chat_service.robot_send(data)
+    return await chat_service.robot_send(data, tg_listener=request.app.state.listener)
 
 
 

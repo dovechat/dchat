@@ -749,7 +749,8 @@ class ChatService:
         log.info(f"start_crm_outgoing creds conv.id {conv.id}")
         return {"status": "ok", "conversation_id": str(conv.id)}
 
-    async def robot_send(self, data: CrmMessageOut) -> dict:
+    from app.consumers import TelegramListener
+    async def robot_send(self, data: CrmMessageOut, tg_listener: TelegramListener=None) -> dict:
         convs = await self.conv_repo.get_multi(
             filters={"line_id": data.line_id, "client_phone": data.client_phone},
             limit=1,
@@ -797,7 +798,10 @@ class ChatService:
                 )
             media = data.media
 
-        sender = SenderFactory.get_sender(channel_type)
+        # sender = SenderFactory.get_sender(channel_type)
+        sender = await self._init_sender(channel_type, conv.id, tg_listener)
+        if hasattr(sender, "set_listener"):
+            sender.set_listener(tg_listener)
         if hasattr(sender, "set_bot_token"):
             sender.set_bot_token(creds.get("bot_token"))
 
