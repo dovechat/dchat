@@ -398,39 +398,6 @@ class CrmService:
             except Exception as e:
                 log.warning(f"bizproc.robot.add {robot_code} failed: {e}")
 
-
-
-
-
-
-
-
-
-
-        '''
-        # Add test robot
-        log.info("start register robot: test_robot_123")
-        try:
-            await bx.call(
-                "bizproc.robot.add",
-                {
-                    "CODE": "test_robot_123",
-                    "HANDLER": f"{settings.host_url}/crm/api/v1/robots/test_robot_123",
-                    "AUTH_USER_ID": 1,
-                    "USE_SUBSCRIPTION": "Y",
-                    "NAME": "Test robot 123",
-                },
-                use_json=True,
-            )
-            log.info("robot registered: test_robot_123")
-        except Exception as e:
-            log.warning(f"test robot failed: {e}")
-        '''
-
-
-
-
-
         try:
             await bx.call(
                 "crm.userfield.add",
@@ -859,7 +826,7 @@ class CrmService:
                     await bx.call("crm.deal.update", {
                         "id": deal_id,
                         "fields": {"DOVECHAT_WA_TG_STATUS": return_values.get("exists")},
-                    })
+                    }, use_json=True)
                 except Exception as e:
                     log.error(f"handle_robot crm.deal.update failed: {e}")
 
