@@ -28,8 +28,9 @@ async def robot_webhook(
     log.info(f"robot_webhook raw data: {data}")
     return await crm_service.handle_robot(robot_code, data)
 
-
+'''
 @robots_router.post("/test_robot_123")
 async def test_robot(request: Request):
     log.info("TEST ROBOT HIT")
     return {"STATUS": "OK"}
+'''

@@ -407,6 +407,7 @@ class CrmService:
 
 
 
+        '''
         # Add test robot
         log.info("start register robot: test_robot_123")
         try:
@@ -424,7 +425,7 @@ class CrmService:
             log.info("robot registered: test_robot_123")
         except Exception as e:
             log.warning(f"test robot failed: {e}")
-
+        '''
 
 
 
