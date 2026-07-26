@@ -818,21 +818,22 @@ class CrmService:
         if robot_code == "dovechat_check_account":
             return_values = await self._robot_check_account(phone, line_id)
             log.info(f"robot dovechat_check_account return_values {return_values}")
-
             doc_id_raw = data.get("document_id[2]") or data.get("DOCUMENT_ID[2]")
-
             log.info(f"handle_robot doc_id_raw={doc_id_raw!r}")
-
-
             if doc_id_raw and doc_id_raw.startswith("DEAL_"):
                 deal_id = doc_id_raw.replace("DEAL_", "")
+                fields_payload = {"DOVECHAT_WA_TG_STATUS": return_values.get("exists")}
+                log.info(f"handle_robot crm.deal.update about to call deal_id={deal_id} fields={fields_payload}")
                 try:
-                    await bx.call("crm.deal.update", {
+                    r = await bx.call("crm.deal.update", {
                         "id": deal_id,
-                        "fields": {"DOVECHAT_WA_TG_STATUS": return_values.get("exists")},
+                        "fields": fields_payload,
                     }, use_json=True)
+                    log.info(f"handle_robot crm.deal.update result={r}")
                 except Exception as e:
-                    log.error(f"handle_robot crm.deal.update failed: {e}")
+                    log.error(f"handle_robot crm.deal.update failed: {e!r}")
+            else:
+                log.info(f"handle_robot crm.deal.update SKIPPED doc_id_raw={doc_id_raw!r}")
 
         else:
             return_values = await self._robot_send(
