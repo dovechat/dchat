@@ -142,7 +142,7 @@ class BitrixClient:
                         "MESSAGE": text,
                     }
                 )
-                else:
+            else:
                 result = await self.call(
                     "imconnector.send.messages",
                     params,
