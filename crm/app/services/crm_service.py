@@ -105,7 +105,7 @@ class CrmService:
                 deal_id = await bx.find_open_deal(contact_id)
                 log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
                 if deal_id:
-                    log.info(f"\n\n DEAL has been FOUND! deal_id={deal_id}\n doin nothing, just checking \n\n")
+                    log.info(f"\n\n DEAL has been FOUND! deal_id={deal_id} \n\n")
                     '''
                     attach_result = await bx.attach_deal_to_chat(
                         session_chat_id,
