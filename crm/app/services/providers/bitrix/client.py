@@ -69,6 +69,7 @@ class BitrixClient:
             text: str,
             message_id: str | None = None,
             media: list[dict] = [],
+            deal_id: int | None = None,
     ) -> dict:
         msg_id = message_id or str(uuid.uuid4())
         log.info(
@@ -92,8 +93,8 @@ class BitrixClient:
             ]
 
 
-        contact_id = await bx.find_contact_by_phone(client_phone)
-        deal_id = await bx.find_open_deal(contact_id)
+        contact_id = await self.find_contact_by_phone(client_phone)
+        deal_id = await self.find_open_deal(contact_id)
 
         params = {
             "CONNECTOR": connector_id,
@@ -124,7 +125,7 @@ class BitrixClient:
 
 
         if deal_id:
-            chat = await bx.call(
+            chat = await selfcall(
                 "imopenlines.crm.chat.get",
                 {
                     "CRM_ENTITY_TYPE": "deal",
@@ -135,7 +136,7 @@ class BitrixClient:
             if chat.get("result"):
                 bitrix_chat_id = chat["result"][0]["CHAT_ID"]
 
-                result = await bx.call(
+                result = await self.call(
                     "imopenlines.crm.message.add",
                     {
                         "CHAT_ID": bitrix_chat_id,
