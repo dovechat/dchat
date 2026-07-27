@@ -82,7 +82,14 @@ class BitrixClient:
             "LINE": line_id,
             "MESSAGES": [
                 {
-                    "user": {"id": user_id, "name": user_name},
+                    "user": {
+                        "id": user_id,
+                        "name": user_name,
+                        "phones": [
+                            {"VALUE": user_id, "VALUE_TYPE": "MOBILE"},
+                            {"VALUE": user_id, "VALUE_TYPE": "WORK"},
+                        ],
+                    },
                     "message": msg,
                     "chat": {"id": chat_id, "name": f"Диалог {user_id}"},
                 }
