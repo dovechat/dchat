@@ -417,7 +417,7 @@ class ChatService:
             if not conv:
                 raise ValueError("Conversation not found")
             await rdb.set(f"conv:{data.conversation_id}", json.dumps({"id": str(conv.id), "is_closed": conv.is_closed}),
-                          ex=300)
+                          ex=10)
 
 
         # Автооткрытие закрытого чата при новом сообщении
