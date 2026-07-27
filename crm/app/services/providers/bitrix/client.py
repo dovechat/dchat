@@ -122,8 +122,6 @@ class BitrixClient:
 
         log.info(f"send_message params: {params}")
 
-
-
         if deal_id:
             chat = await self.call(
                 "imopenlines.crm.chat.get",
