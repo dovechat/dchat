@@ -83,7 +83,8 @@ class BitrixClient:
             "MESSAGES": [
                 {
                     "user": {
-                        "id": user_id,
+                        # "id": user_id,
+                        "id": "5136931291",
                         "name": user_name,
                         "phones": [
                             {"VALUE": user_id, "VALUE_TYPE": "MOBILE"},
