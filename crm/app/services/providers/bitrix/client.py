@@ -45,6 +45,20 @@ class BitrixClient:
             raise ValueError(f"Token refresh failed: {data}")
         return data
 
+    async def send_message_to_deal_chat(
+            self,
+            deal_id: str,
+            message: dict,
+    ) -> dict:
+        return await self.call(
+            "imopenlines.crm.message.add",
+            {
+                "CRM_ENTITY_TYPE": "deal",
+                "CRM_ENTITY_ID": deal_id,
+                "MESSAGE": message,
+            },
+        )
+
     async def send_message(
             self,
             connector_id: str,
@@ -77,14 +91,17 @@ class BitrixClient:
                 for m in media
             ]
 
+
+        contact_id = await bx.find_contact_by_phone(client_phone)
+        deal_id = await bx.find_open_deal(contact_id)
+
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
             "MESSAGES": [
                 {
                     "user": {
-                        # "id": user_id,
-                        "id": "5136931291",
+                        "id": user_id,
                         "name": user_name,
                         "phones": [
                             {"VALUE": user_id, "VALUE_TYPE": "MOBILE"},
@@ -92,14 +109,65 @@ class BitrixClient:
                         ],
                     },
                     "message": msg,
-                    "chat": {"id": chat_id, "name": f"Диалог {user_id}"},
+                    "chat": {
+                        "id": chat_id,
+                        "name": f"Диалог {user_id}",
+                        "crm_entity_type": "deal",
+                        "crm_entity_id": str(deal_id) if deal_id else None,
+                    },
                 }
             ],
         }
 
         log.info(f"send_message params: {params}")
 
-        result = await self.call("imconnector.send.messages", params, use_json=True)
+
+
+        if deal_id:
+            chat = await bx.call(
+                "imopenlines.crm.chat.get",
+                {
+                    "CRM_ENTITY_TYPE": "deal",
+                    "CRM_ENTITY": deal_id,
+                }
+            )
+
+            if chat.get("result"):
+                bitrix_chat_id = chat["result"][0]["CHAT_ID"]
+
+                result = await bx.call(
+                    "imopenlines.crm.message.add",
+                    {
+                        "CHAT_ID": bitrix_chat_id,
+                        "MESSAGE": text,
+                    }
+                )
+                else:
+                result = await self.call(
+                    "imconnector.send.messages",
+                    params,
+                    use_json=True,
+                )
+
+                session = (
+                    result
+                    .get("result", {})
+                    .get("DATA", {})
+                    .get("RESULT", [{}])[0]
+                    .get("session", {})
+                )
+
+                bitrix_chat_id = session.get("CHAT_ID")
+
+                log.info(
+                    f"new bitrix chat={bitrix_chat_id} for deal={deal_id}"
+                )
+        else:
+            result = await self.call(
+                "imconnector.send.messages",
+                params,
+                use_json=True,
+            )
 
         log.info(f"send_message result: {result}")
         im = result.get("result", {})
