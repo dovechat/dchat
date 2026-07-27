@@ -125,7 +125,7 @@ class BitrixClient:
 
 
         if deal_id:
-            chat = await selfcall(
+            chat = await self.call(
                 "imopenlines.crm.chat.get",
                 {
                     "CRM_ENTITY_TYPE": "deal",
