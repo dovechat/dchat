@@ -104,10 +104,7 @@ class BitrixClient:
                     "user": {
                         "id": user_id,
                         "name": user_name,
-                        "phones": [
-                            {"VALUE": user_id, "VALUE_TYPE": "MOBILE"},
-                            {"VALUE": user_id, "VALUE_TYPE": "WORK"},
-                        ],
+                        "phone": user_id,
                     },
                     "message": msg,
                     "chat": {
