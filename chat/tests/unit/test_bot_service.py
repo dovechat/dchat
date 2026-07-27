@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+from fastapi import HTTPException
 
 import pytest
 
@@ -43,7 +44,7 @@ async def test_handle_webhook_line_not_found():
     service = make_service()
     service.db.get = AsyncMock(return_value=None)
     result = await service.handle_webhook(uuid.uuid4(), {}, MagicMock(headers={}))
-    assert result == {"ok": True}
+    assert result == {"ok": False}
 
 
 @pytest.mark.asyncio
@@ -55,8 +56,9 @@ async def test_handle_webhook_invalid_secret_token(mock_decrypt):
     service.channel_repo.get_by_line_and_type = AsyncMock(return_value=MagicMock(credentials_encrypted="x"))
     mock_decrypt.return_value = {"secret_token": "expected"}
     request = MagicMock(headers={"x-telegram-bot-api-secret-token": "wrong"})
-    result = await service.handle_webhook(line.id, {"message": {}}, request)
-    assert result == {"ok": True}
+    with pytest.raises(HTTPException) as exc_info:
+        await service.handle_webhook(line.id, {"message": {}}, request)
+    assert exc_info.value.status_code == 403
     service.conv_repo.get_or_create_by_chat_id.assert_not_called()
 
 

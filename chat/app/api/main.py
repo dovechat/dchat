@@ -87,7 +87,9 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    listener = app.state.listener
+    listener = getattr(app.state, "listener", None)
+    if not listener:
+        return
     for conv_id in list(listener.tasks.keys()):
         client = listener.clients.get(conv_id)
         if client:

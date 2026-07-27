@@ -117,7 +117,7 @@ class BitrixClient:
     async def find_open_deal(self, contact_id: str) -> str | None:
         result = await self.call("crm.deal.list", {
             "filter[CONTACT_ID]": contact_id,
-            "filter[STAGE_SEMANTIC_ID]": "P",
+            "filter[!STAGE_ID]": ["WON", "LOSE", "APOLOGY"],
             "select[]": "ID",
         })
         items = result.get("result", [])

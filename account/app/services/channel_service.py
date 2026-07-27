@@ -453,7 +453,7 @@ class ChannelAccountService:
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
 
-        token = secrets.waba_token(32)
+        token = secrets.token_hex(32)
         credentials = {"api_key": api_key, "token": token}
         encrypted = self._encrypt_credentials(credentials)
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.WABA)

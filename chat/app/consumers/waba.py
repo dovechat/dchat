@@ -124,7 +124,11 @@ class WabaListener:
                 log.info(f"\n\n  ******* payload {payload} \n\n")
         
                 # Парсим структуру Meta
-                entry = payload.get("entry", [{}])[0]
+                entries = payload.get("entry", [])
+                if not entries:
+                    log.error("WABA webhook payload has empty entry list")
+                    return
+                entry = entries[0]
                 changes = entry.get("changes", [{}])[0]
                 value = changes.get("value", {})
         

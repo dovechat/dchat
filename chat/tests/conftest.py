@@ -7,8 +7,9 @@ import pytest_asyncio
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
 
 @pytest.fixture
 def token_with_tenant():

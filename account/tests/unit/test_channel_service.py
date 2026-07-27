@@ -195,7 +195,6 @@ async def test_update_waba_success(channel_service_waba, mock_line):
     tenant_id = mock_line.tenant_id
     api_key = "test-waba-key-123"
 
-
     mock_line.channel_type = ChannelType.WABA
     mock_updated = MagicMock(
         id=uuid.uuid4(),

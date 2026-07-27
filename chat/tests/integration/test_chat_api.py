@@ -175,7 +175,7 @@ class TestChatIntegration:
 
 
     @pytest.mark.asyncio
-    async def test_crm_robot_send(self, client, override_deps):
+    async def test_crm_robot_send(self, client, override_deps, mock_app_listener):
         _, mock_service = override_deps
         mock_service.robot_send = AsyncMock(return_value={"status": "ok"})
 

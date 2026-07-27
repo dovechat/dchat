@@ -117,12 +117,10 @@ class GreenWhatsAppListener:
             """Обработать входящий вебхук от Green API"""
             from app.services.chat_service import ChatService
             log.info(f"\n\n --- **** --- \n auth_header {auth_header}   {settings.green_api_token} \n --- **** --- \n\n")
-            if "Bearer" in auth_header:
-                token = auth_header.split()[1]
-                if token != settings.green_api_token:
-                    msg = "Green webhook auth token mismatch"
-                    log.error(f"!!! -- ERROR -- {msg}")
-                    return
+            if auth_header != settings.green_api_token:
+                msg = "Green webhook auth token mismatch"
+                log.error(f"!!! -- ERROR -- {msg}")
+                return
             else:
                 log.info(
                     f"\n\n --- **** --- \n auth_header {auth_header} is equal to  {settings.green_api_token} and authentication has been passed \n --- **** --- \n\n")

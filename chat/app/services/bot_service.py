@@ -220,10 +220,12 @@ class BotService:
                 log.info(f"\n\n *-**-*-*-*-*-*-*-*    crm after \n\n ")
 
             webhook_errors_total.labels(channel_type="telegram_bot", status="success").inc()
+            return {"ok": True}
+        except HTTPException:
+            raise
         except Exception:
             webhook_errors_total.labels(channel_type="telegram_bot", status="error").inc()
-        finally:
-            return {"ok": True}
+            return {"ok": False}
 
     async def _process_media_message(
             self, message: dict, bot_token: str, raw_content: dict

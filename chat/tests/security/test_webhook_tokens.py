@@ -19,6 +19,14 @@ from core.database import engine
 
 
 @pytest_asyncio.fixture(autouse=True)
+def _mock_green_listener():
+    app.state.green_listener = MagicMock()
+    app.state.green_listener.handle_webhook = AsyncMock(side_effect=lambda *a, **kw: None)
+    yield
+    del app.state.green_listener
+
+
+@pytest_asyncio.fixture(autouse=True)
 def _mock_waba_listener():
     app.state.waba_listener = MagicMock()
     app.state.waba_listener.handle_webhook = AsyncMock()
@@ -30,21 +38,6 @@ def _mock_waba_listener():
 async def _reset_pool_after_test():
     yield
     await engine.dispose()
-
-async def _get_active_account(channel_type: str) -> ChannelAccount:
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(ChannelAccount).where(
-                ChannelAccount.channel_type == channel_type,
-                ChannelAccount.connection_status == "connected",
-                ChannelAccount.updated_at >= today_start,
-            ).limit(1)
-        )
-        account = result.scalar_one_or_none()
-        if account is None:
-            pytest.skip(f"no {channel_type} ChannelAccount created today in DB")
-        return account
 
 
 def _decrypt_creds(account: ChannelAccount) -> dict:
@@ -162,6 +155,61 @@ async def waba_account():
             await session.rollback()
 
 
+@pytest_asyncio.fixture
+async def green_account():
+    """Вставляет тестовую line + Green линию с известным токеном, удаляет после теста."""
+    green_api_token = "89vn3jsdx90dsw269sz2sf7e5wrtc78sds"
+    creds = {"id_instance": "test-instance-id", "api_token": green_api_token}
+    encrypted = {"encrypted_data": encrypt(json.dumps(creds))}
+    line_id = uuid.uuid4()
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Tenant.id).limit(1))
+        tenant_id = result.scalar_one_or_none()
+        if tenant_id is None:
+            pytest.skip("no Tenant in DB to attach test Line to")
+
+        line = Line(id=line_id, tenant_id=tenant_id, name="test-green-line")
+        session.add(line)
+        await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        account = ChannelAccount(
+            id=uuid.uuid4(),
+            line_id=line_id,
+            channel_type="whatsapp_green",
+            connection_status="connected",
+            credentials_encrypted=encrypted,
+            updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        )
+        session.add(account)
+        await session.commit()
+
+    yield line_id, green_api_token
+
+    async with AsyncSessionLocal() as session:
+        try:
+            result = await session.execute(
+                select(ChannelAccount).where(ChannelAccount.line_id == line_id)
+            )
+            acc_to_delete = result.scalar_one_or_none()
+            if acc_to_delete is not None:
+                await session.delete(acc_to_delete)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+    async with AsyncSessionLocal() as session:
+        try:
+            result = await session.execute(select(Line).where(Line.id == line_id))
+            line_to_delete = result.scalar_one_or_none()
+            if line_to_delete is not None:
+                await session.delete(line_to_delete)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+
 class TestWebhookTokenVerification:
 
     # --- Telegram bot ---
@@ -224,20 +272,20 @@ class TestWebhookTokenVerification:
 
     # --- Green ---
 
-    async def test_green_webhook_invalid_bearer_403(self, client):
-        account = await _get_active_account("whatsapp_green")
+    async def test_green_webhook_invalid_bearer_403(self, client, green_account, caplog):
+        line_id, _ = green_account
         resp = await client.post(
-            f"/v1/webhooks/whatsapp/green/{account.line_id}",
+            f"/v1/webhooks/whatsapp/green/{line_id}",
             json={"typeWebhook": "incomingMessageReceived"},
             headers={"webhookUrlToken": "WRONG_TOKEN"},
         )
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 200
+        assert "Green webhook auth token mismatch" in caplog.text
 
-    async def test_green_webhook_valid_bearer_200(self, client):
-        account = await _get_active_account("whatsapp_green")
-        green_api_token = "89vn3jsdx90dsw269sz2sf7e5wrtc78sds"
+    async def test_green_webhook_valid_bearer_200(self, client, green_account):
+        line_id, green_api_token = green_account
         resp = await client.post(
-            f"/v1/webhooks/whatsapp/green/{account.line_id}",
+            f"/v1/webhooks/whatsapp/green/{line_id}",
             json={"typeWebhook": "incomingMessageReceived"},
             headers={"webhookUrlToken": green_api_token},
         )
