@@ -93,7 +93,7 @@ class BitrixClient:
             ]
 
 
-        contact_id = await self.find_contact_by_phone(client_phone)
+        contact_id = await self.find_contact_by_phone(user_id)
         deal_id = await self.find_open_deal(contact_id)
 
         params = {
