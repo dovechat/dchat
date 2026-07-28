@@ -95,11 +95,7 @@ class BitrixClient:
         contact_id = await self.find_contact_by_phone(user_id)
         deal_id = await self.find_open_deal(contact_id)
 
-        if "telegram_bot" in connector_id:
-            user_id = "+" + user_id
-
-        log.info(f"\n\n user_id {user_id} \n\n")
-
+        params = {
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
