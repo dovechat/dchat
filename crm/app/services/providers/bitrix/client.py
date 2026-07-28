@@ -92,6 +92,7 @@ class BitrixClient:
                 for m in media
             ]
 
+
         contact_id = await self.find_contact_by_phone(user_id)
         deal_id = await self.find_open_deal(contact_id)
 
@@ -127,25 +128,40 @@ class BitrixClient:
                 }
             )
 
-            result = await self.call(
-                "imconnector.send.messages",
-                params,
-                use_json=True,
-            )
+            log.info(f"\n\n chat_get result: {chat} \n\n")
+            if chat.get("result"):
+                bitrix_chat_id = chat["result"][0]["CHAT_ID"]
 
-            session = (
-                result
-                .get("result", {})
-                .get("DATA", {})
-                .get("RESULT", [{}])[0]
-                .get("session", {})
-            )
+                result = await self.call(
+                    "imopenlines.crm.message.add",
+                    {
+                        "CHAT_ID": bitrix_chat_id,
+                        "MESSAGE": text,
+                        "CRM_ENTITY_TYPE": "deal", 
+                        "CRM_ENTITY": deal_id,
+                        "USER_ID": user_id,
+                    }
+                )
+            else:
+                result = await self.call(
+                    "imconnector.send.messages",
+                    params,
+                    use_json=True,
+                )
 
-            bitrix_chat_id = session.get("CHAT_ID")
+                session = (
+                    result
+                    .get("result", {})
+                    .get("DATA", {})
+                    .get("RESULT", [{}])[0]
+                    .get("session", {})
+                )
 
-            log.info(
-                f"new bitrix chat={bitrix_chat_id} for deal={deal_id}"
-            )
+                bitrix_chat_id = session.get("CHAT_ID")
+
+                log.info(
+                    f"new bitrix chat={bitrix_chat_id} for deal={deal_id}"
+                )
         else:
             result = await self.call(
                 "imconnector.send.messages",
