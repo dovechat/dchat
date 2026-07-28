@@ -138,6 +138,7 @@ class BitrixClient:
                         "MESSAGE": text,
                         "CRM_ENTITY_TYPE": "deal", 
                         "CRM_ENTITY": deal_id,
+                        "USER_ID": user_id,
                     }
                 )
             else:
