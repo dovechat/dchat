@@ -128,6 +128,12 @@ class BitrixClient:
                 }
             )
 
+
+
+
+            current_user = await self.call("user.current", {})
+            operator_id = current_user.get("result", {}).get("ID")
+
             log.info(f"\n\n chat_get result: {chat} \n\n")
             if chat.get("result"):
                 bitrix_chat_id = chat["result"][0]["CHAT_ID"]
@@ -139,7 +145,7 @@ class BitrixClient:
                         "MESSAGE": text,
                         "CRM_ENTITY_TYPE": "deal", 
                         "CRM_ENTITY": deal_id,
-                        "USER_ID": user_id,
+                        "USER_ID": operator_id,
                     }
                 )
             else:
