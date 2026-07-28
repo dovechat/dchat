@@ -96,7 +96,6 @@ class BitrixClient:
         deal_id = await self.find_open_deal(contact_id)
 
         params = {
-        params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
             "MESSAGES": [
@@ -105,6 +104,7 @@ class BitrixClient:
                         "id": user_id,
                         "name": user_name,
                         "phone": user_id,
+                        "skip_phone_validate": "Y",
                     },
                     "message": msg,
                     "chat": {
