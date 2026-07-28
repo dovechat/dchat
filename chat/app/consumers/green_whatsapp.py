@@ -113,17 +113,17 @@ class GreenWhatsAppListener:
     from core.metrics import prometheus_metrics
 
     @prometheus_metrics("whatsapp_green")
-    async def handle_webhook(self, line_id: str, payload: dict, auth_header):
+    async def handle_webhook(self, line_id: str, payload: dict, token):
             """Обработать входящий вебхук от Green API"""
             from app.services.chat_service import ChatService
-            log.info(f"\n\n --- **** --- \n auth_header {auth_header}   {settings.green_api_token} \n --- **** --- \n\n")
-            if auth_header != settings.green_api_token:
+            log.info(f"\n\n --- **** --- \n token {token}   {settings.green_api_token} \n --- **** --- \n\n")
+            if token != settings.green_api_token:
                 msg = "Green webhook auth token mismatch"
                 log.error(f"!!! -- ERROR -- {msg}")
                 return
             else:
                 log.info(
-                    f"\n\n --- **** --- \n auth_header {auth_header} is equal to  {settings.green_api_token} and authentication has been passed \n --- **** --- \n\n")
+                    f"\n\n --- **** --- \n token {token} is equal to  {settings.green_api_token} and authentication has been passed \n --- **** --- \n\n")
     
             event_type = payload.get("typeWebhook")
             log.info(f"Green webhook for line {line_id}, type: {event_type}")

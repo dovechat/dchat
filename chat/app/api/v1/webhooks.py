@@ -20,8 +20,9 @@ async def whatsapp_green_webhook(
     log.info(f'@router.post(/whatsapp/green/{line_id} payload {payload}')
     log.info(request.headers)
     green_listener = request.app.state.green_listener
-    auth_header = request.headers.get("webhookUrlToken")
-    await green_listener.handle_webhook(line_id, payload, auth_header)
+    auth_header = request.headers.get("authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    await green_listener.handle_webhook(line_id, payload, token)
     return {"status": "ok"}
 
 
