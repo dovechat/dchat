@@ -136,6 +136,8 @@ class BitrixClient:
                     {
                         "CHAT_ID": bitrix_chat_id,
                         "MESSAGE": text,
+                        "CRM_ENTITY_TYPE": "deal", 
+                        "CRM_ENTITY": deal_id,
                     }
                 )
             else:
