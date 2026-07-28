@@ -98,6 +98,8 @@ class BitrixClient:
         if "telegram_bot" in connector_id:
             user_id = "+" + user_id
 
+        log.info(f"\n\n user_id {user_id} \n\n")
+
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
