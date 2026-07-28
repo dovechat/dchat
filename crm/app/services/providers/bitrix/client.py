@@ -177,7 +177,7 @@ class BitrixClient:
 
         log.info(f"send_message result: {result}")
         im = result.get("result", {})
-        if im.get("chat_id") and im.get("message_id"):
+        if isinstance(im, dict) and im.get("chat_id") and im.get("message_id"):
             await self.call("imconnector.send.status.delivery", {
                 "CONNECTOR": connector_id,
                 "LINE": line_id,
