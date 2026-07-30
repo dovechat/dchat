@@ -152,42 +152,65 @@ class ChatService:
     async def create_msg_vk(self, data, files=[], current_user=None):
         return await self._process_queue_outgoing("vk", data, current_user)
 
-    async def edit_message(self, message_id: uuid.UUID, text: str, current_user: UserContext, tg_listener: 'TelegramListener') -> MessageResponse:
+    async def edit_message(
+            self,
+            message_id: int,
+            text: str,
+            current_user: UserContext,
+            phone: str,
+            line_id: uuid.UUID,
+            channel_type: str,
+            tg_listener: 'TelegramListener'
+    ) -> MessageResponse:
+        log.info(f"db_id={id(self.db)} repo_session_id={id(self.msg_repo.session)}")
         message = await self.msg_repo.get_by_id(message_id)
+        from sqlalchemy import inspect as _i;
+        log.info(f"\n\n state_session={message._sa_instance_state.session_id} db_session={self.db.sync_session.hash_key}  \n\n")
+        log.info(f"before update: message in session = {message in self.db}")
         if not message:
             raise HTTPException(status_code=404, detail="message not found")
-        conv = await self.conv_repo.get_by_id(message.conversation_id)
         if not message.channel_msg_id:
             raise HTTPException(status_code=400, detail="no channel_msg_id")
 
-        sender = await self._init_sender(conv.channel_type, conv.id, tg_listener=tg_listener)
-        await sender.edit(message.channel_msg_id, conv.client_phone, text)
+        sender = await self._init_sender(channel_type, message.conversation_id, tg_listener=tg_listener)
 
-        await self.msg_repo.update(message, text=text)
-        await self.db.commit()
+        try:
+            result = await sender.edit(message.channel_msg_id, phone, text)
+            log.info(f"edit_message sent channel_type={channel_type} result={result}")
+            await self.msg_repo.update(message, text=text)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            log.log.exception(f"edit_message send failed channel_type={channel_type}: {e}")
+            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
+                await notify_connection_error(line_id, channel_type, self.db)
 
-        await manager.send_message_update(str(conv.id), {
+        await manager.send_message_update(str(message.conversation_id,), {
             "type": "edit",
             "message_id": str(message.id),
             "text": text,
         })
         return MessageResponse.model_validate(message)
 
-    async def delete_message(self, message_id: uuid.UUID, current_user: UserContext, tg_listener: 'TelegramListener') -> None:
+    async def delete_message(self, message_id: int, current_user: UserContext, phone: str, line_id: uuid.UUID,
+                             channel_type: str, tg_listener: 'TelegramListener') -> None:
         message = await self.msg_repo.get_by_id(message_id)
         if not message:
             raise HTTPException(status_code=404, detail="message not found")
-        conv = await self.conv_repo.get_by_id(message.conversation_id)
         if not message.channel_msg_id:
             raise HTTPException(status_code=400, detail="no channel_msg_id")
 
-        sender = await self._init_sender(conv.channel_type, conv.id, tg_listener=tg_listener)
-        await sender.delete(message.channel_msg_id, conv.client_phone)
+        sender = await self._init_sender(channel_type, message.conversation_id, tg_listener=tg_listener)
+        try:
+            result = await sender.delete(message.channel_msg_id, phone)
+            log.info(f"delete_message sent channel_type={channel_type} result={result}")
+            await self.msg_repo.delete(message)
+        except Exception as e:
+            log.error(f"delete_message send failed channel_type={channel_type}: {e}")
+            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
+                await notify_connection_error(line_id, channel_type, self.db)
 
-        await self.msg_repo.delete(message)
-        await self.db.commit()
-
-        await manager.send_message_update(str(conv.id), {
+        await manager.send_message_update(str(message.conversation_id), {
             "type": "delete",
             "message_id": str(message.id),
         })

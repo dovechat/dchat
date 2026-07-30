@@ -22,6 +22,7 @@ from app.schemas.chat_schemas import (
     LineWithChannelsResponse,
     MessageCreate,
     MessageDirection,
+    MessageEditRequest,
     MessageResponse,
 )
 from models.tenants import User
@@ -68,6 +69,52 @@ async def _enqueue_outgoing(
     return MessageResponse.model_validate(message)
 
 
+async def _enqueue_edit(
+    message_id: int,
+    data: MessageEditRequest,
+    current_user: UserContext,
+    chat_service: ChatService,
+):
+    message = await chat_service.msg_repo.get_by_id(message_id)
+    if not message or not message.channel_msg_id:
+        raise HTTPException(status_code=400, detail="cannot edit")
+    conv = await chat_service.conv_repo.get_by_id(message.conversation_id)
+    await kafka_producer.send_edit_message(
+        channel_type=conv.channel_type,
+        conversation_id=message.conversation_id,
+        message_id=message.id,
+        text=data.text,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        phone=conv.client_phone,
+        line_id=str(conv.line_id),
+    )
+    log.info(f"_enqueue_edit channel_type={conv.channel_type} message_id={message.id}")
+    return MessageResponse.model_validate(message)
+
+
+async def _enqueue_delete(
+    message_id: int,
+    current_user: UserContext,
+    chat_service: ChatService,
+):
+    message = await chat_service.msg_repo.get_by_id(message_id)
+    if not message or not message.channel_msg_id:
+        raise HTTPException(status_code=400, detail="cannot delete")
+    conv = await chat_service.conv_repo.get_by_id(message.conversation_id)
+    await kafka_producer.send_delete_message(
+        channel_type=conv.channel_type,
+        conversation_id=message.conversation_id,
+        message_id=message.id,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        phone=conv.client_phone,
+        line_id=str(conv.line_id),
+    )
+    log.info(f"_enqueue_delete channel_type={conv.channel_type} message_id={message.id}")
+    return {"status": "queued"}
+
+
 @router.post("/internal/crm-outgoing")
 async def crm_outgoing(
     data: str = Form(...),
@@ -80,6 +127,7 @@ async def crm_outgoing(
     current_user = UserContext(id=user_id, email=user_email, role="user", member="owner")
     msg = MessageCreate.model_validate_json(data)
     return await _enqueue_outgoing(channel_type, msg, files, current_user, chat_service)
+
 
 @router.post("/messages/tgbot", response_model=MessageResponse)
 async def create_message_tgbot(
@@ -147,7 +195,6 @@ async def create_message_vk(
     chat_service: ChatService = Depends(get_chat_service),
 ):
     return await _enqueue_outgoing("vk", MessageCreate.parse_raw(data), files, current_user, chat_service)
-
 
 
 @router.patch("/conversations/{conversation_id}/status")
@@ -321,18 +368,18 @@ async def crm_robot_send(
     return await chat_service.robot_send(data, tg_listener=request.app.state.listener)
 
 
-
 from app.schemas.chat_schemas import MessageEditRequest
 
 @router.patch("/messages/{message_id}", response_model=MessageResponse)
 async def edit_message(
     message_id: int,
     data: MessageEditRequest,
-    request: Request,
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
 ):
-    return await chat_service.edit_message(message_id, data.text, current_user, tg_listener=request.app.state.listener)
+    # return await chat_service.edit_message(message_id, data.text, current_user, tg_listener=request.app.state.listener)
+    return await _enqueue_edit(message_id, data, current_user, chat_service)
+
 
 @router.delete("/messages/{message_id}")
 async def delete_message(
@@ -341,5 +388,6 @@ async def delete_message(
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
 ):
-    await chat_service.delete_message(message_id, current_user, tg_listener=request.app.state.listener)
+    # await chat_service.delete_message(message_id, current_user, tg_listener=request.app.state.listener)
+    await _enqueue_delete(message_id, current_user, chat_service)
     return {"ok": True}

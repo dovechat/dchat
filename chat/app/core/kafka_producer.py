@@ -1,4 +1,3 @@
-# /mono/chat/app/core/kafka_producer.py
 import json
 import uuid
 from aiokafka import AIOKafkaProducer
@@ -71,8 +70,70 @@ class KafkaEventProducer:
             "channel_type": channel_type,
             "message_id": message_id,
             "template": template,
+            "action": "send",
         }
 
+        await self._send(topic, payload, conversation_id)
+
+
+    async def send_edit_message(
+            self,
+            channel_type: str,
+            conversation_id: uuid.UUID,
+            message_id: int,
+            text: str,
+            user_id: uuid.UUID,
+            user_email: str,
+            phone: str,
+            line_id: str,
+    ) -> None:
+        topic = CHANNEL_TOPICS.get(channel_type)
+        if not topic:
+            raise ValueError(f"Unknown channel_type: {channel_type}")
+
+        payload = {
+            "channel_type": channel_type,
+            "conversation_id": str(conversation_id),
+            "message_id": message_id,
+            "text": text,
+            "user_id": str(user_id),
+            "user_email": user_email,
+            "action": "edit",
+            "phone": phone,
+            "line_id": line_id,
+        }
+
+        await self._send(topic, payload, conversation_id)
+
+    async def send_delete_message(
+            self,
+            channel_type: str,
+            conversation_id: uuid.UUID,
+            message_id: int,
+            user_id: uuid.UUID,
+            user_email: str,
+            phone: str,
+            line_id: str,
+    ) -> None:
+        topic = CHANNEL_TOPICS.get(channel_type)
+        if not topic:
+            raise ValueError(f"Unknown channel_type: {channel_type}")
+
+        payload = {
+            "channel_type": channel_type,
+            "conversation_id": str(conversation_id),
+            "message_id": message_id,
+            "user_id": str(user_id),
+            "user_email": user_email,
+            "action": "delete",
+            "phone": phone,
+            "line_id": line_id,
+        }
+
+        await self._send(topic, payload, conversation_id)
+
+
+    async def _send(self, topic: str, payload: dict, conversation_id: uuid.UUID):
         if not self.producer:
             await self.start()
 
@@ -87,6 +148,7 @@ class KafkaEventProducer:
                 pass
             self.producer = None
             raise
+
 
     async def close(self):
         if self.producer:

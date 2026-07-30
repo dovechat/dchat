@@ -25,6 +25,38 @@ async def process_message(
     chat_service: ChatService,
     tg_listener: TelegramListener,
 ):
+    if event_data.get("action") == "edit":
+        current_user = UserContext(
+            id=uuid.UUID(event_data["user_id"]),
+            email=event_data["user_email"],
+        )
+        await chat_service.edit_message(
+            event_data["message_id"],
+            event_data["text"],
+            current_user,
+            tg_listener=tg_listener,
+            phone=event_data["phone"],
+            line_id=uuid.UUID(event_data["line_id"]),
+            channel_type=channel_type,
+        )
+        return
+
+    if event_data.get("action") == "delete":
+        current_user = UserContext(
+            id=uuid.UUID(event_data["user_id"]),
+            email=event_data["user_email"],
+        )
+        await chat_service.delete_message(
+            event_data["message_id"],
+            current_user,
+            phone=event_data["phone"],
+            line_id=uuid.UUID(event_data["line_id"]),
+            channel_type=channel_type,
+            tg_listener=tg_listener,
+        )
+        return
+
+
     data = MessageCreate(
         conversation_id=uuid.UUID(event_data["conversation_id"]),
         direction=MessageDirection.outbound,

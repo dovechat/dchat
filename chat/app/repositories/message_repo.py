@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy import desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -15,26 +15,6 @@ class MessageRepository(BaseRepository[Message]):
 
     def __init__(self, session: AsyncSession):
         super().__init__(Message, session)
-
-    async def get_by_id(self, message_id: int) -> Message | None:
-        from core.redis import rdb
-        from datetime import datetime
-        import json
-
-        key = f"message:{message_id}"
-        cached = await rdb.get(key)
-        if cached:
-            data = json.loads(cached)
-            if data.get("created_at"):
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            return Message(**data)
-
-        message = await super().get_by_id(message_id)
-        if message:
-            data = {c.name: getattr(message, c.name) for c in message.__table__.columns}
-            await rdb.set(key, json.dumps(data, default=str), ex=300)
-        return message
-
 
     async def get_conversation_messages(
             self,
