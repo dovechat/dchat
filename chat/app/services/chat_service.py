@@ -524,6 +524,12 @@ class ChatService:
         return obj
 
 
+    async def get_or_create_conversation(self, line_id: str, peer_phone: str,  channel_type: str):
+        res = self.conv_repo.get_conv_by_line_and_channel_type(line_id, channel_type)
+        if not res:
+            res = self.conv_repo.create_conversation(line_id, channel_type)
+        return res
+
     async def save_incoming_message(
             self,
             conversation_id: uuid.UUID | None,
