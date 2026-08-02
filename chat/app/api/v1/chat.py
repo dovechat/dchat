@@ -41,9 +41,6 @@ def get_bot_service(db: AsyncSession = Depends(get_db)) -> ChatService:
 def get_line_service(db: AsyncSession = Depends(get_db)) -> LineService:
     return LineService(db)
 
-def get_tg_listener(request: Request):
-    return request.app.state.listener
-
 
 async def _enqueue_outgoing(
     channel_type: str,
@@ -272,13 +269,11 @@ async def create_conversation(
     data: ConversationCreate,
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
-    tg_listener = Depends(get_tg_listener)
 ):
     """Create new conversation"""
     return await chat_service.create_conversation(
         tenant_id=current_user.tenant_id,
-        data=data,
-        tg_listener=tg_listener
+        data=data.
     )
 
 

@@ -403,7 +403,7 @@ class ChatService:
         return result
 
 
-    async def create_conversation(self, tenant_id, data, tg_listener=None) -> ConversationResponse:
+    async def create_conversation(self, tenant_id, data=None) -> ConversationResponse:
         conversation = await self.conv_repo.create_conversation(
             line_id=data.line_id, channel_type=data.channel_type,
             crm_chat_id=data.crm_chat_id, client_phone=data.client_phone, meta=data.meta
