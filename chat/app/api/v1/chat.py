@@ -273,7 +273,7 @@ async def create_conversation(
     """Create new conversation"""
     return await chat_service.create_conversation(
         tenant_id=current_user.tenant_id,
-        data=data.
+        data=data,
     )
 
 
