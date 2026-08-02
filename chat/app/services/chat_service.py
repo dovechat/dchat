@@ -60,14 +60,15 @@ class ChatService:
             self,
             channel_type: str,
             conv_id: uuid.UUID,
-            tg_listener=None,
     ):
         sender = SenderFactory.get_sender(channel_type)
+        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(conv_id)
         if channel_type == "telegram_user":
-            sender.set_listener(tg_listener)
+            # sender.set_listener()
+            sender.set_line_id(channel_acc.line_id)
             sender.set_conv_id(conv_id)
             return sender
-        channel_acc = await self.conv_repo.get_channel_acc_by_conversation(conv_id)
+
         creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
         if channel_type == "telegram_bot":
             sender.set_bot_token(creds["bot_token"])
@@ -84,7 +85,6 @@ class ChatService:
             channel_type: str,
             data: MessageCreate,
             current_user: UserContext,
-            tg_listener=None,
     ) -> MessageResponse:
         message = await self.msg_repo.get_by_id(data.message_id)
 
@@ -113,7 +113,7 @@ class ChatService:
             "media": [{**m, "url": self.storage.presigned_url(m["id"])} for m in (data.media or [])],
         })
 
-        sender = await self._init_sender(channel_type, data.conversation_id, tg_listener)
+        sender = await self._init_sender(channel_type, data.conversation_id)
         result = None
         success = False
         try:
@@ -140,8 +140,8 @@ class ChatService:
     async def create_msg_telegram_bot(self, data, files=[], current_user=None):
         return await self._process_queue_outgoing("telegram_bot", data, current_user)
 
-    async def create_msg_telegram_user(self, data, files=[], current_user=None, listener=None):
-        return await self._process_queue_outgoing("telegram_user", data, current_user, tg_listener=listener)
+    async def create_msg_telegram_user(self, data, files=[], current_user=None):
+        return await self._process_queue_outgoing("telegram_user", data, current_user)
 
     async def create_msg_whatsapp_green(self, data, files=[], current_user=None):
         return await self._process_queue_outgoing("whatsapp_green", data, current_user)
@@ -152,15 +152,14 @@ class ChatService:
     async def create_msg_vk(self, data, files=[], current_user=None):
         return await self._process_queue_outgoing("vk", data, current_user)
 
-    async def edit_message(
+    async def edit_outgoing_message(
             self,
             message_id: int,
             text: str,
             current_user: UserContext,
             phone: str,
             line_id: uuid.UUID,
-            channel_type: str,
-            tg_listener: 'TelegramListener'
+            channel_type: str
     ) -> MessageResponse:
         log.info(f"db_id={id(self.db)} repo_session_id={id(self.msg_repo.session)}")
         message = await self.msg_repo.get_by_id(message_id)
@@ -172,7 +171,7 @@ class ChatService:
         if not message.channel_msg_id:
             raise HTTPException(status_code=400, detail="no channel_msg_id")
 
-        sender = await self._init_sender(channel_type, message.conversation_id, tg_listener=tg_listener)
+        sender = await self._init_sender(channel_type, message.conversation_id)
 
         try:
             result = await sender.edit(message.channel_msg_id, phone, text)
@@ -193,14 +192,14 @@ class ChatService:
         return MessageResponse.model_validate(message)
 
     async def delete_message(self, message_id: int, current_user: UserContext, phone: str, line_id: uuid.UUID,
-                             channel_type: str, tg_listener: 'TelegramListener') -> None:
+                             channel_type: str) -> None:
         message = await self.msg_repo.get_by_id(message_id)
         if not message:
             raise HTTPException(status_code=404, detail="message not found")
         if not message.channel_msg_id:
             raise HTTPException(status_code=400, detail="no channel_msg_id")
 
-        sender = await self._init_sender(channel_type, message.conversation_id, tg_listener=tg_listener)
+        sender = await self._init_sender(channel_type, message.conversation_id)
         try:
             result = await sender.delete(message.channel_msg_id, phone)
             log.info(f"delete_message sent channel_type={channel_type} result={result}")
@@ -463,8 +462,6 @@ class ChatService:
                 except Exception:
                     await self.db.rollback()
 
-        # await self.db.commit()
-        # await self.db.refresh(message, attribute_names=["media"])
         log.info(f"conv_msg message.media after refresh: {message.media}")
         return conv, message
 
@@ -528,7 +525,7 @@ class ChatService:
 
     async def save_incoming_message(
             self,
-            conversation_id: uuid.UUID,
+            conversation_id: uuid.UUID | None,
             peer_phone: str,
             event,
             media_id: uuid.UUID = None,
@@ -538,20 +535,152 @@ class ChatService:
             text: str | None = None,
             channel_msg_id: str | None = None,
     ) -> MessageResponse:
+
+        if conversation_id is None:
+            conversation = await self.get_or_create_conversation(
+                line_id=event.line_id,
+                peer_phone=peer_phone,
+                channel_type="telegram_user",
+            )
+            conversation_id = conversation.id
+
+        media = None
+
+        if media_items:
+            media = [
+                {
+                    "id": item["id"],
+                    "file_name": item["file_name"],
+                    "mime_type": item["mime_type"],
+                }
+                for item in media_items
+                if item
+            ]
+        elif media_id:
+            media = [
+                {
+                    "id": str(media_id),
+                    "file_name": file_name,
+                    "mime_type": mime_type,
+                }
+            ]
+
         data = MessageCreate(
             conversation_id=conversation_id,
             direction=MessageDirection.inbound,
             text=text if text is not None else (event.message.text if event.message.text else None),
             channel_msg_id=channel_msg_id or str(event.message.id),
-            media=media_items if media_items else (
-                [{"id": str(media_id), "file_name": file_name, "mime_type": mime_type}] if media_id else None),
-            raw_content={
+            media=media,
+        )
+        log.info(f"\n\n save_incoming_message data.media {data.media} \n\n")
+        _, message = await self.conv_msg(data)
+
+        await self._publish_message(
+            message,
+            peer_phone,
+            data.media,
+        )
+        
+        return MessageResponse.model_validate(message)
+
+    async def _publish_message(
+            self,
+            message,
+            peer_phone: str,
+            media_items: list | None = None,
+    ):
+        from app.services.websocket_manager import manager
+
+        media = []
+        for item in (media_items or message.media or []):
+            media.append({
+                **item,
+                "url": self.storage.presigned_url(uuid.UUID(item["id"])),
+            })
+
+        await manager.send_new_message(
+            message.conversation_id,
+            {
+                "id": str(message.id),
+                "text": message.text,
+                "direction": message.direction.value,
+                "created_at": message.created_at.isoformat(),
                 "phone": peer_phone,
-                "date": event.message.date.isoformat(),
+                "media": media,
+                "is_new": True,
+            },
+        )
+
+    async def edit_message(
+            self,
+            conversation_id: uuid.UUID,
+            channel_msg_id: str,
+            text: str | None,
+    ):
+        messages = await self.msg_repo.get_multi(
+            filters={
+                "conversation_id": conversation_id,
+                "channel_msg_id": channel_msg_id,
             }
         )
-        _, message = await self.conv_msg(data)
-        return MessageResponse.model_validate(message)
+
+        if not messages:
+            log.error(
+                f"edit_message: message not found "
+                f"conv={conversation_id} msg_id={channel_msg_id}"
+            )
+            return
+
+        message = messages[0]
+
+        await self.msg_repo.update(
+            message,
+            text=text or "",
+        )
+
+        await self.db.commit()
+
+        log.info(f"inc consumer conversation_id  {conversation_id}")
+
+        await manager.send_message_update(
+            str(conversation_id),
+            {
+                "type": "edit",
+                "message_id": str(message.id),
+                "text": text or "",
+            },
+        )
+
+    async def delete_incoming_message(
+            self,
+            conversation_id: uuid.UUID,
+            channel_msg_ids: list[str],
+    ):
+        log.info(f"\n\n chat service delete_incoming_message conversation_id {conversation_id} \n\n ")
+        messages = await self.msg_repo.get_multi(
+            filters={
+                "conversation_id": conversation_id,
+                "channel_msg_id": channel_msg_ids,
+            }
+        )
+
+        if not messages:
+            return
+
+        for message in messages:
+            await self.msg_repo.delete(message)
+
+        await self.db.commit()
+
+        for message in messages:
+            await manager.send_message_update(
+                str(conversation_id),
+                {
+                    "type": "delete",
+                    "message_id": str(message.id),
+                },
+            )
+
 
     async def save_incoming_green(
             self,

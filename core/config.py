@@ -124,6 +124,11 @@ class Settings(BaseSettings):
     AMO_CHANNEL_ID: str = ""
     AMO_CHANNEL_SECRET: str = ""
 
+    TOPIC_INCOMING_MESSAGES: str = "telegram.incoming.messages"
+    TOPIC_MESSAGE_STATUS: str = "telegram.message.status"
+    TOPIC_CONTACT_SYNC: str = "telegram.contact.sync"
+    HEALTH_CHECK_INTERVAL: int = 300
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

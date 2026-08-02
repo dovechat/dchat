@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from app.senders.base import BaseSender
 from app.schemas.chat_schemas import MessageCreate
-from app.utils import get_file_from_s3
+from infra.utils import get_file_from_s3
 from core.database import get_db
 from notification.notification_caller import notify_connection_error
 

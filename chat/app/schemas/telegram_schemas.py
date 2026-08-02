@@ -56,6 +56,18 @@ class TelegramOutgoingMessage(BaseModel):
     message: str
 
 
+class IncomingMessage(BaseModel):
+    id: int
+    text: str | None = None
+    date: datetime
+    media: list | None = None
+
+
+class IncomingEvent(BaseModel):
+    message: IncomingMessage
+    line_id: uuid.UUID
+
+
 
 
 

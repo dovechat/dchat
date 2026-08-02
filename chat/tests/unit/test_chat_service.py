@@ -291,7 +291,7 @@ class TestChatService:
         chat_service._process_queue_outgoing = AsyncMock(return_value="ok")
         data = MagicMock()
         listener = MagicMock()
-        await chat_service.create_msg_telegram_user(data, current_user=current_user, listener=listener)
+        await chat_service.create_msg_telegram_user(data, current_user=current_user)
 
         chat_service._process_queue_outgoing.assert_called_once_with("telegram_user", data, current_user, tg_listener=listener)
 

@@ -59,6 +59,13 @@ class LineRepository(BaseRepository[Line]):
         if line:
             await self.update(line, connection_state=state)
 
+    async def set_line_status(self, line_id: str, state: dict):
+        """Update status to active using base update logic"""
+        line = await self.get_by_id(line_id)
+        if line:
+            res = await self.update(line, connection_state=state)
+            return res
+
 
 class ChannelAccountRepository(BaseRepository[ChannelAccount]):
 

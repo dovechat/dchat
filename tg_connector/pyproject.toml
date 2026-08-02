@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "tg-connector"
+version = "0.1.0"
+description = "Telegram user client via Telethon"
+authors = ["you"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.110.0"
+uvicorn = "^0.27.0"
+telethon = "^1.34.0"
+pydantic-settings = "^2.12.0"
+aiohttp = "^3.13.3"
+aiokafka = "^0.13.0"
+pysocks = "^1.7.1"
+qrcode = {extras = ["pil"], version = "^8.2"}
+sqlalchemy = "^2.0.51"
+asyncpg = "^0.31.0"
+cryptography = "^49.0.0"
+minio = "^7.2.20"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

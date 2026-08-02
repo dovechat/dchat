@@ -24,7 +24,7 @@ from repo.line_repo import ChannelAccountRepository
 from app.schemas.chat_schemas import MessageCreate
 from app.services.websocket_manager import manager
 from app.services.chat_service import ChatService
-from app.utils import get_file_from_s3
+from infra.utils import get_file_from_s3
 from models.messages import MessageDirection
 from notification.notification_caller import notify_connection_error
 from services.storage_service import StorageService

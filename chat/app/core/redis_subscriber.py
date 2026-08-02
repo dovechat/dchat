@@ -17,7 +17,8 @@ async def redis_subscriber():
         try:
             channel = message["channel"]
             data = json.loads(message["data"])
-            conversation_id = channel.split(":", 2)[2]
+            log.info(f"REDIS CHANNEL {channel}")
+            conversation_id = str(channel).split(":", 2)[2]
             if "new_message" in channel:
                 if conversation_id in manager.active_connections:
                     for ws in manager.active_connections[conversation_id][:]:
@@ -34,6 +35,10 @@ async def redis_subscriber():
                         except Exception as e:
                             log.error(f"redis_subscriber send_message_status error: {e}")
             elif "message_update" in channel:
+                log.info(
+                    f"WS UPDATE conversation_id={conversation_id} "
+                    f"active={list(manager.active_connections.keys())}"
+                )
                 if conversation_id in manager.active_connections:
                     for ws in manager.active_connections[conversation_id][:]:
                         try:

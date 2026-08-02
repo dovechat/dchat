@@ -75,13 +75,13 @@ class ConnectionManager:
         log.info(f"---*----*-- websocket_manager Socket state after append: {websocket.client_state.name}")
 
         # Если это первое соединение - запускаем listener
-        if len(self.active_connections[conversation_id]) == 1 and conv.channel_type == "telegram_user":
-            listener = app.state.listener
+        # if len(self.active_connections[conversation_id]) == 1 and conv.channel_type == "telegram_user":
+            # listener = app.state.listener
             # log.info(f"+++++++++ websocket_manager ConnectionManager.connect listener.start_listening")
-            await listener.start_listening(conversation_id, my_phone, peer_phone)
-            log.info(f"+++++++++ websocket_manager ConnectionManager.connect listener.start_listening DONE")
+            # await listener.start_listening(conversation_id, my_phone, peer_phone)
+            #log.info(f"+++++++++ websocket_manager ConnectionManager.connect listener.start_listening DONE")
 
-        log.info(f"+++++++ websocket_manager  ConnectionManager.connect Connected: conversation={conversation_id}, total={len(self.active_connections[conversation_id])}")
+        # log.info(f"+++++++ websocket_manager  ConnectionManager.connect Connected: conversation={conversation_id}, total={len(self.active_connections[conversation_id])}")
 
     async def disconnect(self, conversation_id: str, websocket: WebSocket):
         # listener = websocket.app.state.listener
@@ -131,8 +131,28 @@ class ConnectionManager:
 
     async def send_message_update(self, conversation_id: str, data: dict):
         conversation_id = str(conversation_id)
-        log.info(f"===== WebsocketManager.send_message_update data {data}")
+        log.info(f"===== WebsocketManager.send_message_update data {data} conversation_id {conversation_id}")
         await rdb.publish(f"ws:message_update:{conversation_id}", json.dumps(data))
+
+    async def edit_message(
+        self,
+        conversation_id,
+        message_data: dict,
+    ):
+        await rdb.publish(
+            f"ws:message_update:{conversation_id}",
+            json.dumps(message_data),
+        )
+
+    async def delete_message(
+        self,
+        conversation_id,
+        message_data: dict,
+    ):
+        await rdb.publish(
+            f"ws:message_update:{conversation_id}",
+            json.dumps(message_data),
+        )
 
 
 manager = ConnectionManager()

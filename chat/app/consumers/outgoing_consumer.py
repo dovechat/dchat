@@ -23,18 +23,16 @@ async def process_message(
     event_data: dict,
     channel_type: str,
     chat_service: ChatService,
-    tg_listener: TelegramListener,
 ):
     if event_data.get("action") == "edit":
         current_user = UserContext(
             id=uuid.UUID(event_data["user_id"]),
             email=event_data["user_email"],
         )
-        await chat_service.edit_message(
+        await chat_service.edit_outgoing_message(
             event_data["message_id"],
             event_data["text"],
             current_user,
-            tg_listener=tg_listener,
             phone=event_data["phone"],
             line_id=uuid.UUID(event_data["line_id"]),
             channel_type=channel_type,
@@ -52,7 +50,6 @@ async def process_message(
             phone=event_data["phone"],
             line_id=uuid.UUID(event_data["line_id"]),
             channel_type=channel_type,
-            tg_listener=tg_listener,
         )
         return
 
@@ -73,15 +70,10 @@ async def process_message(
     )
     handler = getattr(chat_service, settings.CHANNEL_HANDLERS[channel_type])
     kwargs = dict(data=data, files=[], current_user=current_user)
-    if channel_type == "telegram_user":
-        kwargs["listener"] = tg_listener
     await handler(**kwargs)
 
 
-async def start_consumer(tg_listener: TelegramListener | None = None, group_id: str = "outgoing-consumer-group", topics: list[str] | None = None):
-    if tg_listener is None:
-        tg_listener = TelegramListener()
-
+async def start_consumer(group_id: str = "outgoing-consumer-group", topics: list[str] | None = None):
     consumer = AIOKafkaConsumer(
         *(topics or settings.TOPICS),
         bootstrap_servers=settings.kafka_bootstrap_servers,
@@ -115,7 +107,7 @@ async def start_consumer(tg_listener: TelegramListener | None = None, group_id: 
             async with get_session() as db:
                 chat_service = ChatService(db)
                 try:
-                    await process_message(event_data, channel_type, chat_service, tg_listener)
+                    await process_message(event_data, channel_type, chat_service)
                     await consumer.commit()
                     log.info(f"Message committed topic={message.topic}")
                 except Exception as e:
