@@ -39,6 +39,8 @@ class TelegramClientWrapper:
         else:
             session = StringSession()
 
+        log.info(f"\n\n self.api_id {self.api_id} self.api_hash {self.api_hash} \n\n")
+
         self.client = TelegramClient(
             session,
             self.api_id,
