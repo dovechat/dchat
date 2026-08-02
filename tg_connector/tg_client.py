@@ -39,8 +39,6 @@ class TelegramClientWrapper:
         else:
             session = StringSession()
 
-        log.info(f"\n\n self.api_id {self.api_id} self.api_hash {self.api_hash} \n\n")
-
         self.client = TelegramClient(
             session,
             self.api_id,
@@ -61,6 +59,7 @@ class TelegramClientWrapper:
             self.client = None
 
     async def start_qr(self):
+        log.info(f"\n\n self.api_id {self.api_id} self.api_hash {self.api_hash} \n\n")
         await self.connect()
         qr_login = await self.client.qr_login()
         return qr_login
