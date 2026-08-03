@@ -7,9 +7,6 @@ from core.config import settings
 
 log = logging.getLogger("uvicorn.error")
 
-OAUTH_URL = "https://oauth.bitrix.info/oauth/token/"
-
-
 class BitrixClient:
     def __init__(self, domain: str, access_token: str):
         self.domain = domain
@@ -33,7 +30,7 @@ class BitrixClient:
         client_secret: str,
     ) -> dict:
         async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(OAUTH_URL, data={
+            resp = await client.post(f"https://{domain}/oauth/token/", data={
                 "grant_type": "refresh_token",
                 "client_id": client_id,
                 "client_secret": client_secret,
