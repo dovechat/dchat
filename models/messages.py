@@ -58,7 +58,7 @@ class Message(Base):
     text = Column(String)
     raw_content = Column(JSON)
     created_at = Column(DateTime, server_default=func.now(), index=True)
-    media = relationship("Media", lazy="selectin")
+    media = relationship("Media", lazy="selectin", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_messages_conversation_created", "conversation_id", "created_at"),
