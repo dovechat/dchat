@@ -80,6 +80,7 @@ async def process_message(
         media_items=media,
     )
 
+    log.info(f"\n\n process_message event_type {event_type}\n\n")
     if event_type == "message_created":
         try:
             line = await crm_uow.lines.get_by_id(line_id_1)
