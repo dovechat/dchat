@@ -24,7 +24,7 @@ get_session = asynccontextmanager(get_db)
 async def process_message(
     event_data: dict,
     chat_service: ChatService,
-    crm_service: CrmService
+    crm_uow: CrmUnitOfWork
 ):
     log.info(f"\n\n process_message event_data {event_data} \n\n")
 
@@ -85,6 +85,7 @@ async def process_message(
         log.info(f"\n\n process_message event_type IS message_created\n\n")
         try:
             line = await crm_uow.lines.get_by_id(line_id_1)
+            crm_service = CrmService(crm_uow)
             log.info(f"send_to_crm line={line}")
             sender = event_data["message"].get("sender") or {}
             log.info(f"send_to_crm sender={sender}")
@@ -148,13 +149,12 @@ async def start_consumer(
             async with get_session() as db:
                 chat_service = ChatService(db)
                 crm_uow = CrmUnitOfWork(db)
-                crm_service = CrmService(crm_uow)
 
                 try:
                     await process_message(
                         event_data,
                         chat_service,
-                        crm_service,
+                        crm_uow,
                     )
 
                     await consumer.commit()
