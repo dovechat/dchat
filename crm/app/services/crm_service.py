@@ -210,6 +210,11 @@ class CrmService:
         event = data.get("event")
         if event != "ONIMCONNECTORMESSAGEADD":
             return
+        msg_user_id = data.get("data[MESSAGES][0][message][user_id]")
+        auth_user_id = data.get("auth[user_id]")
+        if msg_user_id and auth_user_id and msg_user_id == auth_user_id:
+            log.info(f"handle_bitrix_incoming: skip echo of own message user_id={msg_user_id}")
+            return
         # рефреш токена
         try:
             provider = get_provider(account)
