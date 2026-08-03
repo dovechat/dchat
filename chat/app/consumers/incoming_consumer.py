@@ -62,28 +62,23 @@ async def process_message(
         return
 
 
-
     elif event_type == "message_delete":
-
         try:
-
             messages = await chat_service.msg_repo.get_multi(
-
                 filters={
-
                     "conversation_id": conversation_id,
-
                     "channel_msg_id": [str(i) for i in event_data["message_ids"]],
-
                 }
-
             )
 
             line = await crm_service._uow.lines.get_by_id(line_id_1)
-
+            log.info(f"DELETE CRM messages found={len(messages)}")
             for message in messages:
+                log.info(f"DELETE CRM message {message}")
                 bx_msg_id = (message.raw_content or {}).get("bx_message_id")
+                log.info(f"DELETE CRM bx_msg_id {bx_msg_id}")
                 if not bx_msg_id:
+                    log.info("DELETE CRM if not bx_msg_id")
                     continue
 
                 await crm_service.delete_from_crm(
@@ -94,6 +89,8 @@ async def process_message(
                     channel_type="telegram_user",
                 )
 
+                log.info(f"DELETE CRM after crm_service.delete_from_crm conversation_id {conversation_id} line.tenant_id {line.tenant_id}")
+
         except Exception as e:
             log.error(f"CRM delete_from_crm failed: {e}")
 
@@ -101,7 +98,7 @@ async def process_message(
             conversation_id=conversation_id,
             channel_msg_ids=[str(i) for i in event_data["message_ids"]],
         )
-
+        log.info("DELETE CRM after chat_service.delete_incoming_message")
         return
 
     log.info(f"\n\n line_id_1 {type(line_id_1)} {line_id_1}  \n\n")
