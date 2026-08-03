@@ -187,7 +187,7 @@ async def send_messages(req: SendMessageRequest):
 
         return {
             "status": "sent",
-            "channel_msg_id": str(sent[0].id if isinstance(sent, list) else sent.id),
+            "channel_msg_id": ",".join(str(m.id) for m in sent) if isinstance(sent, list) else str(sent.id),
         }
 
     except Exception as e:
@@ -226,7 +226,7 @@ async def delete_message(req: DeleteMessageRequest):
         entity = await client.get_entity(req.phone)
         await client.delete_messages(
             entity,
-            [int(req.channel_msg_id)],
+            [int(x) for x in req.channel_msg_id.split(",")],
         )
         return {"status": "deleted"}
     except Exception as e:
