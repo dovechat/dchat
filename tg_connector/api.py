@@ -187,7 +187,7 @@ async def send_messages(req: SendMessageRequest):
 
         return {
             "status": "sent",
-            "channel_msg_id": str(sent.id),
+            "channel_msg_id": str(sent[0].id if isinstance(sent, list) else sent.id),
         }
 
     except Exception as e:
