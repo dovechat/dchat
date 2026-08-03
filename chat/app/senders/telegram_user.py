@@ -23,6 +23,7 @@ class TelegramUserSender(BaseSender):
         self.conv_id = conv_id
 
     async def send_(self, action: str, payload: dict):
+        log.info(f"\n\n senders telegram_user payload {payload} \n\n")
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
