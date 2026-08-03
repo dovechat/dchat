@@ -69,7 +69,7 @@ async def process_message(
         )
 
         try:
-            line = await crm_service.uow.lines.get_by_id(line_id_1)
+            line = await crm_service._uow.lines.get_by_id(line_id_1)
             for msg_id in event_data["message_ids"]:
                 await crm_service.delete_from_crm(
                     tenant_id=line.tenant_id,
