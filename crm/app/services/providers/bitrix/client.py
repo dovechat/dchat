@@ -268,3 +268,27 @@ class BitrixClient:
             "LINE": open_line_id,
             "ACTIVE": "1",
         })
+
+    async def delete_message(
+            self,
+            connector_id: str,
+            line_id: str,
+            user_id: str,
+            message_id: str,
+            chat_id: str,
+    ) -> dict:
+        return await self.call(
+            "imconnector.delete.messages",
+            {
+                "CONNECTOR": connector_id,
+                "LINE": line_id,
+                "MESSAGES": [
+                    {
+                        "user": {"id": user_id},
+                        "message": {"id": message_id},
+                        "chat": {"id": chat_id},
+                    }
+                ],
+            },
+            use_json=True,
+        )

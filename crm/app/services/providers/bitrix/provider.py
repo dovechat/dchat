@@ -58,3 +58,18 @@ class BitrixProvider(CrmProvider):
             "text": message.get("text", ""),
             "crm_chat_id": chat.get("id", ""),
         }
+
+    async def delete_message(
+        self,
+        client_phone: str,
+        message_id: str,
+        crm_chat_id: str,
+    ) -> dict:
+        bx = self._client()
+        return await bx.delete_message(
+            connector_id=self.conn.connector_id,
+            line_id=self.conn.crm_line_id,
+            user_id=client_phone,
+            message_id=message_id,
+            chat_id=crm_chat_id,
+        )

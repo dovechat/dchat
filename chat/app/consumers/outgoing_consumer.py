@@ -7,11 +7,14 @@ from contextlib import asynccontextmanager
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from core.config import settings
 from core.database import get_db
+from crm.app.services.crm_service import CrmService
+from crm.app.core.uow import CrmUnitOfWork
 from app.core.uow import ChatUoW
 from app.services.chat_service import ChatService
 from app.schemas.chat_schemas import MessageCreate, MessageDirection, MessageStatus
 from app.consumers.telegram_listener import TelegramListener
 from schemas.auth_schemas import UserContext
+
 
 log = logging.getLogger(__name__)
 get_session = asynccontextmanager(get_db)
@@ -50,6 +53,7 @@ async def process_message(
             phone=event_data["phone"],
             line_id=uuid.UUID(event_data["line_id"]),
             channel_type=channel_type,
+            crm_service=crm_service,
         )
         return
 

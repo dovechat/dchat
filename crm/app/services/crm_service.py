@@ -1370,3 +1370,28 @@ class CrmService:
             )
             return conversation.id, embed_token
         raise HTTPException(status_code=404, detail="conversation not found for lead")
+
+
+    async def delete_from_crm(
+            self,
+            tenant_id: uuid.UUID,
+            conversation_id: uuid.UUID,
+            client_phone: str,
+            message_id: str,
+            channel_type: str,
+    ) -> None:
+        conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
+        if not conn:
+            return
+        conversation = await self._uow.conversations.get_by_id(conversation_id)
+        if not conversation.crm_chat_id:
+            return
+        provider = get_provider(conn)
+        try:
+            await provider.delete_message(
+                client_phone=client_phone,
+                message_id=message_id,
+                crm_chat_id=conversation.crm_chat_id,
+            )
+        except Exception as e:
+            log.error(f"delete_from_crm failed tenant={tenant_id}: {e}")

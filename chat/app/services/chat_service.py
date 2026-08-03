@@ -192,7 +192,7 @@ class ChatService:
         return MessageResponse.model_validate(message)
 
     async def delete_message(self, message_id: int, current_user: UserContext, phone: str, line_id: uuid.UUID,
-                             channel_type: str) -> None:
+                             channel_type: str, crm_service=None) -> None:
         message = await self.msg_repo.get_by_id(message_id)
         if not message:
             raise HTTPException(status_code=404, detail="message not found")
@@ -208,6 +208,20 @@ class ChatService:
             log.error(f"delete_message send failed channel_type={channel_type}: {e}")
             if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
                 await notify_connection_error(line_id, channel_type, self.db)
+
+        if crm_service:
+            conv = await self.conv_repo.get_by_id(message.conversation_id)
+            line = await self.line_repo.get_by_id(line_id)
+            try:
+                await crm_service.delete_from_crm(
+                    tenant_id=line.tenant_id,
+                    conversation_id=message.conversation_id,
+                    client_phone=phone,
+                    message_id=message.channel_msg_id,
+                    channel_type=channel_type,
+                )
+            except Exception as e:
+                log.error(f"delete_from_crm call failed: {e}")
 
         await manager.send_message_update(str(message.conversation_id), {
             "type": "delete",
