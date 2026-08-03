@@ -34,6 +34,8 @@ class ChannelConnection:
         self.client: TelegramClientWrapper | None = None
         self.task: asyncio.Task | None = None
         self._reconnect_delay = 1
+        self._album_buffer: dict[str, list] = {}
+        self._album_tasks: dict[str, asyncio.Task] = {}
 
     async def _load_session_string(self) -> str:
         async with AsyncSessionLocal() as db:
@@ -84,19 +86,37 @@ class ChannelConnection:
 
         @self.client.on(events.NewMessage)
         async def _on_new_message(event):
-            # TODO(block 3): публикация в Kafka topic telegram_user_incoming
             log.info(f"[pool] NewMessage line={self.line_id} event_id={event.id}")
-            payload = await serialize_message(
-            event,
-            self.line_id,
-            self.conversation_id,
-            self.phone,
-        )
 
-            await send_event(
-                "telegram_user_incoming",
-                payload,
+            media_group_id = getattr(event.message, 'grouped_id', None)
+            if media_group_id:
+                media_group_id = str(media_group_id)
+                media_items = await process_media(event)
+                self._album_buffer.setdefault(media_group_id, []).extend(media_items)
+
+                if media_group_id in self._album_tasks:
+                    self._album_tasks[media_group_id].cancel()
+                self._album_tasks[media_group_id] = asyncio.create_task(
+                    self._flush_album(media_group_id, event)
+                )
+                return
+
+            payload = await serialize_message(
+                event, self.line_id, self.conversation_id, self.phone,
             )
+            await send_event("telegram_user_incoming", payload)
+
+        async def _flush_album(self, mgid: str, event):
+            await asyncio.sleep(1)
+            items = self._album_buffer.pop(mgid, [])
+            self._album_tasks.pop(mgid, None)
+            if not items:
+                return
+            payload = await serialize_message(
+                event, self.line_id, self.conversation_id, self.phone,
+            )
+            payload["message"]["media"] = items
+            await send_event("telegram_user_incoming", payload)
 
         @self.client.on(events.MessageEdited)
         async def _on_edited(event):
