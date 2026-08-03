@@ -212,18 +212,10 @@ class CrmService:
             return
         # рефреш токена
         try:
-            refreshed = await BitrixClient.refresh_tokens(
-                domain=account.domain,
-                refresh_token=decrypt(account.refresh_token_enc),
-                client_id=settings.BITRIX_CLIENT_ID,
-                client_secret=settings.BITRIX_CLIENT_SECRET,
-            )
-            access_token = refreshed["access_token"]
-            await self._uow.crm_accounts.update(
-                account,
-                access_token_enc=encrypt(refreshed["access_token"]),
-                refresh_token_enc=encrypt(refreshed["refresh_token"]),
-            )
+            provider = get_provider(account)
+            refreshed = await provider.refresh_tokens()
+            access_token = decrypt(refreshed["access_token_enc"])
+            await self._uow.crm_accounts.update(account, **refreshed)
         except Exception as e:
             log.error(f"handle_bitrix_incoming token refresh failed: {e}")
             access_token = decrypt(account.access_token_enc)
