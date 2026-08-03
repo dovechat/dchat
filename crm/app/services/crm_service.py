@@ -90,8 +90,13 @@ class CrmService:
             return amo_chat_id
         
         # --- Bitrix24 ---
-        data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-        session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
+        if isinstance(result.get("result"), int):
+            bx_message_id = result["result"]
+            session_chat_id = conversation.crm_chat_id
+        else:
+            bx_message_id = None
+            data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+            session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
         
         if session_chat_id and session_chat_id != conversation.crm_chat_id:
             await self._uow.conversations.update(conversation, crm_chat_id=session_chat_id)
@@ -126,7 +131,6 @@ class CrmService:
         except Exception as e:
             log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
 
-        bx_message_id = result.get("result") if isinstance(result.get("result"), int) else None
         log.info(f"send_to_crm session_chat_id {session_chat_id} bx_message_id {bx_message_id}")
         return session_chat_id, bx_message_id
 
