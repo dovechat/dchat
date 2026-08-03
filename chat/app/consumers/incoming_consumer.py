@@ -82,9 +82,12 @@ async def process_message(
 
     log.info(f"\n\n process_message event_type {event_type}\n\n")
     if event_type == "message_created":
+        log.info(f"\n\n process_message event_type IS message_created\n\n")
         try:
             line = await crm_uow.lines.get_by_id(line_id_1)
+            log.info(f"send_to_crm line={line}")
             sender = event_data["message"].get("sender") or {}
+            log.info(f"send_to_crm sender={sender}")
             bx_chat_id = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
                 conversation_id=conversation_id,
@@ -103,6 +106,7 @@ async def process_message(
                 )
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
+        log.info(f"\n\n process_message event_type IS message_created after\n\n")
 
     await manager.send_new_message(
         conversation_id,
