@@ -69,16 +69,24 @@ async def process_message(
         )
 
         try:
+            messages = await chat_service.msg_repo.get_multi(
+                filters={
+                    "conversation_id": conversation_id,
+                    "channel_msg_id": [str(i) for i in event_data["message_ids"]],
+                }
+            )
             line = await crm_service._uow.lines.get_by_id(line_id_1)
-            for msg_id in event_data["message_ids"]:
+            for message in messages:
+                bx_msg_id = (message.raw_content or {}).get("bx_message_id")
+                if not bx_msg_id:
+                    continue
                 await crm_service.delete_from_crm(
                     tenant_id=line.tenant_id,
                     conversation_id=conversation_id,
                     client_phone="",
-                    message_id=str(msg_id),
+                    message_id=str(bx_msg_id),
                     channel_type="telegram_user",
                 )
-
         except Exception as e:
             log.error(f"CRM delete_from_crm failed: {e}")
         return
@@ -104,7 +112,7 @@ async def process_message(
             log.info(f"send_to_crm line={line}")
             sender = event_data["message"].get("sender") or {}
             log.info(f"send_to_crm sender={sender}")
-            bx_chat_id = await crm_service.send_to_crm(
+            bx_chat_id, bx_msg_id = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
                 conversation_id=conversation_id,
                 client_phone=event_data["peer_phone"],
@@ -114,11 +122,16 @@ async def process_message(
                 channel_type="telegram_user",
                 media=media,
             )
-            log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+            log.info(f"send_to_crm bx_chat_id={bx_chat_id} bx_msg_id={bx_msg_id}")
             if bx_chat_id:
                 await chat_service.conv_repo.update(
                     await chat_service.conv_repo.get_by_id(conversation_id),
                     crm_chat_id=bx_chat_id,
+                )
+            if bx_msg_id:
+                await chat_service.msg_repo.update(
+                    message_data,
+                    raw_content={"bx_message_id": bx_msg_id},
                 )
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")

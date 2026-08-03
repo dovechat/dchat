@@ -125,9 +125,10 @@ class CrmService:
                 log.warning(f"contact not found for client_phone={client_phone}")
         except Exception as e:
             log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
-        
-        log.info(f"send_to_crm session_chat_id {session_chat_id}")
-        return session_chat_id
+
+        bx_message_id = result.get("result") if isinstance(result.get("result"), int) else None
+        log.info(f"send_to_crm session_chat_id {session_chat_id} bx_message_id {bx_message_id}")
+        return session_chat_id, bx_message_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
         conn = await self._uow.crm_accounts.get_by_tenant(tenant_id, crm_type)
