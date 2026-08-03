@@ -74,7 +74,7 @@ async def process_message(
                 await crm_service.delete_from_crm(
                     tenant_id=line.tenant_id,
                     conversation_id=conversation_id,
-                    client_phone=event_data["peer_phone"],
+                    client_phone="",
                     message_id=str(msg_id),
                     channel_type="telegram_user",
                 )
