@@ -205,7 +205,9 @@ async def send_messages(req: SendMessageRequest):
 async def edit_message(req: EditMessageRequest):
     client = pool.get_client(req.line_id)
     if not client:
-        raise HTTPException(status_code=409, detail=f"No active connection for line {req.line_id}")
+        msg = f"No active connection for line {req.line_id}"
+        log.info("f@app.post / edit msg {msg}")
+        raise HTTPException(status_code=409, detail=msg)
     try:
         entity = await client.get_entity(req.phone)
         await client.edit_message(entity, int(req.channel_msg_id), req.text)
