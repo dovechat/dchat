@@ -206,7 +206,7 @@ async def edit_message(req: EditMessageRequest):
     client = pool.get_client(req.line_id)
     if not client:
         msg = f"No active connection for line {req.line_id}"
-        log.info("f@app.post / edit msg {msg}")
+        log.info(f"@app.post / edit msg {msg}")
         raise HTTPException(status_code=409, detail=msg)
     try:
         entity = await client.get_entity(req.phone)
