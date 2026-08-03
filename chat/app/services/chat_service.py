@@ -813,6 +813,7 @@ class ChatService:
             filters={"line_id": data.line_id, "crm_chat_id": data.crm_chat_id},
             limit=1
         )
+        log.info(f"SEARCH CONV line_id={data.line_id} crm_chat_id={data.crm_chat_id} type={type(data.crm_chat_id)}")
         log.info(f"chat_service.save_crm_incoming conv {conv} ")
         if not conv:
             return {"status": "not_found"}
