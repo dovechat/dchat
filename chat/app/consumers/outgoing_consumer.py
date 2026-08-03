@@ -53,17 +53,18 @@ async def process_message(
         )
         return
 
-
+    media = event_data.get("media", [])
     data = MessageCreate(
         conversation_id=uuid.UUID(event_data["conversation_id"]),
         direction=MessageDirection.outbound,
         phone=event_data["phone"],
         text=event_data["text"],
         status=MessageStatus.sent,
-        media=event_data.get("media", []),
+        media=media,
         message_id=event_data.get("message_id"),
         template=event_data.get("template")
     )
+    log.info(f"\n\n outgoing_consumer media {media} \n\n")
     current_user = UserContext(
         id=uuid.UUID(event_data["user_id"]),
         email=event_data["user_email"],
