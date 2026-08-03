@@ -13,12 +13,11 @@ class BitrixProvider(CrmProvider):
         return BitrixClient(self.conn.domain, decrypt(self.conn.access_token_enc))
 
     async def refresh_tokens(self) -> dict:
-        from core.config import settings
         tokens = await BitrixClient.refresh_tokens(
             domain=self.conn.domain,
             refresh_token=decrypt(self.conn.refresh_token_enc),
-            client_id=settings.BITRIX_CLIENT_ID,
-            client_secret=settings.BITRIX_CLIENT_SECRET,
+            client_id=decrypt(self.conn.bitrix_client_id_enc),
+            client_secret=decrypt(self.conn.bitrix_client_secret_enc),
         )
         return {
             "access_token_enc": encrypt(tokens["access_token"]),
