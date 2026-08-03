@@ -215,8 +215,6 @@ class BitrixClient:
         return phones[0].get("VALUE") if phones else None
 
 
-
-
     async def send_status_delivery(
         self,
         connector_id: str,
@@ -277,7 +275,7 @@ class BitrixClient:
             message_id: str,
             chat_id: str,
     ) -> dict:
-        return await self.call(
+        res = await self.call(
             "imconnector.delete.messages",
             {
                 "CONNECTOR": connector_id,
@@ -292,3 +290,4 @@ class BitrixClient:
             },
             use_json=True,
         )
+        log.info(f"\n\n BitrixClient delete_message res {res} \n\n")
