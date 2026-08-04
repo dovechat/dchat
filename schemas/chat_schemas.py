@@ -14,6 +14,7 @@ class MessageCreate(BaseModel):
     message_id: int | None = None
     conversation_id: uuid.UUID
     channel_msg_id: str | None = None
+    crm_message_id: str | None = None
     direction: MessageDirection
     phone: str | None = None
     text: str | None = None
