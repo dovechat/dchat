@@ -212,7 +212,36 @@ class CrmService:
             log.info(f"handle_bitrix_incoming: unhandled event={event}")
             return
         if event == "ONIMCONNECTORMESSAGEDELETE":
-            log.info(f"handle_bitrix_incoming DELETE full data: {data}")
+            bx_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
+            crm_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
+            convs = await self._uow.conversations.get_multi(
+                filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id}, limit=1,
+            )
+            if not convs:
+                log.warning(f"handle_bitrix_incoming DELETE: no conv for crm_chat_id={crm_chat_id}")
+                return
+            msgs = await self._uow.msg_repo.get_multi(filters={"conversation_id": convs[0].id})
+            target = next((m for m in msgs if (m.raw_content or {}).get("crm_message_id") == bx_message_id), None)
+            if not target:
+                log.warning(f"handle_bitrix_incoming DELETE: no message for crm_message_id={bx_message_id}")
+                return
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.post(
+                        "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-delete",
+                        data={
+                            "message_id": target.id,
+                            "channel_type": conn.channel_type,
+                            "phone": convs[0].client_phone,
+                            "line_id": str(conn.line_id),
+                            "user_id": str(owner.id),
+                            "user_email": owner.email,
+                        },
+                        timeout=10,
+                    )
+                    log.info(f"crm-delete response: {resp.status_code} {resp.text}")
+                except Exception as e:
+                    log.error(f"crm-delete request failed: {e}")
             return
         # рефреш токена
         try:
@@ -266,12 +295,7 @@ class CrmService:
             status=MessageStatus.sent,
             template=template,
         ).model_dump_json()
-        memberships = await self._uow.memberships.get_multi(
-            filters={"tenant_id": account.tenant_id, "role": "owner"},
-            limit=1,
-        )
-        owner = await self._uow.users.get_by_id(memberships[0].user_id)
-        async with httpx.AsyncClient() as client:
+
             try:
                 internal_url = "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-outgoing"
                 params = {

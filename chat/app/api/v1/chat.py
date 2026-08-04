@@ -129,6 +129,20 @@ async def crm_outgoing(
     return await _enqueue_outgoing(channel_type, msg, files, current_user, chat_service)
 
 
+@router.post("/internal/crm-delete")
+async def crm_delete(
+    message_id: int = Form(...),
+    channel_type: str = Form(...),
+    phone: str = Form(...),
+    line_id: uuid.UUID = Form(...),
+    user_id: uuid.UUID = Form(...),
+    user_email: str = Form(...),
+    chat_service: ChatService = Depends(get_chat_service),
+):
+    current_user = UserContext(id=user_id, email=user_email, role="user", member="owner")
+    await chat_service.delete_message(message_id, current_user, phone, line_id, channel_type)
+
+
 @router.post("/messages/tgbot", response_model=MessageResponse)
 async def create_message_tgbot(
     data: str = Form(...),
