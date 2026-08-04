@@ -285,6 +285,7 @@ class CrmService:
                         "user_email": owner.email,
                     }, timeout=10)
                 else:
+                    log.info(f"\n\n --------------- msg_json {msg_json} \n\n") 
                     resp = await client.post(internal_url, data={
                         "data": msg_json,
                         "channel_type": conn.channel_type,

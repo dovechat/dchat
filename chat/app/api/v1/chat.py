@@ -123,6 +123,7 @@ async def crm_outgoing(
     chat_service: ChatService = Depends(get_chat_service),
 ):
     current_user = UserContext(id=user_id, email=user_email, role="user", member="owner")
+    log.info(f"\n\n ++++++++++++++ internal/crm-outgoing data {data}  \n\n")
     msg = MessageCreate.model_validate_json(data)
     log.info(f"\n\n ++++++++++++++ internal/crm-outgoing msg {msg}  \n\n")
     return await _enqueue_outgoing(channel_type, msg, files, current_user, chat_service)
