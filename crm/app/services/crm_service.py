@@ -249,11 +249,15 @@ class CrmService:
             log.info("handle_bitrix_incoming: skip echo of own message (email-prefix+text match)")
             return
         files = await self._collect_bitrix_files(data)
+
+        crm_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
+        log.info(f"\n\n handle_bitrix_incoming: crm_message_id={crm_message_id}\n\n")
+
         msg_json = MessageCreate(
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
             phone=conv.client_phone,
-            crm_message_id=str(data.get("data[MESSAGES][0][im][message_id]") or ""),
+            crm_message_id=crm_message_id,
             text=text if not template else f"[template:{template['name']}]",
             status=MessageStatus.sent,
             template=template,

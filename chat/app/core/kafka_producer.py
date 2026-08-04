@@ -55,6 +55,7 @@ class KafkaEventProducer:
                 file_bytes = await file.read()
                 await storage.save_file(file_bytes, media_id, file.filename, file.content_type)
                 logger.info(f"KafkaEventProducer.send_message file saved media_id={media_id}")
+                logger.info(f"KafkaEventProducer.send_message file saved crm_message_id={crm_message_id}")
                 media.append({
                     "id": str(media_id),
                     "file_name": file.filename,
