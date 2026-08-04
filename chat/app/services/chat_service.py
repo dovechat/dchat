@@ -544,8 +544,6 @@ class ChatService:
             res = await self.conv_repo.create_conversation(line_id, channel_type)
         return res
 
-    log.info(f"\n\n save_incoming_message event {event} \n\n")
-
     async def save_incoming_message(
             self,
             conversation_id: uuid.UUID | None,
@@ -566,6 +564,8 @@ class ChatService:
                 channel_type="telegram_user",
             )
             conversation_id = conversation.id
+
+        log.info(f"\n\n save_incoming_message event {event} \n\n")
 
         media = None
 
