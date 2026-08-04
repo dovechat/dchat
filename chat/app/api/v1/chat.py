@@ -63,7 +63,7 @@ async def _enqueue_outgoing(
         files=files,
         template=data.template,
     )
-    log.info(f"_enqueue_outgoing crm_message_id={crm_message_id} channel_type={channel_type} message_id={message.id}")
+    log.info(f"_enqueue_outgoing crm_message_id={data.crm_message_id} channel_type={channel_type} message_id={message.id}")
     return MessageResponse.model_validate(message)
 
 
