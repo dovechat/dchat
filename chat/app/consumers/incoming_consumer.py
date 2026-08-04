@@ -139,8 +139,9 @@ async def process_message(
                     crm_chat_id=bx_chat_id,
                 )
             if bx_msg_id:
+                msg_orm = await chat_service.msg_repo.get_by_id(message_data.id)
                 await chat_service.msg_repo.update(
-                    message_data,
+                    msg_orm,
                     raw_content={"bx_message_id": bx_msg_id},
                 )
         except Exception as e:
