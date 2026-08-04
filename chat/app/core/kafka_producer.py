@@ -35,7 +35,7 @@ class KafkaEventProducer:
             channel_type: str,
             conversation_id: uuid.UUID,
             phone: str,
-            crm_message_id: srt,
+            crm_message_id: str,
             text: str,
             user_id: uuid.UUID,
             user_email: str,
