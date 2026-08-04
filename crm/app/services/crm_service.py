@@ -213,7 +213,7 @@ class CrmService:
         )
         owner = await self._uow.users.get_by_id(memberships[0].user_id)
         event = data.get("event")
-        if event not in ("ONIMCONNECTORMESSAGEADD", "ONIMCONNECTORMESSAGEDELETE"):
+        if event not in ("ONIMCONNECTORMESSAGEADD", "ONIMCONNECTORMESSAGEDELETE", "ONIMCONNECTORMESSAGEUPDATE"):
             log.info(f"handle_bitrix_incoming: unhandled event={event}")
             return
         if event == "ONIMCONNECTORMESSAGEDELETE":
@@ -248,6 +248,43 @@ class CrmService:
                 except Exception as e:
                     log.error(f"crm-delete request failed: {e}")
             return
+
+        if event == "ONIMCONNECTORMESSAGEUPDATE":
+            bx_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
+            crm_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
+            new_text = data.get("data[MESSAGES][0][message][text]", "")
+            new_text = re.sub(r'\[/?b\]|\[/?br\]', '', new_text).strip()
+            convs = await self._uow.conversations.get_multi(
+                filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id}, limit=1,
+            )
+            if not convs:
+                log.warning(f"handle_bitrix_incoming UPDATE: no conv for crm_chat_id={crm_chat_id}")
+                return
+            msgs = await self._uow.msg_repo.get_multi(filters={"conversation_id": convs[0].id})
+            target = next((m for m in msgs if (m.raw_content or {}).get("crm_message_id") == bx_message_id), None)
+            if not target:
+                log.warning(f"handle_bitrix_incoming UPDATE: no message for crm_message_id={bx_message_id}")
+                return
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.post(
+                        "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-edit",
+                        data={
+                            "message_id": target.id,
+                            "text": new_text,
+                            "channel_type": conn.channel_type,
+                            "phone": convs[0].client_phone,
+                            "line_id": str(conn.line_id),
+                            "user_id": str(owner.id),
+                            "user_email": owner.email,
+                        },
+                        timeout=10,
+                    )
+                    log.info(f"crm-edit response: {resp.status_code} {resp.text}")
+                except Exception as e:
+                    log.error(f"crm-edit request failed: {e}")
+            return
+
         # рефреш токена
         try:
             provider = get_provider(account)
@@ -561,6 +598,20 @@ class CrmService:
             "auth_type": 1,
         })
         log.info(f"event.bind delete result: {result_del}")
+
+        try:
+            await bx.call("event.unbind", {
+                "event": "ONIMCONNECTORMESSAGEUPDATE",
+                "handler": f"{settings.host_url}/crm/api/v1/webhooks/bitrix",
+            })
+        except Exception as e:
+            log.warning(f"event.unbind update: {e}")
+        result_upd = await bx.call("event.bind", {
+            "event": "ONIMCONNECTORMESSAGEUPDATE",
+            "handler": f"{settings.host_url}/crm/api/v1/webhooks/bitrix",
+            "auth_type": 1,
+        })
+        log.info(f"event.bind update result: {result_upd}")
 
         await self._register_robots(bx)
         return data.get("PLACEMENT") == "SETTING_CONNECTOR", data.get("auth[domain]") or domain
