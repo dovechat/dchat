@@ -6,7 +6,8 @@ from crm.app.repositories.crm_repo import CrmAccountRepository, CrmDialogLinkRep
 from repo.crm_repo import CrmLineConnectionRepository
 from repo.crm_repo import CrmSettingsRepository
 from models.crm import CrmSettings
-from models.messages import Conversation, MessageRepository
+from models.messages import Conversation
+from repo.message_repo import MessageRepository
 from models.tenants import Membership, User
 
 
