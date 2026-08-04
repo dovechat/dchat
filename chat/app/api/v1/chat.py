@@ -144,7 +144,9 @@ async def create_message_tguser(
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
 ):
-    return await _enqueue_outgoing("telegram_user", MessageCreate.parse_raw(data), files, current_user, chat_service)
+    data = MessageCreate.parse_raw(data)
+    log.info(f"\n\ /messages/tguser  data {data} \n\n")
+    return await _enqueue_outgoing("telegram_user", data, files, current_user, chat_service)
 
 
 @router.post("/messages/whatsapp/green", response_model=MessageResponse)

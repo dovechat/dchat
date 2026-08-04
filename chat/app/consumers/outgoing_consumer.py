@@ -69,7 +69,7 @@ async def process_message(
         message_id=event_data.get("message_id"),
         template=event_data.get("template")
     )
-    log.info(f"\n\n outgoing_consumer media {media} \n\n")
+    log.info(f"\n\n outgoing_consumer media {media} event_data {event_data}\n\n")
     current_user = UserContext(
         id=uuid.UUID(event_data["user_id"]),
         email=event_data["user_email"],
@@ -108,7 +108,7 @@ async def start_consumer(group_id: str = "outgoing-consumer-group", topics: list
             channel_type = message.topic.replace("_outgoing", "")
             event_data = message.value
             attempt = event_data.get("_attempt", 0) + 1
-            log.info(f"Processing message topic={message.topic} attempt={attempt} conversation_id={event_data.get('conversation_id')}")
+            log.info(f"Processing message topic={message.topic} attempt={attempt} event_data={event_data}")
 
             async with get_session() as db:
                 chat_service = ChatService(db)
