@@ -253,6 +253,7 @@ class CrmService:
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
             phone=conv.client_phone,
+            crm_message_id=str(data.get("data[MESSAGES][0][im][message_id]") or ""),
             text=text if not template else f"[template:{template['name']}]",
             status=MessageStatus.sent,
             template=template,

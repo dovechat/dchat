@@ -55,6 +55,7 @@ async def _enqueue_outgoing(
         channel_type=channel_type,
         conversation_id=data.conversation_id,
         phone=data.phone,
+        crm_message_id=data.crm_message_id,
         text=data.text,
         user_id=current_user.id,
         user_email=current_user.email,

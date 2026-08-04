@@ -125,6 +125,14 @@ class ChatService:
             if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
                 await notify_connection_error(conv.line_id, channel_type, self.db)
 
+        if isinstance(result, dict):
+            raw_content = result
+            raw_content["crm_message_id"] = data.crm_message_id
+        else:
+            raw_content = None
+
+        log.info(f"\n\n raw_content {raw_content}\n\n")
+
         await self._finalize_message(
             message=message,
             conversation_id=data.conversation_id,
@@ -133,7 +141,7 @@ class ChatService:
             current_user=current_user,
             success=success,
             channel_msg_id=sender.extract_msg_id(result),
-            raw_content=result if isinstance(result, dict) else None,
+            raw_content=raw_content,
         )
         return MessageResponse.model_validate(message)
 

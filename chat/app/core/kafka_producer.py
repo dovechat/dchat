@@ -35,6 +35,7 @@ class KafkaEventProducer:
             channel_type: str,
             conversation_id: uuid.UUID,
             phone: str,
+            crm_message_id: srt,
             text: str,
             user_id: uuid.UUID,
             user_email: str,
@@ -63,6 +64,7 @@ class KafkaEventProducer:
         payload = {
             "conversation_id": str(conversation_id),
             "phone": phone,
+            "crm_message_id": crm_message_id,
             "text": text,
             "media": media,
             "user_id": str(user_id),

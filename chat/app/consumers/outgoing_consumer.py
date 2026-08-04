@@ -62,6 +62,7 @@ async def process_message(
         conversation_id=uuid.UUID(event_data["conversation_id"]),
         direction=MessageDirection.outbound,
         phone=event_data["phone"],
+        crm_message_id=event_data["crm_message_id"],
         text=event_data["text"],
         status=MessageStatus.sent,
         media=media,
