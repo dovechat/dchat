@@ -208,7 +208,11 @@ class CrmService:
             log.warning(f"handle_bitrix_incoming: no account for conn.crm_account_id={conn.crm_account_id}")
             return
         event = data.get("event")
-        if event != "ONIMCONNECTORMESSAGEADD":
+        if event not in ("ONIMCONNECTORMESSAGEADD", "ONIMCONNECTORMESSAGEDELETE"):
+            log.info(f"handle_bitrix_incoming: unhandled event={event}")
+            return
+        if event == "ONIMCONNECTORMESSAGEDELETE":
+            log.info(f"handle_bitrix_incoming DELETE full data: {data}")
             return
         # рефреш токена
         try:
