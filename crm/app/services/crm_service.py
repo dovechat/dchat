@@ -296,6 +296,7 @@ class CrmService:
             template=template,
         ).model_dump_json()
 
+        async with httpx.AsyncClient() as client:
             try:
                 internal_url = "http://chat.dchat.svc.cluster.local:8001/v1/internal/crm-outgoing"
                 params = {
