@@ -289,5 +289,8 @@ class BitrixClient:
         )
         log.info(f"\n\n BitrixClient delete_message res {res} \n\n")
 
+    async def edit_message_im(self, message_id: str, text: str) -> dict:
+        return await self.call("im.message.update", {"MESSAGE_ID": message_id, "MESSAGE": text}, use_json=True)
+
     async def delete_message_im(self, message_id: str) -> dict:
         return await self.call("im.message.delete", {"MESSAGE_ID": message_id}, use_json=True)

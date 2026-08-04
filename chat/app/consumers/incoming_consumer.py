@@ -54,13 +54,33 @@ async def process_message(
         )
 
     elif event_type == "message_edit":
+        try:
+            messages = await chat_service.msg_repo.get_multi(
+                filters={
+                    "conversation_id": conversation_id,
+                    "channel_msg_id": [str(event_data["message"]["id"])],
+                }
+            )
+            line = await crm_service._uow.lines.get_by_id(line_id_1)
+            for message in messages:
+                crm_message_id = (message.raw_content or {}).get("crm_message_id")
+                if not crm_message_id:
+                    continue
+                await crm_service.edit_to_crm(
+                    tenant_id=line.tenant_id,
+                    conversation_id=conversation_id,
+                    message_id=str(crm_message_id),
+                    text=event_data["message"].get("text") or "",
+                    channel_type="telegram_user",
+                )
+        except Exception as e:
+            log.error(f"CRM edit_to_crm failed: {e}")
         await chat_service.edit_message(
             conversation_id=conversation_id,
             channel_msg_id=str(event_data["message"]["id"]),
             text=event_data["message"].get("text"),
         )
         return
-
 
     elif event_type == "message_delete":
         try:
