@@ -6,7 +6,7 @@ from crm.app.repositories.crm_repo import CrmAccountRepository, CrmDialogLinkRep
 from repo.crm_repo import CrmLineConnectionRepository
 from repo.crm_repo import CrmSettingsRepository
 from models.crm import CrmSettings
-from models.messages import Conversation
+from models.messages import Conversation, MessageRepository
 from models.tenants import Membership, User
 
 
@@ -19,5 +19,6 @@ class CrmUnitOfWork:
         self.channel_accounts = BaseRepository(ChannelAccount, db)
         self.lines = BaseRepository(Line, db)
         self.conversations = BaseRepository(Conversation, db)
+        self.msg_repo = BaseRepository(MessageRepository, db)
         self.memberships = BaseRepository(Membership, db)
         self.users = BaseRepository(User, db)

@@ -239,14 +239,14 @@ class CrmService:
             log.warning(f"handle_bitrix_incoming: no conv for crm_chat_id={crm_chat_id}")
             return
         conv = convs[0]
-        im_message_id = data.get("data[MESSAGES][0][im][message_id]")
-        last_msg = await self.msg_repo.get_multi(
+        raw_text = data.get("data[MESSAGES][0][message][text]", "")
+        last_msgs = await self._uow.msg_repo.get_multi(
             filters={"conversation_id": conv.id},
             order_by=[("id", "desc")],
             limit=1,
         )
-        if last_msg and str((last_msg[0].raw_content or {}).get("bx_message_id")) == str(im_message_id):
-            log.info(f"handle_bitrix_incoming: skip echo of own message bx_message_id={im_message_id}")
+        if last_msgs and re.match(r'^\[b\][^\[]+:\[/b\]\s*\[br\]' + re.escape(last_msgs[0].text or ''), raw_text):
+            log.info("handle_bitrix_incoming: skip echo of own message (email-prefix+text match)")
             return
         files = await self._collect_bitrix_files(data)
         msg_json = MessageCreate(
