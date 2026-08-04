@@ -131,7 +131,7 @@ class ChatService:
         else:
             raw_content = None
 
-        log.info(f"\n\n raw_content {raw_content}\n\n")
+        log.info(f"\n\n raw_content {raw_content} data={data}\n\n")
 
         await self._finalize_message(
             message=message,

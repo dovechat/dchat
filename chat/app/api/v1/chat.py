@@ -145,7 +145,7 @@ async def create_message_tguser(
     chat_service: ChatService = Depends(get_chat_service),
 ):
     data = MessageCreate.parse_raw(data)
-    log.info(f"\n\ /messages/tguser  data {data} \n\n")
+    log.info(f"\n\n messages/tguser  data {data} \n\n")
     return await _enqueue_outgoing("telegram_user", data, files, current_user, chat_service)
 
 
