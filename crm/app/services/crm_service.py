@@ -1400,10 +1400,6 @@ class CrmService:
             return
         provider = get_provider(conn)
         try:
-            await provider.delete_message(
-                client_phone=client_phone,
-                message_id=message_id,
-                crm_chat_id=conversation.crm_chat_id,
-            )
+            await provider.delete_message(message_id=message_id)
         except Exception as e:
             log.error(f"delete_from_crm failed tenant={tenant_id}: {e}")
