@@ -548,6 +548,20 @@ class CrmService:
         })
         log.info(f"event.bind result: {result}")
 
+        try:
+            await bx.call("event.unbind", {
+                "event": "ONIMCONNECTORMESSAGEDELETE",
+                "handler": f"{settings.host_url}/crm/api/v1/webhooks/bitrix",
+            })
+        except Exception as e:
+            log.warning(f"event.unbind delete: {e}")
+        result_del = await bx.call("event.bind", {
+            "event": "ONIMCONNECTORMESSAGEDELETE",
+            "handler": f"{settings.host_url}/crm/api/v1/webhooks/bitrix",
+            "auth_type": 1,
+        })
+        log.info(f"event.bind delete result: {result_del}")
+
         await self._register_robots(bx)
         return data.get("PLACEMENT") == "SETTING_CONNECTOR", data.get("auth[domain]") or domain
 
