@@ -91,10 +91,10 @@ class CrmService:
         
         # --- Bitrix24 ---
         if isinstance(result.get("result"), int):
-            bx_message_id = result["result"]
+            crm_message_id = result["result"]
             session_chat_id = conversation.crm_chat_id
         else:
-            bx_message_id = None
+            crm_message_id = None
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
         
@@ -131,8 +131,8 @@ class CrmService:
         except Exception as e:
             log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
 
-        log.info(f"send_to_crm session_chat_id {session_chat_id} bx_message_id {bx_message_id}")
-        return session_chat_id, bx_message_id
+        log.info(f"send_to_crm session_chat_id {session_chat_id} crm_message_id {crm_message_id}")
+        return session_chat_id, crm_message_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
         conn = await self._uow.crm_accounts.get_by_tenant(tenant_id, crm_type)
