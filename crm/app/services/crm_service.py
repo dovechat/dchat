@@ -207,6 +207,11 @@ class CrmService:
         if not account:
             log.warning(f"handle_bitrix_incoming: no account for conn.crm_account_id={conn.crm_account_id}")
             return
+        memberships = await self._uow.memberships.get_multi(
+            filters={"tenant_id": account.tenant_id, "role": "owner"},
+            limit=1,
+        )
+        owner = await self._uow.users.get_by_id(memberships[0].user_id)
         event = data.get("event")
         if event not in ("ONIMCONNECTORMESSAGEADD", "ONIMCONNECTORMESSAGEDELETE"):
             log.info(f"handle_bitrix_incoming: unhandled event={event}")
