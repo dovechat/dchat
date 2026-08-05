@@ -203,6 +203,7 @@ async def start_consumer(
 
     try:
         async for message in consumer:
+            log.info(f"\n\n ---- message {message}  \n\n")
             event_data = message.value
 
             async with get_session() as db:
