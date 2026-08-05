@@ -225,7 +225,10 @@ class CrmService:
         owner = await self._uow.users.get_by_id(memberships[0].user_id)
         event = data.get("event")
         if event not in ("ONIMCONNECTORMESSAGEADD", "ONIMCONNECTORMESSAGEDELETE", "ONIMCONNECTORMESSAGEUPDATE"):
-            log.info(f"handle_bitrix_incoming: unhandled event={event}")
+            log.info(
+                f"BITRIX MESSAGE USER_ID="
+                f"{data.get('data[MESSAGES][0][message][user_id]')}"
+            )
             return
         if event == "ONIMCONNECTORMESSAGEDELETE":
             bx_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
