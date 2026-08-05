@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import select
+from sqlalchemy import cast, desc, select, String, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from models.messages import Media, Message
