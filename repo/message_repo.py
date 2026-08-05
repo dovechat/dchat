@@ -24,11 +24,16 @@ class MessageRepository(BaseRepository[Message]):
         )
         return [str(m.media[0].id) for m in media_list if m.media]
 
-    async def get_message_by_crm_message_id(self, conv_id: str, bx_message_id: str)-> Message | None:
+    async def get_message_by_crm_message_id(
+            self,
+            conv_id: str,
+            bx_message_id: str,
+    ) -> Message | None:
         query = select(Message).where(
             Message.conversation_id == conv_id,
-            cast(Message.raw_content["crm_message_id"], String) == bx_message_id,
+            Message.raw_content.op("->>")("crm_message_id") == bx_message_id,
         )
+
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
