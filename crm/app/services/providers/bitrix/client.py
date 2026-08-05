@@ -103,9 +103,12 @@ class BitrixClient:
                 None,
             )
             if active_chat:
+                current_user = await self.call("user.current", {})
+                operator_id = current_user.get("result", {}).get("ID")
                 result = await self.call(
                     "imopenlines.crm.message.add",
-                    {"CHAT_ID": crm_chat_id, "MESSAGE": text, "CRM_ENTITY_TYPE": "deal", "CRM_ENTITY": deal_id}
+                    {"CHAT_ID": crm_chat_id, "MESSAGE": text, "CRM_ENTITY_TYPE": "deal", "CRM_ENTITY": deal_id,
+                     "USER_ID": operator_id},
                 )
                 im = result.get("result", {})
                 if isinstance(im, dict) and im.get("chat_id") and im.get("message_id"):
