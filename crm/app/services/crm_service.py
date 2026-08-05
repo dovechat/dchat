@@ -270,25 +270,9 @@ class CrmService:
             if not convs:
                 log.warning(f"handle_bitrix_incoming UPDATE: no conv for crm_chat_id={crm_chat_id}")
                 return
-            msgs = await self._uow.msg_repo.get_multi(filters={"conversation_id": convs[0].id})
-
-            for m in msgs:
-                crm_id = (m.raw_content or {}).get("crm_message_id")
-                log.info(
-                    "msg_id=%s crm_id=%r type=%s channel=%s",
-                    m.id,
-                    crm_id,
-                    type(crm_id).__name__,
-                    m.channel_msg_id,
-                )
-
-            log.info(
-                "search bx_message_id=%r type=%s",
-                bx_message_id,
-                type(bx_message_id).__name__,
-            )
-
-            target = next((m for m in msgs if (m.raw_content or {}).get("crm_message_id") == bx_message_id), None)
+            # msgs = await self._uow.msg_repo.get_multi(filters={"conversation_id": convs[0].id})
+            # target = next((m for m in msgs if (m.raw_content or {}).get("crm_message_id") == bx_message_id), None)
+            target = await self._uow.msg_repo.get_message_by_crm_message_id(convs[0].id, bx_message_id)
             if not target:
                 log.warning(f"handle_bitrix_incoming UPDATE: no message for crm_message_id={bx_message_id}")
                 return

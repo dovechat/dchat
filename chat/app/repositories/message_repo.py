@@ -1,6 +1,6 @@
 import uuid
 from typing import Any, List, Optional
-from sqlalchemy import desc, select, update
+from sqlalchemy import cast, desc, select, String, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from models.messages import Message
@@ -96,3 +96,12 @@ class MessageRepository(BaseRepository[Message]):
         )
         msg = msgs[0] if msgs else None
         return msg
+
+    async def get_message_by_crm_message_id(self, conv_id: str, bx_message_id: str)-> Message | None:
+        query = select(Message).where(
+            Message.conversation_id == conv_id,
+            cast(Message.raw_content["crm_message_id"], String) == bx_message_id,
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+        
