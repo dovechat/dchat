@@ -345,6 +345,7 @@ class CrmService:
         crm_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
         log.info(f"\n\n handle_bitrix_incoming: crm_message_id={crm_message_id}\n\n")
 
+        '''
         target = await self._uow.msg_repo.get_message_by_crm_message_id(
             conv.id,
             crm_message_id,
@@ -353,7 +354,8 @@ class CrmService:
         if target:
             log.info(f"skip existing crm_message_id={crm_message_id}")
             return
-   
+        '''
+
         msg_json = MessageCreate(
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
