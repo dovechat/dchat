@@ -93,7 +93,7 @@ class BitrixClient:
         contact_id = await self.find_contact_by_phone(user_id)
         deal_id = await self.find_open_deal(contact_id)
 
-        if crm_chat_id:
+        if crm_chat_id and deal_id:
             check = await self.call(
                 "imopenlines.crm.chat.get",
                 {"CRM_ENTITY_TYPE": "deal", "CRM_ENTITY": deal_id or 0, "ACTIVE_ONLY": "N"},
