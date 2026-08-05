@@ -263,9 +263,6 @@ class CrmService:
             bx_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
             crm_chat_id = data.get("data[MESSAGES][0][im][chat_id]")
             new_text = data.get("data[MESSAGES][0][message][text]", "")
-
-            message_user_id = data.get("data[MESSAGES][0][message][user_id]")
-
             new_text = re.sub(r'\[/?b\]|\[/?br\]', '', new_text).strip()
             convs = await self._uow.conversations.get_multi(
                 filters={"line_id": conn.line_id, "crm_chat_id": crm_chat_id}, limit=1,
@@ -348,10 +345,15 @@ class CrmService:
         crm_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
         log.info(f"\n\n handle_bitrix_incoming: crm_message_id={crm_message_id}\n\n")
 
-        if message_user_id == str(owner.id):
-            log.info(f"skip own Bitrix message user_id={message_user_id}")
-            return
+        target = await self._uow.msg_repo.get_message_by_crm_message_id(
+            conv.id,
+            crm_message_id,
+        )
 
+        if target:
+            log.info(f"skip existing crm_message_id={crm_message_id}")
+            return
+   
         msg_json = MessageCreate(
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
