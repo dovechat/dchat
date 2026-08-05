@@ -54,6 +54,16 @@ class ChannelConnection:
             log.info(f"\n\n ---- creds {creds} \n\n")
             return creds["session_string"]
 
+    async def _get_peer_phone(self) -> str:
+        if self._peer_phone_cache is not None:
+            return self._peer_phone_cache
+        async with AsyncSessionLocal() as db:
+            conv = await ConversationRepository(db).get_by_line_and_crm(
+                uuid.UUID(self.line_id), "telegram_user"
+            )
+            self._peer_phone_cache = conv.client_phone if conv else ""
+        return self._peer_phone_cache
+
     async def _set_status(self, status: ConnectionStatus, error: str | None = None):
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -71,13 +81,15 @@ class ChannelConnection:
                 account.last_checked_at = datetime.utcnow()
 
     async def connect(self):
-        log.info(f"\n\n[pool] CONNECT LINE id={self.line_id}, phone={self.phone}\n\n")
-
         session_string = await self._load_session_string()
 
         self.client = TelegramClientWrapper(
             session_string=session_string
         )
+
+        peer_phone = self._get_peer_phone()
+
+        log.info(f"\n\n[pool] CONNECT LINE id={self.line_id}, peer_phone={peer_phone}\n\n")
 
         await self.client.connect()
 
@@ -103,7 +115,7 @@ class ChannelConnection:
                 return
 
             payload = await serialize_message(
-                event, self.line_id, self.conversation_id, self.phone,
+                event, self.line_id, self.conversation_id, peer_phone,
             )
             await send_event("telegram_user_incoming", payload)
 
@@ -114,7 +126,7 @@ class ChannelConnection:
             if not items:
                 return
             payload = await serialize_message(
-                event, self.line_id, self.conversation_id, self.phone,
+                event, self.line_id, self.conversation_id, peer_phone,
             )
             payload["message"]["media"] = items
             await send_event("telegram_user_incoming", payload)
