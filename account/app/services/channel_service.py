@@ -59,7 +59,7 @@ class ChannelAccountService:
             # log.info(f"************* _decrypt_credentials encrypted {encrypted} {type(encrypted['encrypted_data'])}")
             creds_js = decrypt(encrypted["encrypted_data"])
             creds = json.loads(creds_js)
-            # log.info(f"************* _decrypt_credentials encrypted creds {creds} ")
+            log.info(f"************* _decrypt_credentials encrypted creds {creds} ")
             return creds
         return {}
 

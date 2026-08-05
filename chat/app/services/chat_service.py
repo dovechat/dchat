@@ -861,6 +861,7 @@ class ChatService:
 
         channel_acc = await self.conv_repo.get_channel_acc_by_conversation(conv.id)
         creds = json.loads(decrypt(channel_acc.credentials_encrypted["encrypted_data"]))
+        log.info(f"\n\n crm_incoming creds {creds} \n\n")
 
         if conv.channel_type == "telegram_bot" and creds:
             from app.senders.telegram_bot import TelegramBotSender
