@@ -172,6 +172,18 @@ class BitrixClient:
                         "USER_ID": operator_id,
                     }
                 )
+
+            crm_message_id = str(result.get("result") or "")
+
+            if crm_message_id:
+                await self._uow.msg_repo.update_by_id(
+                    message.id,
+                    raw_content={
+                        **(message.raw_content or {}),
+                        "crm_message_id": crm_message_id,
+                    },
+                )
+
             else:
                 log.info(f"bitrix crm chat lookup result={chat}")
                 result = await self.call(
