@@ -159,7 +159,8 @@ class BitrixClient:
             operator_id = current_user.get("result", {}).get("ID")
 
             log.info(f"\n\n chat_get result: {chat} \n\n")
-            if chat.get("result") and chat["result"][0].get("CONNECTOR_ID") == connector_id:
+            # if chat.get("result") and chat["result"][0].get("CONNECTOR_ID") == connector_id:
+            if False:
                 bitrix_chat_id = chat["result"][0]["CHAT_ID"]
 
                 result = await self.call(
