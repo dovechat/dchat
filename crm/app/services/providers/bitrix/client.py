@@ -173,6 +173,7 @@ class BitrixClient:
                     }
                 )
             else:
+                log.info(f"bitrix crm chat lookup result={chat}")
                 result = await self.call(
                     "imconnector.send.messages",
                     params,
