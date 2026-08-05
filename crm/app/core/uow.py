@@ -20,6 +20,6 @@ class CrmUnitOfWork:
         self.channel_accounts = BaseRepository(ChannelAccount, db)
         self.lines = BaseRepository(Line, db)
         self.conversations = BaseRepository(Conversation, db)
-        self.msg_repo = MessageRepository(Message, db)
+        self.msg_repo = MessageRepository(db)
         self.memberships = BaseRepository(Membership, db)
         self.users = BaseRepository(User, db)
