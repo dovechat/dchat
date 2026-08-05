@@ -36,7 +36,8 @@ class BitrixProvider(CrmProvider):
     ) -> dict:
         bx = self._client()
         chat_id = f"{self.conn.connector_id}_conv{conversation_id}"
-        return await bx.send_message(
+
+        result = await bx.send_message(
             connector_id=self.conn.connector_id,
             line_id=self.conn.crm_line_id,
             user_id=client_phone,
@@ -47,6 +48,8 @@ class BitrixProvider(CrmProvider):
             crm_chat_id=crm_chat_id,
             media=media,
         )
+
+        return result
 
     async def handle_webhook(self, data: dict) -> dict:
         msg_data = data.get("data", {}).get("MESSAGES", [{}])[0]
