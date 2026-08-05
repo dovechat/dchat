@@ -92,6 +92,32 @@ class BitrixClient:
         contact_id = await self.find_contact_by_phone(user_id)
         deal_id = await self.find_open_deal(contact_id)
 
+        if crm_chat_id:
+            check = await self.call(
+                "imopenlines.crm.chat.get",
+                {"CRM_ENTITY_TYPE": "deal", "CRM_ENTITY": deal_id or 0, "ACTIVE_ONLY": "N"},
+            )
+            active_chat = next(
+                (c for c in check.get("result", []) if str(c.get("CHAT_ID")) == str(crm_chat_id)),
+                None,
+            )
+            if active_chat:
+                result = await self.call(
+                    "imopenlines.crm.message.add",
+                    {"CHAT_ID": crm_chat_id, "MESSAGE": text},
+                )
+                im = result.get("result", {})
+                if isinstance(im, dict) and im.get("chat_id") and im.get("message_id"):
+                    await self.call("imconnector.send.status.delivery", {
+                        "CONNECTOR": connector_id,
+                        "LINE": line_id,
+                        "MESSAGES[0][im][chat_id]": str(im["chat_id"]),
+                        "MESSAGES[0][im][message_id]": str(im["message_id"]),
+                        "MESSAGES[0][message][id][0]": msg_id,
+                        "MESSAGES[0][chat][id]": chat_id,
+                    })
+                return result
+
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
