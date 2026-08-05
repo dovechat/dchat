@@ -206,6 +206,7 @@ class ChannelAccountService:
             credentials: TelegramUserCredentials
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
+        log.info(f"credentials {credentials}")
         phone = credentials.phone
         session_string = credentials.session_string
         encrypted = self._encrypt_credentials(credentials.model_dump())
