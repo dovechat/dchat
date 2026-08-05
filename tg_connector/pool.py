@@ -87,7 +87,7 @@ class ChannelConnection:
             session_string=session_string
         )
 
-        peer_phone = self._get_peer_phone()
+        peer_phone = await self._get_peer_phone()
 
         log.info(f"\n\n[pool] CONNECT LINE id={self.line_id}, peer_phone={peer_phone}\n\n")
 
