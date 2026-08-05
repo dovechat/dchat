@@ -44,6 +44,7 @@ class BitrixProvider(CrmProvider):
             chat_id=chat_id,
             text=text,
             message_id=message_id,
+            crm_chat_id=crm_chat_id,
             media=media,
         )
 
