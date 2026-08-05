@@ -51,6 +51,7 @@ class ChannelConnection:
             if not account:
                 raise ValueError(f"No channel_account for line {self.line_id}")
             creds = json.loads(decrypt(account.credentials_encrypted["encrypted_data"]))
+            log.info(f"\n\n ---- creds {creds} \n\n")
             return creds["session_string"]
 
     async def _set_status(self, status: ConnectionStatus, error: str | None = None):
