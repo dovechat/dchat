@@ -55,8 +55,6 @@ class ChannelConnection:
             return creds["session_string"]
 
     async def _get_peer_phone(self) -> str:
-        if self._peer_phone_cache is not None:
-            return self._peer_phone_cache
         async with AsyncSessionLocal() as db:
             conv = await ConversationRepository(db).get_by_line_and_crm(
                 uuid.UUID(self.line_id), "telegram_user"
