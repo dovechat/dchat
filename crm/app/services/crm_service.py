@@ -226,6 +226,16 @@ class CrmService:
                 log.warning(f"handle_bitrix_incoming DELETE: no conv for crm_chat_id={crm_chat_id}")
                 return
             msgs = await self._uow.msg_repo.get_multi(filters={"conversation_id": convs[0].id})
+
+            log.info(f"msgs count={len(msgs)}")
+            for m in msgs:
+                log.info(
+                    f"id={m.id} "
+                    f"conv={m.conversation_id} "
+                    f"crm={(m.raw_content or {}).get('crm_message_id')} "
+                    f"channel={m.channel_msg_id}"
+                )
+
             target = next((m for m in msgs if (m.raw_content or {}).get("crm_message_id") == bx_message_id), None)
             if not target:
                 log.warning(f"handle_bitrix_incoming DELETE: no message for crm_message_id={bx_message_id}")
@@ -261,6 +271,23 @@ class CrmService:
                 log.warning(f"handle_bitrix_incoming UPDATE: no conv for crm_chat_id={crm_chat_id}")
                 return
             msgs = await self._uow.msg_repo.get_multi(filters={"conversation_id": convs[0].id})
+
+            for m in msgs:
+                crm_id = (m.raw_content or {}).get("crm_message_id")
+                log.info(
+                    "msg_id=%s crm_id=%r type=%s channel=%s",
+                    m.id,
+                    crm_id,
+                    type(crm_id).__name__,
+                    m.channel_msg_id,
+                )
+
+            log.info(
+                "search bx_message_id=%r type=%s",
+                bx_message_id,
+                type(bx_message_id).__name__,
+            )
+
             target = next((m for m in msgs if (m.raw_content or {}).get("crm_message_id") == bx_message_id), None)
             if not target:
                 log.warning(f"handle_bitrix_incoming UPDATE: no message for crm_message_id={bx_message_id}")
@@ -315,6 +342,10 @@ class CrmService:
             return
         conv = convs[0]
         raw_text = data.get("data[MESSAGES][0][message][text]", "")
+        log.info(f"conv.id={convs[0].id} crm_chat_id={convs[0].crm_chat_id}")
+
+        '''
+        # cludge filtering echo
         last_msgs = await self._uow.msg_repo.get_multi(
             filters={"conversation_id": conv.id},
             order_by=[("id", "desc")],
@@ -323,6 +354,8 @@ class CrmService:
         if last_msgs and re.match(r'^\[b\][^\[]+:\[/b\]\s*\[br\]' + re.escape(last_msgs[0].text or ''), raw_text):
             log.info("handle_bitrix_incoming: skip echo of own message (email-prefix+text match)")
             return
+        '''
+
         files = await self._collect_bitrix_files(data)
 
         crm_message_id = str(data.get("data[MESSAGES][0][im][message_id]") or "")
