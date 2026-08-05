@@ -67,6 +67,7 @@ class BitrixClient:
             message_id: str | None = None,
             media: list[dict] = [],
             deal_id: int | None = None,
+            crm_chat_id: str | None = None, [ПОСЛЕ deal_id: int | None = None, ]
     ) -> dict:
         msg_id = message_id or str(uuid.uuid4())
         log.info(
