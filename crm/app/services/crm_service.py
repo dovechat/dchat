@@ -66,13 +66,12 @@ class CrmService:
             crm_message_id = str(result.get("result") or "")
 
             if crm_message_id:
-                msg = await self._uow.msg_repo.get_by_id(message_id)
-                if msg:
-                    msg.raw_content = {
-                        **(msg.raw_content or {}),
+                await self._uow.msg_repo.update_by_id(
+                    message_id,
+                    raw_content={
                         "crm_message_id": crm_message_id,
-                    }
-                    await self._uow.msg_repo.update(msg)
+                    },
+                )
 
         except Exception as e:
             try:
