@@ -56,7 +56,7 @@ class CrmService:
         crm_chat_id = conversation.crm_chat_id
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
-        '''
+
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
         try:
             result = await provider.send_message(
@@ -74,27 +74,34 @@ class CrmService:
                     },
                 )
 
-        except Exception as e:
-            try:
-                log.error(f"!!! --- ERROR --- CRM result after refresh e {e}")
-                new_tokens = await provider.refresh_tokens()
-                await self._uow.crm_accounts.update(conn, **new_tokens)
-                conn.access_token_enc = new_tokens["access_token_enc"]
-                conn.refresh_token_enc = new_tokens["refresh_token_enc"]
-                # result = await provider.send_message(
-                    # conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
-                    # text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
-                log.info(f"CRM result after refresh: {result}")
-            except Exception as e2:
-                if "wrong_client" in str(e2) or "expired_token" in str(e2):
-                    log.warning(f"CRM tokens invalid for tenant={tenant_id}, re-auth required: {e2}")
-                    await self._uow.crm_accounts.update(conn, is_active=False)
-                else:
-                    log.error("CRM send failed tenant=%s: %s", tenant_id, e2, exc_info=True)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 401:
+                log.error(f"!!! --- ERROR -- CRM send failed: {e}")
                 return
+            new_tokens = await provider.refresh_tokens()
+            await self._uow.crm_accounts.update(conn, **new_tokens)
+
+            conn.access_token_enc = new_tokens["access_token_enc"]
+            conn.refresh_token_enc = new_tokens["refresh_token_enc"]
+
+            result = await provider.send_message(
+                conversation_id=str(conversation_id),
+                client_phone=client_phone,
+                client_name=client_name,
+                text=text,
+                message_id=message_id,
+                crm_chat_id=crm_chat_id,
+                media=media,
+            )
+
+            log.info(f"CRM result after refresh: {result}")
+
+        except Exception as e:
+            log.error(f"CRM send failed: {e}", exc_info=True)
+            return
 
         log.info(f"send_to_crm result {result}")
-        '''
+
 
         # --- AmoCRM ---
         if conn.crm_type == "amocrm":
