@@ -71,6 +71,9 @@ class BitrixClient:
     ) -> dict:
         msg_id = message_id or str(uuid.uuid4())
         log.warning(f"SEND_MESSAGE CALLED msg_id={msg_id} text={text}")
+        log.warning(
+            f"SEND_MESSAGE ENTER msg_id={msg_id} crm_chat_id={crm_chat_id} deal_id={deal_id}"
+        )
         log.info(
             f"imconnector.send.messages user_id={user_id} chat_id={chat_id} connector={connector_id} line={line_id}")
         log.warning(f"send_message connector={connector_id} line={line_id} token={self.access_token}")
