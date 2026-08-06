@@ -48,12 +48,9 @@ class BitrixClient:
             message: dict,
     ) -> dict:
         return await self.call(
-            "imopenlines.crm.message.add",
-            {
-                "CRM_ENTITY_TYPE": "deal",
-                "CRM_ENTITY_ID": deal_id,
-                "MESSAGE": message,
-            },
+            "imconnector.send.messages",
+            message,
+            use_json=True,
         )
 
     async def send_message(
@@ -129,8 +126,6 @@ class BitrixClient:
                 None,
             )
             if active_chat:
-                current_user = await self.call("user.current", {})
-                operator_id = current_user.get("result", {}).get("ID")
                 result = await self.call(
                     "imconnector.send.messages",
                     params,
@@ -148,8 +143,6 @@ class BitrixClient:
                         "MESSAGES[0][chat][id]": chat_id,
                     })
                 return result
-
-
 
         log.info(f"send_message params: {params}")
 
@@ -170,14 +163,9 @@ class BitrixClient:
                 bitrix_chat_id = chat["result"][0]["CHAT_ID"]
 
                 result = await self.call(
-                    "imopenlines.crm.message.add",
-                    {
-                        "CHAT_ID": bitrix_chat_id,
-                        "MESSAGE": text,
-                        "CRM_ENTITY_TYPE": "deal", 
-                        "CRM_ENTITY": deal_id,
-                        "USER_ID": operator_id,
-                    }
+                    "imconnector.send.messages",
+                    params,
+                    use_json=True,
                 )
 
             else:
