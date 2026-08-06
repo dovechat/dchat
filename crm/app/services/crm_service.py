@@ -56,7 +56,7 @@ class CrmService:
         crm_chat_id = conversation.crm_chat_id
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
-        '''
+
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
         try:
             result = await provider.send_message(
@@ -80,9 +80,9 @@ class CrmService:
                 await self._uow.crm_accounts.update(conn, **new_tokens)
                 conn.access_token_enc = new_tokens["access_token_enc"]
                 conn.refresh_token_enc = new_tokens["refresh_token_enc"]
-                result = await provider.send_message(
-                    conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
-                    text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
+                # result = await provider.send_message(
+                #    conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
+                #    text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
                 log.info(f"CRM result after refresh: {result}")
             except Exception as e2:
                 if "wrong_client" in str(e2) or "expired_token" in str(e2):
