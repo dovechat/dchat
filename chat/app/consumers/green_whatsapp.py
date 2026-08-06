@@ -178,7 +178,7 @@ class GreenWhatsAppListener:
                     "message_id": str(message.id),
                     "text": new_text,
                 })
-            return
+            # return
         if msg_type == "deletedMessage":
             stanza_id = message_data.get("deletedMessageData", {}).get("stanzaId")
             if stanza_id:
@@ -270,7 +270,6 @@ class GreenWhatsAppListener:
                 await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
-
 
     async def _handle_message_status(self, line_id: str, payload: dict):
         external_id = payload.get("idMessage")
