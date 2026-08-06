@@ -63,16 +63,6 @@ class CrmService:
                 text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
             log.info(f"CRM result: {result}")
 
-            crm_message_id = str(result.get("result") or "")
-
-            if crm_message_id:
-                await self._uow.msg_repo.update_by_id(
-                    message_id,
-                    raw_content={
-                        "crm_message_id": crm_message_id,
-                    },
-                )
-
         except Exception as e:
             try:
                 new_tokens = await provider.refresh_tokens()
