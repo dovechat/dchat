@@ -97,6 +97,8 @@ class BotService:
                 edited = update_data.get("edited_message")
                 if edited:
                     return await self._handle_edited_message(line_id, line, edited)
+
+                log.info(f" *** --  **  bot_service.handle_webhook edited {edited}")
         
                 # Extract message data
                 message = update_data.get("message", {})
