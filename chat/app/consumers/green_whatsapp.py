@@ -178,7 +178,7 @@ class GreenWhatsAppListener:
                     "message_id": str(message.id),
                     "text": new_text,
                 })
-                log.info(f"\n\n ---------  EDIT edited_data {edited_data} \n\n")
+            log.info(f"\n\n ---------  EDIT edited_data {edited_data} \n\n")
             # return
 
         log.info(f"\n\n ---------  AFTER EDIT edited_data {edited_data} \n\n")
@@ -260,7 +260,7 @@ class GreenWhatsAppListener:
             line = await crm_uow.lines.get_by_id(line_id)
             sender_name = sender_data.get("senderName", "")
 
-            log.info(f"green wh send_to_crm tenant_id {line.tenant_id} conversation_id {conversation_id}")
+            log.info(f"green wh send_to_crm tenant_id {line.tenant_id} conversation_id {conv.id,}")
 
             bx_chat = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
