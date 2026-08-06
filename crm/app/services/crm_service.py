@@ -367,7 +367,7 @@ class CrmService:
             limit=1,
         )
         if last_msgs and re.match(
-            fr"^\[b\][^[]+:\[/b\]\s*\[br\]{re.escape(last_msgs[0].text or '')}",
+            r"^\[b\][^[]+:\[/b\]\s*\[br\]" + re.escape(last_msgs[0].text or ""),
             raw_text,
         ):
             log.info("handle_bitrix_incoming: skip echo of own message (email-prefix+text match)")
