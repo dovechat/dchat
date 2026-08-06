@@ -415,6 +415,25 @@ class CrmService:
             return
         '''
 
+        auth_user_id = data.get("auth[user_id]")
+        msg_user_id = data.get("data[MESSAGES][0][message][user_id]")
+        if auth_user_id and msg_user_id and str(auth_user_id) == str(msg_user_id):
+            msgs = await self._uow.msg_repo.get_multi(
+                filters={"conversation_id": conv.id, "direction": "outbound"},
+                order_by=[("id", "desc")],
+                limit=5,
+            )
+            for m in msgs:
+                rc = m.raw_content or {}
+                if not rc.get("crm_message_id") or not str(rc["crm_message_id"]).isdigit():
+                    await self._uow.msg_repo.update(m, raw_content={**rc, "crm_message_id": crm_message_id})
+                    break
+            log.info(f"handle_bitrix_incoming: self-echo, saved real crm_message_id={crm_message_id}")
+            return
+
+
+
+
         msg_json = MessageCreate(
             conversation_id=conv.id,
             direction=MessageDirection.outbound,
