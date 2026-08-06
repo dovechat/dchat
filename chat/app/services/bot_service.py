@@ -192,7 +192,7 @@ class BotService:
                 await manager.send_new_message(str(conversation.id), ws_message)
                 log.info(f"send_new_message done")
         
-                log.info(f"\n\n *-**-*-*-*-*-*-*-*    crm before \n\n ")
+                log.info(f"\n\n *-**-*-*-*-*-*-*-*    crm before text {text} \n\n ")
                 try:
                     from crm.app.services.crm_service import CrmService
                     from crm.app.core.uow import CrmUnitOfWork
