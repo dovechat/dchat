@@ -64,13 +64,17 @@ class CrmService:
             log.info(f"CRM result: {result}")
 
             raw_result = result.get("result")
-            if isinstance(raw_result, int):
-                crm_message_id = str(raw_result)
-            elif isinstance(raw_result, dict):
-                data_result = raw_result.get("DATA", {}).get("RESULT", [{}])
-                crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else ""
+            if result.get("_real_message_id"):
+                crm_message_id = str(result["_real_message_id"])
             else:
-                crm_message_id = ""
+                raw_result = result.get("result")
+                if isinstance(raw_result, int):
+                    crm_message_id = str(raw_result)
+                elif isinstance(raw_result, dict):
+                    data_result = raw_result.get("DATA", {}).get("RESULT", [{}])
+                    crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else ""
+                else:
+                    crm_message_id = ""
 
             if crm_message_id:
                 await self._uow.msg_repo.update_by_id(
@@ -101,14 +105,18 @@ class CrmService:
             log.info(f"CRM result after refresh: {result}")
 
             raw_result = result.get("result")
-            if isinstance(raw_result, int):
-                crm_message_id = str(raw_result)
-            elif isinstance(raw_result, dict):
-                data_result = raw_result.get("DATA", {}).get("RESULT", [{}])
-                crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else ""
+            if result.get("_real_message_id"):
+                crm_message_id = str(result["_real_message_id"])
             else:
-                crm_message_id = ""
-    
+                raw_result = result.get("result")
+                if isinstance(raw_result, int):
+                    crm_message_id = str(raw_result)
+                elif isinstance(raw_result, dict):
+                    data_result = raw_result.get("DATA", {}).get("RESULT", [{}])
+                    crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else ""
+                else:
+                    crm_message_id = ""
+
             if crm_message_id:
                 await self._uow.msg_repo.update_by_id(
                     int(message_id),
