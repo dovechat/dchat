@@ -163,6 +163,8 @@ class GreenWhatsAppListener:
         mime_type = None
         original_file_name = None
 
+        log.info(f"\n\n --------- msg_type  {msg_type}")
+
         text = None
         if msg_type == "editedMessage":
             edited_data = message_data.get("editedMessageData", {})
