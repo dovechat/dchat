@@ -366,7 +366,10 @@ class CrmService:
             order_by=[("id", "desc")],
             limit=1,
         )
-        if last_msgs and re.match(rr'^\[b][^[]+:\[/b]\s*\[br]' + re.escape(last_msgs[0].text or ''), raw_text):
+        if last_msgs and re.match(
+            r'^\[b\][^[]+:\[/b\]\s*\[br\]' + re.escape(last_msgs[0].text or ''),
+            raw_text,
+        ):
             log.info("handle_bitrix_incoming: skip echo of own message (email-prefix+text match)")
             return
         '''
