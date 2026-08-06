@@ -237,6 +237,8 @@ class GreenWhatsAppListener:
             "phone": phone
         }
 
+        log.info(f"\n\n ----  green wh send_to_crm line_id {line_id} \n\n")
+
         if media_id:
             ws_message["media"] = [
                 {
@@ -249,7 +251,7 @@ class GreenWhatsAppListener:
 
         await manager.send_new_message(conv.id, ws_message)
 
-        log.info(f"green wh send_to_crm tenant_id {line.tenant_id} conversation_id {conv.id}")
+
         try:
             from crm.app.services.crm_service import CrmService
             from crm.app.core.uow import CrmUnitOfWork
@@ -258,6 +260,7 @@ class GreenWhatsAppListener:
             crm_service = CrmService(crm_uow)
             line = await crm_uow.lines.get_by_id(line_id)
             sender_name = sender_data.get("senderName", "")
+            log.info(f"green wh send_to_crm tenant_id {line.tenant_id} conversation_id {conv.id}")
 
             bx_chat = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
