@@ -116,9 +116,10 @@ class CrmService:
         else:
             crm_message_id = None
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-            log.info(f"\n\n -------  crm_service.send_to_crm data_result {data_result} \n\n")
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
-        
+
+        log.info(f"\n\n -------  crm_service.send_to_crm data_result {data_result} \n\n")
+
         if session_chat_id and session_chat_id != conversation.crm_chat_id:
             await self._uow.conversations.update(conversation, crm_chat_id=session_chat_id)
             log.info(f"send_to_crm session_chat_id={session_chat_id}")
