@@ -268,7 +268,7 @@ class GreenWhatsAppListener:
                         "file_size": 0}] if media_id else [],
             )
             bx_chat_id = bx_chat[0]
-            log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+            log.info(f"send_to_crm bx_chat {bx_chat} bx_chat_id={bx_chat_id}")
             if bx_chat_id:
                 await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
         except Exception as e:
