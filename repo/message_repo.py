@@ -33,9 +33,13 @@ class MessageRepository(BaseRepository[Message]):
             Message.conversation_id == conv_id,
             Message.raw_content.op("->>")("crm_message_id") == bx_message_id,
         )
-
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
+
+    async def update_by_id(self, message_id: str, **data):
+        instance = await self.get_by_id(message_id)
+        return await self.update(instance, **data)
+
 
 
 class MediaRepository(BaseRepository[Media]):
