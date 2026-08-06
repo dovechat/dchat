@@ -169,7 +169,7 @@ class GreenWhatsAppListener:
         if msg_type == "editedMessage":
             edited_data = message_data.get("editedMessageData", {})
             stanza_id = edited_data.get("stanzaId")
-            id_message = edited_data.get("idMessage")
+            id_message = message_data.get("idMessage")
             new_text = edited_data.get("textMessage")
             text = new_text
             msg_repo = MessageRepository(db)
