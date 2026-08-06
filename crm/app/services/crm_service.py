@@ -56,6 +56,7 @@ class CrmService:
         crm_chat_id = conversation.crm_chat_id
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
+        '''
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
         try:
             result = await provider.send_message(
@@ -65,13 +66,13 @@ class CrmService:
 
             crm_message_id = str(result.get("result") or "")
 
-            #if crm_message_id:
-                # await self._uow.msg_repo.update(
-                    # message_id,
-                    # raw_content={
-                        # "crm_message_id": crm_message_id,
-                    # },
-                # )
+            if crm_message_id:
+                await self._uow.msg_repo.update(
+                    message_id,
+                    raw_content={
+                        "crm_message_id": crm_message_id,
+                    },
+                )
 
         except Exception as e:
             try:
@@ -93,7 +94,7 @@ class CrmService:
                 return
 
         log.info(f"send_to_crm result {result}")
-
+        '''
 
         # --- AmoCRM ---
         if conn.crm_type == "amocrm":
