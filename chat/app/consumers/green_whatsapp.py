@@ -253,7 +253,7 @@ class GreenWhatsAppListener:
             crm_service = CrmService(crm_uow)
             line = await crm_uow.lines.get_by_id(line_id)
             sender_name = sender_data.get("senderName", "")
-            bx_chat_id = await crm_service.send_to_crm(
+            bx_chat = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
                 conversation_id=conv.id,
                 client_phone=phone,
@@ -264,6 +264,7 @@ class GreenWhatsAppListener:
                 media=[{"id": str(media_id), "file_name": original_file_name, "mime_type": mime_type,
                         "file_size": 0}] if media_id else [],
             )
+            bx_chat_id = bx_chat[0]
             log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
             if bx_chat_id:
                 await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)

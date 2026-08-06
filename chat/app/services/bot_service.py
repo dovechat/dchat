@@ -137,7 +137,7 @@ class BotService:
                 # creds = decrypt_credentials(channel_acc.credentials_encrypted)
                 bot_token = creds["bot_token"]
                 raw_content = update_data
-        
+
                 # Process media if present
                 media_id = None
                 if has_media:
