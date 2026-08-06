@@ -168,7 +168,7 @@ class GreenWhatsAppListener:
             edited_data = message_data.get("editedMessageData", {})
             stanza_id = edited_data.get("stanzaId")
             new_text = edited_data.get("textMessage")
-
+            text = new_text
             msg_repo = MessageRepository(db)
             message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
             if message:
@@ -178,8 +178,8 @@ class GreenWhatsAppListener:
                     "message_id": str(message.id),
                     "text": new_text,
                 })
-                text = new_text
-            log.info(f"\n\n ---------  EDIT edited_data {edited_data} \n\n")
+                
+            log.info(f"\n\n ---------  EDIT text {text}  edited_data {edited_data} \n\n")
             # return
 
         log.info(f"\n\n ---------  AFTER EDIT edited_data {edited_data} \n\n")
