@@ -178,6 +178,7 @@ class GreenWhatsAppListener:
                     "message_id": str(message.id),
                     "text": new_text,
                 })
+                text = new_text
             log.info(f"\n\n ---------  EDIT edited_data {edited_data} \n\n")
             # return
 
