@@ -102,7 +102,7 @@ class BotService:
                 log.info(f" *** --  **  bot_service.handle_webhook edited after {edited}")
         
                 # Extract message data
-                message = update_data.get("message", {})
+                message = update_data.get("message", {}) or update_data.get("edited_message", {}) 
                 log.info(f"message {message}")
                 chat = message.get("chat", {})
                 log.info(f"chat {chat}")
