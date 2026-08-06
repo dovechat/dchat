@@ -199,7 +199,7 @@ class BotService:
                     crm_uow = CrmUnitOfWork(self.db)
                     crm_service = CrmService(crm_uow)
                     log.info(f"\n\n *-**-*-*-*-*-*-*-*    before bx_chat_id  \n\n ")
-                    bx_chat_id = await crm_service.send_to_crm(
+                    bx_chat = await crm_service.send_to_crm(
                         tenant_id=line.tenant_id,
                         conversation_id=conversation.id,
                         client_phone=str(message.get("from", {}).get("id") or chat_id),
@@ -209,6 +209,7 @@ class BotService:
                         channel_type="telegram_bot",
                         media=[{"id": str(media_id), "file_name": file_name, "mime_type": mime_type, "file_size": file_size}] if media_id else []
                     )
+                    bx_chat_id = bx_chat[0]
                     log.info(f"\n\n *-**-*-*-*-*-*-*-*    bx_chat_id {bx_chat_id} \n\n ")
                     if bx_chat_id:
                         await self.conv_repo.update(conversation, crm_chat_id=bx_chat_id)
