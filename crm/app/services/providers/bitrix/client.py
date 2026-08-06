@@ -136,6 +136,7 @@ class BitrixClient:
                 real_message_id = None
                 try:
                     dlg = await self.call("im.dialog.messages.get", {"DIALOG_ID": f"chat{crm_chat_id}", "LIMIT": 1})
+                    log.info(f"\n\n ---- send_message dialog messages result: {dlg} \n\n")
                     msgs = dlg.get("result", {}).get("messages", [])
                     if msgs:
                         real_message_id = msgs[0].get("id")
