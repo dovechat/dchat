@@ -110,12 +110,16 @@ class CrmService:
             return amo_chat_id
         
         # --- Bitrix24 ---
+        log.info(f' \n\n -------- result {result.get("result")} -------- \n\n')
         if isinstance(result.get("result"), int):
             crm_message_id = result["result"]
             session_chat_id = conversation.crm_chat_id
         else:
             crm_message_id = None
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+            session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
+
+        if not session_chat_id:
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
 
         log.info(f"\n\n -------  crm_service.send_to_crm data_result {data_result} \n\n")
