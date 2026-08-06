@@ -198,6 +198,7 @@ class GreenWhatsAppListener:
                     })
             return
         if msg_type == "textMessage":
+            log.info(f"\n\n --- msg_type == textMessage message_data {message_data}\n\n")
             text = message_data.get("textMessageData", {}).get("textMessage")
         if msg_type in ["imageMessage", "videoMessage", "documentMessage", "audioMessage"]:
             media_data = message_data.get("fileMessageData", {})  # всегда fileMessageData
