@@ -114,6 +114,7 @@ class BitrixClient:
                     {"CHAT_ID": crm_chat_id, "MESSAGE": text, "CRM_ENTITY_TYPE": "deal", "CRM_ENTITY": deal_id,
                      "USER_ID": operator_id},
                 )
+                log.warning(f"IMCONNECTOR RESULT {result}")
                 im = result.get("result", {})
                 if isinstance(im, dict) and im.get("chat_id") and im.get("message_id"):
                     await self.call("imconnector.send.status.delivery", {
