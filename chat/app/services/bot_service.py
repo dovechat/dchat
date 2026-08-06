@@ -95,10 +95,11 @@ class BotService:
                 log.info(f"\n\n ***---** update_data {update_data}")
         
                 edited = update_data.get("edited_message")
+                log.info(f" *** --  **  bot_service.handle_webhook edited  before {edited}")
                 if edited:
                     return await self._handle_edited_message(line_id, line, edited)
 
-                log.info(f" *** --  **  bot_service.handle_webhook edited {edited}")
+                log.info(f" *** --  **  bot_service.handle_webhook edited after {edited}")
         
                 # Extract message data
                 message = update_data.get("message", {})
