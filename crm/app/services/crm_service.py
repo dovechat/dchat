@@ -75,6 +75,7 @@ class CrmService:
 
         except Exception as e:
             try:
+                log.error(f"!!! --- ERROR --- CRM result after refresh e {e}")
                 new_tokens = await provider.refresh_tokens()
                 await self._uow.crm_accounts.update(conn, **new_tokens)
                 conn.access_token_enc = new_tokens["access_token_enc"]
