@@ -174,6 +174,9 @@ class GreenWhatsAppListener:
             text = new_text
             msg_repo = MessageRepository(db)
             message = await msg_repo.get_message_by_channel_msg_id(id_message)
+
+            log.info(f"edit lookup id_message={id_message} found={message}")
+
             if message:
                 await msg_repo.update(message, text=new_text)
                 await manager.send_message_update(str(message.conversation_id), {
