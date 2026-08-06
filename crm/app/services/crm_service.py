@@ -68,7 +68,7 @@ class CrmService:
 
             if crm_message_id:
                 await self._uow.msg_repo.update_by_id(
-                    message_id,
+                    int(message_id),
                     raw_content={
                         "crm_message_id": crm_message_id,
                     },
