@@ -56,7 +56,6 @@ class CrmService:
         crm_chat_id = conversation.crm_chat_id
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
-
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
         try:
             result = await provider.send_message(
@@ -93,7 +92,6 @@ class CrmService:
                 return
 
         log.info(f"send_to_crm result {result}")
-        '''
 
 
         # --- AmoCRM ---
@@ -125,15 +123,15 @@ class CrmService:
                 log.info(f"find_open_deal contact_id={contact_id} deal_id={deal_id}")
                 if deal_id:
                     log.info(f"\n\n DEAL has been FOUND! deal_id={deal_id} \n\n")
-
-                    # attach_result = await bx.attach_deal_to_chat(
-                        # session_chat_id,
-                        # conn.crm_line_id,
-                        # conn.connector_id,
-                        # deal_id,
-                    # )
-                    # log.info(f"attach_deal_to_chat result={attach_result}")
-
+                    '''
+                    attach_result = await bx.attach_deal_to_chat(
+                        session_chat_id,
+                        conn.crm_line_id,
+                        conn.connector_id,
+                        deal_id,
+                    )
+                    log.info(f"attach_deal_to_chat result={attach_result}")
+                    '''
                 else:
                     crm_settings = await self._uow.crm_settings.get_by_tenant(tenant_id)
                     log.info(
