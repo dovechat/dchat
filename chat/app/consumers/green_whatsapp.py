@@ -179,6 +179,9 @@ class GreenWhatsAppListener:
                     "text": new_text,
                 })
             # return
+
+        log.info(f"\n\n ---------  AFTER EDIT edited_data {edited_data} \n\n")
+
         if msg_type == "deletedMessage":
             stanza_id = message_data.get("deletedMessageData", {}).get("stanzaId")
             if stanza_id:
