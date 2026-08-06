@@ -103,9 +103,6 @@ class BotService:
         
                 # Extract message data
                 message = update_data.get("message", {})
-        
-                # Extract message data
-                message = update_data.get("message", {})
                 log.info(f"message {message}")
                 chat = message.get("chat", {})
                 log.info(f"chat {chat}")

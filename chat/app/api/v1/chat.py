@@ -321,6 +321,7 @@ async def telegram_bot_webhook(
     from app.services.bot_service import BotService
     bot_service = BotService(db)
     data = await request.json()
+    log,info(f" \n\n ---------- router.post /bot/webhook/{line_id}  data {data} \n\n ")
     return await bot_service.handle_webhook(line_id, data, request)
 
 
