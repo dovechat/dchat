@@ -116,7 +116,7 @@ class BotService:
                 has_media = any(key in message for key in ["photo", "document", "video", "audio"])
                 text = message.get("text") or message.get("caption", "")
 
-                log.info(f" *** --  **  bot_service.handle_webhook message {message}")
+                log.info(f" *** --  **  bot_service.handle_webhook text {text} has_media {has_media} message {message}")
 
                 if not chat_id or (not text and not has_media):
                     log.error("Ignoring non-message update")
