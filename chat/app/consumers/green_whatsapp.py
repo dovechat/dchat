@@ -182,7 +182,7 @@ class GreenWhatsAppListener:
                     "text": new_text,
                 })
                 
-            log.info(f"\n\n ---------  EDIT text {text}  message {message} \n\n")
+            log.info(f"\n\n ---------  EDIT text {text}  message {message.__dict__} \n\n")
             # return
 
         log.info(f"\n\n ---------  AFTER EDIT \n\n")
