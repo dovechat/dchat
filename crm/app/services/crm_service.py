@@ -224,6 +224,13 @@ class CrmService:
         )
         owner = await self._uow.users.get_by_id(memberships[0].user_id)
         event = data.get("event")
+
+        log.warning(
+            f"BITRIX EVENT msg_id={data.get('data[MESSAGES][0][im][message_id]')} "
+            f"user_id={data.get('data[MESSAGES][0][message][user_id]')} "
+            f"text={data.get('data[MESSAGES][0][message][text]')}"
+        )
+
         if event not in ("ONIMCONNECTORMESSAGEADD", "ONIMCONNECTORMESSAGEDELETE", "ONIMCONNECTORMESSAGEUPDATE"):
             log.info(
                 f"BITRIX MESSAGE USER_ID="
