@@ -169,13 +169,13 @@ class GreenWhatsAppListener:
         if msg_type == "editedMessage":
             edited_data = message_data.get("editedMessageData", {})
             stanza_id = edited_data.get("stanzaId")
-            id_message = message_data.get("idMessage")
+            id_message = edited_data.get("idMessage")
             new_text = edited_data.get("textMessage")
             text = new_text
             msg_repo = MessageRepository(db)
-            message = await msg_repo.get_message_by_channel_msg_id(id_message)
+            message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
 
-            log.info(f"edit lookup id_message={id_message} found={message}")
+            log.info(f"edit lookup id_message={stanza_id} found={message}")
 
             if message:
                 await msg_repo.update(message, text=new_text)
