@@ -112,11 +112,14 @@ class BotService:
                 # Check if it's a valid message
                 has_media = any(key in message for key in ["photo", "document", "video", "audio"])
                 text = message.get("text") or message.get("caption", "")
-        
+
+                log.info(f" *** --  **  bot_service.handle_webhook message {message}")
+
                 if not chat_id or (not text and not has_media):
                     log.error("Ignoring non-message update")
                     return {"ok": True}
-        
+
+                log.info(" *** --  **  bot_service.handle_webhook after if not chat_id ")
                 # Find or create conversation
                 conversation, is_new = await self.conv_repo.get_or_create_by_chat_id(
                     line_id=line_id,
