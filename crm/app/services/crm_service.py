@@ -56,7 +56,6 @@ class CrmService:
         crm_chat_id = conversation.crm_chat_id
         log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
-
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
         try:
             result = await provider.send_message(
@@ -117,6 +116,7 @@ class CrmService:
         else:
             crm_message_id = None
             data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+            log.info(f"\n\n -------  crm_service.send_to_crm data_result {data_result} \n\n")
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
         
         if session_chat_id and session_chat_id != conversation.crm_chat_id:
