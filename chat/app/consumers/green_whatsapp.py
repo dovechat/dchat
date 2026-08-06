@@ -181,9 +181,27 @@ class GreenWhatsAppListener:
                     "message_id": str(message.id),
                     "text": new_text,
                 })
-                
+
+                crm_message_id = (message.raw_content or {}).get("crm_message_id")
+                if crm_message_id:
+                    try:
+                        from crm.app.services.crm_service import CrmService
+                        from crm.app.core.uow import CrmUnitOfWork
+                        crm_uow = CrmUnitOfWork(db)
+                        crm_service = CrmService(crm_uow)
+                        line = await crm_uow.lines.get_by_id(line_id)
+                        await crm_service.edit_to_crm(
+                            tenant_id=line.tenant_id,
+                            conversation_id=message.conversation_id,
+                            message_id=str(crm_message_id),
+                            text=new_text,
+                            channel_type="whatsapp_green",
+                        )
+                    except Exception as e:
+                        log.error(f"CRM edit_to_crm failed: {e}")
+
             log.info(f"\n\n ---------  EDIT text {text}  message {message.__dict__} \n\n")
-            # return
+            return
 
         log.info(f"\n\n ---------  AFTER EDIT \n\n")
 
@@ -193,12 +211,34 @@ class GreenWhatsAppListener:
                 msg_repo = MessageRepository(db)
                 message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
                 if message:
+                    crm_message_id = (message.raw_content or {}).get("crm_message_id")
+                    conversation_id = message.conversation_id
+                    message_id_local = message.id
+
                     await msg_repo.delete(message)
-                    await manager.send_message_update(str(message.conversation_id), {
+                    await manager.send_message_update(str(conversation_id), {
                         "type": "delete",
-                        "message_id": str(message.id),
+                        "message_id": str(message_id_local),
                     })
+
+                    if crm_message_id:
+                        try:
+                            from crm.app.services.crm_service import CrmService
+                            from crm.app.core.uow import CrmUnitOfWork
+                            crm_uow = CrmUnitOfWork(db)
+                            crm_service = CrmService(crm_uow)
+                            line = await crm_uow.lines.get_by_id(line_id)
+                            await crm_service.delete_from_crm(
+                                tenant_id=line.tenant_id,
+                                conversation_id=conversation_id,
+                                client_phone="",
+                                message_id=str(crm_message_id),
+                                channel_type="whatsapp_green",
+                            )
+                        except Exception as e:
+                            log.error(f"CRM delete_from_crm failed: {e}")
             return
+
         if msg_type == "textMessage":
             log.info(f"\n\n --- msg_type == textMessage message_data {message_data}\n\n")
             text = message_data.get("textMessageData", {}).get("textMessage")
