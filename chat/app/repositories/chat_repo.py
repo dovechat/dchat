@@ -73,7 +73,7 @@ class ChatRepository(BaseRepository[Conversation]):
             skip=skip,
             limit=limit,
             filters={"line_id": line_id, "channel_type": channel_type},
-            order_by="-updated_at"
+            # order_by="-updated_at"
         )
         if res:
             return res[0]
