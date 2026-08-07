@@ -433,19 +433,18 @@ class ChatService:
             crm_chat_id=data.crm_chat_id, client_phone=data.client_phone, meta=data.meta
         )
 
-        '''
-        if data.channel_type == "telegram_user" and tg_listener:
-            accs = await self.ch_acc_repo.get_by_line(data.line_id)
-            tg_acc = next((a for a in accs if a.channel_type.value == "telegram_user"), None)
-            if not tg_acc:
-                log.warning(f"create_conversation: no telegram_user ChannelAccount for line={data.line_id}")
-            else:
+        if data.channel_type == "telegram_user":
+            tg_acc = await self.ch_acc_repo.get_by_line_and_type(data.line_id, ChannelType.telegram_user)
+            if tg_acc:
                 try:
-                    await tg_listener.start_listening(str(conversation.id), tg_acc.phone, data.client_phone or '')
-                    log.info(f"create_conversation: start_listening OK conv={conversation.id}")
+                    async with httpx.AsyncClient() as client:
+                        await client.post(f"http://tg-connector:8000/channels/{data.line_id}/stop")
+                        await client.post(f"http://tg-connector:8000/channels/{data.line_id}/start",
+                                          params={"phone": tg_acc.phone})
+                    log.info(f"create_conversation: tg-connector restart OK conv={conversation.id}")
                 except Exception as e:
-                    log.error(f"create_conversation: start_listening failed conv={conversation.id}: {e}")
-        '''
+                    log.error(f"create_conversation: tg-connector restart failed conv={conversation.id}: {e}")
+
         return ConversationResponse(**conversation.__dict__, messages=[])
     
     
