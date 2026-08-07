@@ -150,7 +150,7 @@ async def process_message(
                 client_phone=event_data["peer_phone"],
                 client_name=sender.get("username") or "",
                 text=event_data["message"].get("text") or "",
-                message_id=str(event_data["message"]["id"]),
+                message_id=str(message_data.id),
                 channel_type="telegram_user",
                 media=media,
             )
