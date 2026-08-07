@@ -71,14 +71,10 @@ class BitrixProvider(CrmProvider):
         }
 
     async def edit_message(self, message_id: str, text: str, connector_id: str, line_id: str, user_id: str,
-                           user_name: str, chat_id: str, deal_id: int | None = None,
-                           crm_chat_id: str | None = None) -> dict:
+                           chat_id: str) -> dict:
         bx = self._client()
-        return await bx.edit_message(
-            connector_id=connector_id, line_id=line_id, user_id=user_id,
-            user_name=user_name, chat_id=chat_id, text=text, msg_id=message_id,
-            deal_id=deal_id, crm_chat_id=crm_chat_id,
-        )
+        return await bx.update_message(connector_id=connector_id, line_id=line_id, user_id=user_id, chat_id=chat_id,
+                                       msg_id=message_id, text=text)
 
     async def delete_message(self, message_id: str) -> dict:
         bx = self._client()
