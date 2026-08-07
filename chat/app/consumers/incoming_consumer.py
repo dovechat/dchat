@@ -132,6 +132,7 @@ async def process_message(
         peer_phone=event_data["peer_phone"],
         event=event,
         media_items=media,
+        topic=message.topic,
     )
 
     log.info(f"\n\n process_message event_type {event_type}\n\n")

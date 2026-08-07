@@ -456,16 +456,22 @@ class ChatService:
     ) -> Tuple[Conversation, Message]:
         # Verify conversation exists and belongs to tenant
 
+        channel_type = data.topic
+        if channel_type:
+            channel_type = channel_type.replace("_incoming", "")
+            channel_type = channel_type.replace("_outgoing", "")
+
         cached = await rdb.get(f"conv:{data.conversation_id}")
         if cached:
             conv = SimpleNamespace(**json.loads(cached))
         else:
             conv = await self.conv_repo.get_by_id(data.conversation_id)
             if not conv:
-                raise ValueError("Conversation not found")
+                conv = await self.conv_repo.get_conv_by_line_and_channel_type(line_id=data.line_id, channel_type=channel_type)
+                if not conv:
+                    raise ValueError("Conversation not found")
             await rdb.set(f"conv:{data.conversation_id}", json.dumps({"id": str(conv.id), "is_closed": conv.is_closed}),
                           ex=10)
-
 
         # Автооткрытие закрытого чата при новом сообщении
         if conv.is_closed:
@@ -565,6 +571,7 @@ class ChatService:
             media_items: list | None = None,
             text: str | None = None,
             channel_msg_id: str | None = None,
+            topic: str | None = None,
     ) -> MessageResponse:
 
         if conversation_id is None:
@@ -604,6 +611,7 @@ class ChatService:
             text=text if text is not None else (event.message.text if event.message.text else None),
             channel_msg_id=channel_msg_id or str(event.message.id),
             media=media,
+            topic=topic,
         )
         log.info(f"\n\n save_incoming_message data.media {data.media} \n\n")
         _, message = await self.conv_msg(data)
