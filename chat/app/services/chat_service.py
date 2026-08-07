@@ -434,7 +434,7 @@ class ChatService:
         )
 
         if data.channel_type == "telegram_user":
-            tg_acc = await self.ch_acc_repo.get_by_line_and_type(data.line_id, ChannelType.telegram_user)
+            tg_acc = await self.ch_acc_repo.get_by_line_and_type(data.line_id, "telegram_user")
             if tg_acc:
                 try:
                     async with httpx.AsyncClient() as client:
