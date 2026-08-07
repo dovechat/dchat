@@ -160,48 +160,36 @@ class BitrixClient:
         log.info(f"send_message params: {params}")
 
         if deal_id:
-            chat = await self.call(
-                "imopenlines.crm.chat.get",
-                {
-                    "CRM_ENTITY_TYPE": "deal",
-                    "CRM_ENTITY": deal_id,
-                }
-            )
-
-            current_user = await self.call("user.current", {})
-            operator_id = current_user.get("result", {}).get("ID")
-
-            log.info(f"\n\n chat_get result: {chat} \n\n")
-            if chat.get("result") and chat["result"][0].get("CONNECTOR_ID") == connector_id:
-                bitrix_chat_id = chat["result"][0]["CHAT_ID"]
-
-                result = await self.call(
-                    "imconnector.send.messages",
-                    params,
-                    use_json=True,
+            if deal_id:
+                chat = await self.call(
+                    "imopenlines.crm.chat.get",
+                    {"CRM_ENTITY_TYPE": "deal", "CRM_ENTITY": deal_id},
                 )
+                current_user = await self.call("user.current", {})
+                operator_id = current_user.get("result", {}).get("ID")
 
-            else:
-                log.info(f"bitrix crm chat lookup result={chat}")
-                result = await self.call(
-                    "imconnector.send.messages",
-                    params,
-                    use_json=True,
-                )
+                log.info(f"\n\n chat_get result: {chat} \n\n")
+                if chat.get("result") and chat["result"][0].get("CONNECTOR_ID") == connector_id:
+                    bitrix_chat_id = chat["result"][0]["CHAT_ID"]
+                    result = await self.call("imconnector.send.messages", params, use_json=True)
+                else:
+                    log.info(f"bitrix crm chat lookup result={chat}")
+                    result = await self.call("imconnector.send.messages", params, use_json=True)
+                    session = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])[0].get("session", {})
+                    bitrix_chat_id = session.get("CHAT_ID")
+                    log.info(f"new bitrix chat={bitrix_chat_id} for deal={deal_id}")
 
-                session = (
-                    result
-                    .get("result", {})
-                    .get("DATA", {})
-                    .get("RESULT", [{}])[0]
-                    .get("session", {})
-                )
-
-                bitrix_chat_id = session.get("CHAT_ID")
-
-                log.info(
-                    f"new bitrix chat={bitrix_chat_id} for deal={deal_id}"
-                )
+                real_message_id = None
+                if bitrix_chat_id:
+                    try:
+                        dlg = await self.call("im.dialog.messages.get",
+                                              {"DIALOG_ID": f"chat{bitrix_chat_id}", "LIMIT": 1})
+                        msgs = dlg.get("result", {}).get("messages", [])
+                        if msgs:
+                            real_message_id = msgs[0].get("id")
+                    except Exception as e:
+                        log.warning(f"im.dialog.messages.get failed: {e}")
+                result["_real_message_id"] = real_message_id
         else:
             result = await self.call(
                 "imconnector.send.messages",
