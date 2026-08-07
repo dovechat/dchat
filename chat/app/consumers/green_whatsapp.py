@@ -201,7 +201,7 @@ class GreenWhatsAppListener:
                             message_id=str(message.id),
                             text=new_text,
                             channel_type="whatsapp_green",
-                            client_phone=conversation.client_phone,
+                            client_phone=conv.client_phone,
                             client_name=sender_data.get("senderName") or conv.client_phone,
                         )
                     except Exception as e:
