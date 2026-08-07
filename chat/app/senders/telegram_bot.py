@@ -72,9 +72,8 @@ class TelegramBotSender(BaseSender):
         log.info(f"\n\n send FILE data {data.media}")
         result = None
         for m in data.media:
-            file_bytes, filename = await get_file_from_s3(m["id"])
-            log.info(f"\n\n send FILE filename {filename}")
-            filename = m.file_name
+            file_bytes, _ = await get_file_from_s3(m["id"])
+            filename = m.get("file_name", "_")
             mime_type = m.get("mime_type")
             if mime_type and mime_type.startswith('image/'):
                 url = f"{settings.tg_bot_send_url}/bot{self.bot_token}/sendPhoto"
