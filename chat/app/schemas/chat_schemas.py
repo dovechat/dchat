@@ -33,6 +33,7 @@ class MessageCreate(BaseModel):
     status: MessageStatus = "sent"
     template: dict | None = None  # {"name": ..., "language": ..., "components": [...]}
     topic: str | None = None
+    line_id: str | None = None
 
     @model_validator(mode="after")
     def check_template_or_media(self) -> "MessageCreate":
