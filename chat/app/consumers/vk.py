@@ -137,6 +137,24 @@ class VkListener:
         message = messages[0]
         await msg_repo.update(message, text=text)
 
+        crm_message_id = (message.raw_content or {}).get("crm_message_id")
+        if crm_message_id:
+            try:
+                from crm.app.services.crm_service import CrmService
+                from crm.app.core.uow import CrmUnitOfWork
+                crm_uow = CrmUnitOfWork(db)
+                crm_service = CrmService(crm_uow)
+                line = await crm_uow.lines.get_by_id(line_id)
+                await crm_service.edit_to_crm(
+                    tenant_id=line.tenant_id,
+                    conversation_id=conv.id,
+                    message_id=str(crm_message_id),
+                    text=text,
+                    channel_type="vk",
+                )
+            except Exception as e:
+                log.error(f"CRM edit_to_crm failed: {e}")
+
         await manager.send_message_update(str(conv.id), {
             "type": "edit",
             "message_id": str(message.id),
