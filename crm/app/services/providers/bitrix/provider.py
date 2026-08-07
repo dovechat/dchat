@@ -67,6 +67,7 @@ class BitrixProvider(CrmProvider):
 
     async def edit_message(self, message_id: str, text: str, connector_id: str, line_id: str, user_id: str,
                            chat_id: str) -> dict:
+        log.info("\n\n -*-*-* provider.edit_message start \n\n")
         bx = self._client()
         log.info(f"provider.edit_message message_id {message_id} text {text} line_id {line_id}")
         res = await bx.update_message(connector_id=connector_id, line_id=line_id, user_id=user_id, chat_id=chat_id,
