@@ -26,6 +26,7 @@ async def process_message(
     chat_service: ChatService,
     crm_uow: CrmUnitOfWork,
     crm_service: CrmService,
+    topic: str,
 ):
     log.info(f"\n\n process_message event_data {event_data} \n\n")
 
@@ -132,7 +133,7 @@ async def process_message(
         peer_phone=event_data["peer_phone"],
         event=event,
         media_items=media,
-        topic=message.topic,
+        topic=topic,
     )
 
     log.info(f"\n\n process_message event_type {event_type}\n\n")
@@ -218,6 +219,7 @@ async def start_consumer(
                         chat_service,
                         crm_uow,
                         crm_service,
+                         topic,
                     )
 
                     await consumer.commit()
