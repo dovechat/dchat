@@ -614,7 +614,6 @@ class ChatService:
             channel_msg_id=channel_msg_id or str(event.message.id),
             media=media,
             topic=topic,
-            line_id=
         )
         log.info(f"\n\n save_incoming_message data.media {data.media} \n\n")
         _, message = await self.conv_msg(data, current_user, event.line_id)
