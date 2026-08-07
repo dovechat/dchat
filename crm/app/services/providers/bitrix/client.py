@@ -15,7 +15,7 @@ class BitrixClient:
     async def call(self, method: str, params: dict, use_json: bool = False) -> dict:
         log.info("\n\n -*-*-* client.call start \n\n")
         url = f"https://{self.domain}/rest/{method}.json?auth={self.access_token}"
-        log.info(f"\n\n -*-*-* client.call url {url} \n\n")
+        log.info(f"\n\n -*-*-* client.call url {url} params {params}\n\n")
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(url, json=params if use_json else None, data=None if use_json else params)
             if not resp.is_success:
