@@ -32,8 +32,6 @@ class MessageCreate(BaseModel):
     raw_content: dict | None = None
     status: MessageStatus = "sent"
     template: dict | None = None  # {"name": ..., "language": ..., "components": [...]}
-    topic: str | None = None
-    line_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def check_template_or_media(self) -> "MessageCreate":

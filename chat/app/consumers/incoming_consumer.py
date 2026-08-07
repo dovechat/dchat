@@ -26,7 +26,6 @@ async def process_message(
     chat_service: ChatService,
     crm_uow: CrmUnitOfWork,
     crm_service: CrmService,
-    topic: str,
 ):
     log.info(f"\n\n process_message event_data {event_data} \n\n")
 
@@ -133,7 +132,6 @@ async def process_message(
         peer_phone=event_data["peer_phone"],
         event=event,
         media_items=media,
-        topic=topic,
     )
 
     log.info(f"\n\n process_message event_type {event_type}\n\n")
@@ -150,7 +148,7 @@ async def process_message(
                 client_phone=event_data["peer_phone"],
                 client_name=sender.get("username") or "",
                 text=event_data["message"].get("text") or "",
-                message_id=str(message_data.id),
+                message_id=str(event_data["message"]["id"]),
                 channel_type="telegram_user",
                 media=media,
             )
@@ -219,7 +217,6 @@ async def start_consumer(
                         chat_service,
                         crm_uow,
                         crm_service,
-                                                message.topic,
                     )
 
                     await consumer.commit()

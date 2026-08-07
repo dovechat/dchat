@@ -456,23 +456,16 @@ class ChatService:
     ) -> Tuple[Conversation, Message]:
         # Verify conversation exists and belongs to tenant
 
-        channel_type = data.topic
-        if channel_type:
-            channel_type = channel_type.replace("_incoming", "")
-            channel_type = channel_type.replace("_outgoing", "")
-        log.info(f"\n\n *-*-**- data {data} \n\n")
-
         cached = await rdb.get(f"conv:{data.conversation_id}")
         if cached:
             conv = SimpleNamespace(**json.loads(cached))
         else:
             conv = await self.conv_repo.get_by_id(data.conversation_id)
             if not conv:
-                conv = await self.conv_repo.get_conv_by_line_and_channel_type(line_id=data.line_id, channel_type=channel_type)
-                if not conv:
-                    raise ValueError("Conversation not found")
+                raise ValueError("Conversation not found")
             await rdb.set(f"conv:{data.conversation_id}", json.dumps({"id": str(conv.id), "is_closed": conv.is_closed}),
                           ex=10)
+
 
         # Автооткрытие закрытого чата при новом сообщении
         if conv.is_closed:
@@ -480,7 +473,7 @@ class ChatService:
 
         message = await self.msg_repo.create_message(
             user_id=current_user.id if data.direction == MessageDirection.outbound else None,
-            conversation_id=conv.id,
+            conversation_id=data.conversation_id,
             channel_msg_id=data.channel_msg_id,
             direction=data.direction,
             text=data.text,
@@ -572,7 +565,6 @@ class ChatService:
             media_items: list | None = None,
             text: str | None = None,
             channel_msg_id: str | None = None,
-            topic: str | None = None,
     ) -> MessageResponse:
 
         if conversation_id is None:
@@ -612,8 +604,6 @@ class ChatService:
             text=text if text is not None else (event.message.text if event.message.text else None),
             channel_msg_id=channel_msg_id or str(event.message.id),
             media=media,
-            topic=topic,
-            line_id=event.line_id,
         )
         log.info(f"\n\n save_incoming_message data.media {data.media} \n\n")
         _, message = await self.conv_msg(data)
