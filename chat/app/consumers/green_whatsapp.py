@@ -210,6 +210,8 @@ class GreenWhatsAppListener:
 
         log.info(f"\n\n ---------  AFTER EDIT \n\n")
 
+        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
+
         if msg_type == "deletedMessage":
             stanza_id = message_data.get("deletedMessageData", {}).get("stanzaId")
             if stanza_id:
@@ -218,6 +220,8 @@ class GreenWhatsAppListener:
                 if message:
                     crm_message_id = (message.raw_content or {}).get("crm_message_id")
                     conversation_id = message.conversation_id
+                    if not conversation_id:
+                        conversation_id = conv.id
                     message_id_local = message.id
 
                     await msg_repo.delete(message)
@@ -258,7 +262,6 @@ class GreenWhatsAppListener:
             file_name = f"{media_id}.{ext}"
             original_file_name = file_name_rcv
 
-        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
         log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} line_id {line_id} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
         if conv is None:
             return
