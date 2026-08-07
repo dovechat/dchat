@@ -64,8 +64,8 @@ class CrmService:
             log.info(f"CRM result: {result}")
 
             raw_result = result.get("result")
-            if result.get("_real_message_id"):
-                crm_message_id = str(result["_real_message_id"])
+            if False:
+                pass
             else:
                 raw_result = result.get("result")
                 if isinstance(raw_result, int):
@@ -105,8 +105,8 @@ class CrmService:
             log.info(f"CRM result after refresh: {result}")
 
             raw_result = result.get("result")
-            if result.get("_real_message_id"):
-                crm_message_id = str(result["_real_message_id"])
+            if False:
+                pass
             else:
                 raw_result = result.get("result")
                 if isinstance(raw_result, int):
