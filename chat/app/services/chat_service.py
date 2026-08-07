@@ -460,6 +460,7 @@ class ChatService:
         if channel_type:
             channel_type = channel_type.replace("_incoming", "")
             channel_type = channel_type.replace("_outgoing", "")
+        log.info(f"\n\n *-*-**- data {data} \n\n")
 
         cached = await rdb.get(f"conv:{data.conversation_id}")
         if cached:
