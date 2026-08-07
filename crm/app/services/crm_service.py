@@ -1623,5 +1623,6 @@ class CrmService:
                 user_id=conversation.client_phone,
                 chat_id=f"{conn.connector_id}_conv{conversation_id}",
             )
+            log.info(f"\n\n --------- edit_to_crm result={result}\n\n")
         except Exception as e:
             log.error(f"edit_to_crm failed tenant={tenant_id}: {e}")
