@@ -142,6 +142,20 @@ class ChannelConnection:
         @self.client.on(events.MessageEdited)
         async def _on_edited(event):
             log.info(f"[pool] MessageEdited line={self.line_id} event_id={event.id}")
+
+            if not event.is_private:
+                return
+
+            sender = await event.get_sender()
+            sender_phone = (getattr(sender, "phone", "") or "").lstrip("+")
+            log.info(
+                f"[pool] MessageEdited sender_phone={sender_phone} "
+                f"peer_phone={peer_phone}"
+            )
+
+            if sender_phone != peer_phone.lstrip("+"):
+                return
+
             await send_event(
                 "telegram_user_message_edit",
                 serialize_edited_message(
