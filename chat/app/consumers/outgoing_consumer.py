@@ -113,8 +113,11 @@ async def start_consumer(group_id: str = "outgoing-consumer-group", topics: list
 
             async with get_session() as db:
                 chat_service = ChatService(db)
+                crm_uow = CrmUnitOfWork(db)
+                crm_service = CrmService(crm_uow)
+                
                 try:
-                    await process_message(event_data, channel_type, chat_service)
+                    await process_message(event_data, channel_type, chat_service, crm_service)
                     await consumer.commit()
                     log.info(f"Message committed topic={message.topic}")
                 except Exception as e:
