@@ -453,6 +453,7 @@ class ChatService:
         self,
         data: MessageCreate,
         current_user: UserContext = Depends(get_current_user),
+        line_id: str | None = None,
     ) -> Tuple[Conversation, Message]:
         # Verify conversation exists and belongs to tenant
 
@@ -468,7 +469,7 @@ class ChatService:
         else:
             conv = await self.conv_repo.get_by_id(data.conversation_id)
             if not conv:
-                conv = await self.conv_repo.get_conv_by_line_and_channel_type(line_id=data.line_id, channel_type=channel_type)
+                conv = await self.conv_repo.get_conv_by_line_and_channel_type(line_id=line_id, channel_type=channel_type)
                 if not conv:
                     raise ValueError("Conversation not found")
             await rdb.set(f"conv:{data.conversation_id}", json.dumps({"id": str(conv.id), "is_closed": conv.is_closed}),
@@ -613,9 +614,10 @@ class ChatService:
             channel_msg_id=channel_msg_id or str(event.message.id),
             media=media,
             topic=topic,
+            line_id=
         )
         log.info(f"\n\n save_incoming_message data.media {data.media} \n\n")
-        _, message = await self.conv_msg(data)
+        _, message = await self.conv_msg(data, current_user, event.line_id)
 
         await self._publish_message(
             message,
