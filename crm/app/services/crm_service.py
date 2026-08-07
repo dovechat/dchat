@@ -1615,7 +1615,7 @@ class CrmService:
             return
         provider = get_provider(conn)
         try:
-            await provider.edit_message(
+            result = await provider.edit_message(
                 message_id=message_id,
                 text=text,
                 connector_id=conn.connector_id,
