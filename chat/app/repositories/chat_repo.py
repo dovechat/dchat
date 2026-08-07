@@ -62,18 +62,17 @@ class ChatRepository(BaseRepository[Conversation]):
         )
 
     async def get_conv_by_line_and_channel_type(
-        self,
-        line_id: uuid.UUID,
-        channel_type: str,
-        skip: int = 0,
-        limit: int = 100
+            self,
+            line_id: uuid.UUID,
+            channel_type: str,
+            skip: int = 0,
+            limit: int = 100
     ) -> List[Conversation]:
         """Get conversations for specific line anc channel_type"""
         res = await self.get_multi(
             skip=skip,
             limit=limit,
             filters={"line_id": line_id, "channel_type": channel_type},
-            # order_by="-updated_at"
         )
         if res:
             return res[0]
