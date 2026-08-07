@@ -165,6 +165,8 @@ class GreenWhatsAppListener:
 
         log.info(f"\n\n --------- msg_type  {msg_type}")
 
+        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
+
         text = None
         if msg_type == "editedMessage":
             edited_data = message_data.get("editedMessageData", {})
@@ -200,7 +202,7 @@ class GreenWhatsAppListener:
                             text=new_text,
                             channel_type="whatsapp_green",
                             client_phone=conversation.client_phone,
-                            client_name=sender_data.get("senderName") or conversation.client_phone,
+                            client_name=sender_data.get("senderName") or conv.client_phone,
                         )
                     except Exception as e:
                         log.error(f"CRM edit_to_crm failed: {e}")
@@ -209,8 +211,6 @@ class GreenWhatsAppListener:
             return
 
         log.info(f"\n\n ---------  AFTER EDIT \n\n")
-
-        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
 
         if msg_type == "deletedMessage":
             stanza_id = message_data.get("deletedMessageData", {}).get("stanzaId")
