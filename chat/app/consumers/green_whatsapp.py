@@ -199,7 +199,6 @@ class GreenWhatsAppListener:
                             message_id=str(message.id),
                             text=new_text,
                             channel_type="whatsapp_green",
-                            client_name=sender_data.get("senderName") or "",
                         )
                     except Exception as e:
                         log.error(f"CRM edit_to_crm failed: {e}")

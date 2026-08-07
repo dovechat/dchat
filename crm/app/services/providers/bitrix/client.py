@@ -222,6 +222,22 @@ class BitrixClient:
             })
         return result
 
+    async def update_message(self, connector_id: str, line_id: str, user_id: str, chat_id: str, msg_id: str,
+                             text: str) -> dict:
+        params = {
+            "CONNECTOR": connector_id,
+            "LINE": line_id,
+            "MESSAGES": [
+                {
+                    "user": {"id": user_id},
+                    "message": {"id": msg_id, "text": text or " "},
+                    "chat": {"id": chat_id},
+                }
+            ],
+        }
+        return await self.call("imconnector.update.messages", params, use_json=True)
+
+
     async def find_contact_by_phone(self, phone: str) -> str | None:
         result = await self.call("crm.contact.list", {
             "filter[PHONE]": phone,

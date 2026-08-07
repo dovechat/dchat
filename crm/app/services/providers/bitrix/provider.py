@@ -51,6 +51,13 @@ class BitrixProvider(CrmProvider):
 
         return result
 
+    async def edit_message(self, message_id: str, text: str, connector_id: str, line_id: str, user_id: str,
+                           chat_id: str) -> dict:
+        bx = self._client()
+        return await bx.update_message(connector_id=connector_id, line_id=line_id, user_id=user_id, chat_id=chat_id,
+                                       msg_id=message_id, text=text)
+
+
     async def handle_webhook(self, data: dict) -> dict:
         msg_data = data.get("data", {}).get("MESSAGES", [{}])[0]
         user = msg_data.get("user", {})

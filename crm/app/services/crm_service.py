@@ -1606,7 +1606,6 @@ class CrmService:
             message_id: str,
             text: str,
             channel_type: str,
-            client_name: str,
     ) -> None:
         conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
         if not conn:
@@ -1616,13 +1615,13 @@ class CrmService:
             return
         provider = get_provider(conn)
         try:
-            await provider.send_message(
-                conversation_id=str(conversation_id),
-                client_phone=conversation.client_phone,  # ← отсюда, не из параметра функции
-                client_name=client_name,
-                text=text,
+            await provider.edit_message(
                 message_id=message_id,
-                crm_chat_id=conversation.crm_chat_id,
+                text=text,
+                connector_id=conn.connector_id,
+                line_id=str(conn.crm_line_id),
+                user_id=conversation.client_phone,
+                chat_id=f"{conn.connector_id}_conv{conversation_id}",
             )
         except Exception as e:
             log.error(f"edit_to_crm failed tenant={tenant_id}: {e}")
