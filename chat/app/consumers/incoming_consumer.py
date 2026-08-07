@@ -219,7 +219,7 @@ async def start_consumer(
                         chat_service,
                         crm_uow,
                         crm_service,
-                                    topic,
+                                                message.topic,
                     )
 
                     await consumer.commit()
