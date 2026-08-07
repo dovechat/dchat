@@ -1596,6 +1596,15 @@ class CrmService:
         provider = get_provider(conn)
         try:
             await provider.delete_message(message_id=message_id)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 401:
+                log.error(f"delete_from_crm failed tenant={tenant_id}: {e}")
+                return
+            new_tokens = await provider.refresh_tokens()
+            await self._uow.crm_accounts.update(conn, **new_tokens)
+            conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
+            provider = get_provider(conn)
+            await provider.delete_message(message_id=message_id)
         except Exception as e:
             log.error(f"delete_from_crm failed tenant={tenant_id}: {e}")
 
@@ -1624,5 +1633,22 @@ class CrmService:
                 chat_id=f"{conn.connector_id}_conv{conversation_id}",
             )
             log.info(f"\n\n --------- edit_to_crm result={result}\n\n")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 401:
+                log.error(f"edit_to_crm failed tenant={tenant_id}: {e}")
+                return
+            new_tokens = await provider.refresh_tokens()
+            await self._uow.crm_accounts.update(conn, **new_tokens)
+            conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
+            provider = get_provider(conn)
+            result = await provider.edit_message(
+                message_id=message_id,
+                text=text,
+                connector_id=conn.connector_id,
+                line_id=str(conn.crm_line_id),
+                user_id=conversation.client_phone,
+                chat_id=f"{conn.connector_id}_conv{conversation_id}",
+            )
+            log.info(f"\n\n --------- edit_to_crm result (after refresh)={result}\n\n")
         except Exception as e:
             log.error(f"edit_to_crm failed tenant={tenant_id}: {e}")
