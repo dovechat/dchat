@@ -49,6 +49,8 @@ class BitrixProvider(CrmProvider):
             media=media,
         )
 
+        log.info(f"\n\n ---- provider.send_message result {result} \n\n")
+
         return result
 
     async def edit_message(self, message_id: str, text: str, connector_id: str, line_id: str, user_id: str,
