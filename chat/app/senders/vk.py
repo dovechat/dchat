@@ -65,6 +65,7 @@ class VKSender(BaseSender):
             return await conn.send_message(int(clean_phone), data.text, random_id=data.message_id)
 
     async def edit(self, channel_msg_id: str, phone: str, text: str) -> dict:
+        log.info(f"\n\n  -+-+-+   senders vk channel_msg_id {channel_msg_id} phone {phone} text {text} \n\n")
         conn = VkConnection(access_token=self.creds["access_token"], line_id=self.line_id)
         clean_phone = phone.lstrip('+')
         return await conn.edit_message(int(clean_phone), int(channel_msg_id), text)
