@@ -342,7 +342,7 @@ class VkListener:
                     client_phone=phone,
                     client_name="",
                     text=text or "",
-                    message_id=msg_id,
+                    message_id=str(message.id),
                     channel_type="vk",
                     media=media_items,
                 )
