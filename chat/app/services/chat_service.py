@@ -480,7 +480,7 @@ class ChatService:
 
         message = await self.msg_repo.create_message(
             user_id=current_user.id if data.direction == MessageDirection.outbound else None,
-            conversation_id=data.conversation_id,
+            conversation_id=conv.id
             channel_msg_id=data.channel_msg_id,
             direction=data.direction,
             text=data.text,
