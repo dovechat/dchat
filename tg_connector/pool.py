@@ -99,6 +99,16 @@ class ChannelConnection:
         async def _on_new_message(event):
             log.info(f"[pool] NewMessage line={self.line_id} event_id={event.id}")
 
+            if not event.is_private:
+                return
+
+            sender = await event.get_sender()
+            sender_phone = (getattr(sender, "phone", "") or "").lstrip("+")
+            log.info(f"[pool] NewMessage sender_phone={sender_phone} peer_phone {peer_phone}")
+
+            if sender_phone != peer_phone.lstrip("+"):
+                return
+
             media_group_id = getattr(event.message, 'grouped_id', None)
             if media_group_id:
                 media_group_id = str(media_group_id)
