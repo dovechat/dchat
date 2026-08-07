@@ -334,3 +334,17 @@ class BitrixClient:
 
     async def delete_message_im(self, message_id: str) -> dict:
         return await self.call("im.message.delete", {"MESSAGE_ID": message_id}, use_json=True)
+
+    async def edit_message(self, connector_id, line_id, user_id, user_name, chat_id, text, msg_id, deal_id=None,
+                           crm_chat_id=None) -> dict:
+        return await self.send_message(
+            connector_id=connector_id,
+            line_id=line_id,
+            user_id=user_id,
+            user_name=user_name,
+            chat_id=chat_id,
+            text=text,
+            message_id=msg_id,
+            deal_id=deal_id,
+            crm_chat_id=crm_chat_id,
+        )

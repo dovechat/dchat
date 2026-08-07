@@ -1599,14 +1599,15 @@ class CrmService:
         except Exception as e:
             log.error(f"delete_from_crm failed tenant={tenant_id}: {e}")
 
-
     async def edit_to_crm(
             self,
             tenant_id: uuid.UUID,
             conversation_id: uuid.UUID,
-            message_id: str,
+            message_id: str,  # это str(message.id) — локальный id записи, НЕ crm_message_id
             text: str,
             channel_type: str,
+            client_phone: str,
+            client_name: str,
     ) -> None:
         conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
         if not conn:
@@ -1616,6 +1617,13 @@ class CrmService:
             return
         provider = get_provider(conn)
         try:
-            await provider.edit_message(message_id=message_id, text=text)
+            await provider.send_message(
+                conversation_id=str(conversation_id),
+                client_phone=client_phone,
+                client_name=client_name,
+                text=text,
+                message_id=message_id,
+                crm_chat_id=conversation.crm_chat_id,
+            )
         except Exception as e:
             log.error(f"edit_to_crm failed tenant={tenant_id}: {e}")

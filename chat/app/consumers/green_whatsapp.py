@@ -196,9 +196,11 @@ class GreenWhatsAppListener:
                         await crm_service.edit_to_crm(
                             tenant_id=line.tenant_id,
                             conversation_id=message.conversation_id,
-                            message_id=str(crm_message_id),
+                            message_id=str(message.id),
                             text=new_text,
                             channel_type="whatsapp_green",
+                            client_phone=conversation.client_phone,
+                            client_name=sender_data.get("senderName") or conversation.client_phone,
                         )
                     except Exception as e:
                         log.error(f"CRM edit_to_crm failed: {e}")
