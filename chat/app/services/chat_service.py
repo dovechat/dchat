@@ -128,6 +128,8 @@ class ChatService:
         if isinstance(result, dict):
             raw_content = result
             raw_content["crm_message_id"] = data.crm_message_id
+        elif result:
+            raw_content = {"crm_message_id": data.crm_message_id}
         else:
             raw_content = None
 
