@@ -1603,10 +1603,9 @@ class CrmService:
             self,
             tenant_id: uuid.UUID,
             conversation_id: uuid.UUID,
-            message_id: str,  # это str(message.id) — локальный id записи, НЕ crm_message_id
+            message_id: str,
             text: str,
             channel_type: str,
-            client_phone: str,
             client_name: str,
     ) -> None:
         conn = await self._uow.crm_accounts.get_by_tenant_and_channel(tenant_id, channel_type)
@@ -1619,7 +1618,7 @@ class CrmService:
         try:
             await provider.send_message(
                 conversation_id=str(conversation_id),
-                client_phone=client_phone,
+                client_phone=conversation.client_phone,  # ← отсюда, не из параметра функции
                 client_name=client_name,
                 text=text,
                 message_id=message_id,
