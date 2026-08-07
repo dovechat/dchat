@@ -616,7 +616,7 @@ class ChatService:
             line_id=event.line_id,
         )
         log.info(f"\n\n save_incoming_message data.media {data.media} \n\n")
-        _, message = await self.conv_msg(data, current_user)
+        _, message = await self.conv_msg(data)
 
         await self._publish_message(
             message,
