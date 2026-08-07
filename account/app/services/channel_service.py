@@ -190,6 +190,7 @@ class ChannelAccountService:
                 channel_type=ChannelType.TELEGRAM_BOT,
                 credentials_encrypted=encrypted
             )
+        await self.channel_repo.update_account(account, connection_status="connected")
         await self.set_webhook(line_id, credentials.bot_token, token)
         return ChannelAccountResponse(
             id=updated.id,

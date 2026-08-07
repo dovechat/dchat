@@ -95,6 +95,7 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
             phone=phone,
             session_string=session_string,
             bot_token=bot_token,
+            connection_status="connected",
         )
 
     async def get_by_line(
@@ -121,6 +122,7 @@ class ChannelAccountRepository(BaseRepository[ChannelAccount]):
         account: ChannelAccount,
         **data,
     ) -> ChannelAccount:
+        data.setdefault("connection_status", "connected")
         return await self.update(account, **data)
 
     async def update_connection_status(
