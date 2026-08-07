@@ -335,7 +335,7 @@ class VkListener:
             crm_uow = CrmUnitOfWork(db)
             crm_service = CrmService(crm_uow)
             line = await crm_uow.lines.get_by_id(line_id)
-            bx_chat_id = await crm_service.send_to_crm(
+            bx_chat = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
                 conversation_id=conv_id,
                 client_phone=phone,
@@ -346,7 +346,8 @@ class VkListener:
                 media=media_items,
             )
             log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
-            if bx_chat_id:
+            if bx_chat:
+                bx_chat_id = bx_chat[0]
                 await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
