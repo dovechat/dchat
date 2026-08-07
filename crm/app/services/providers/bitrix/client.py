@@ -13,12 +13,15 @@ class BitrixClient:
         self.access_token = access_token
 
     async def call(self, method: str, params: dict, use_json: bool = False) -> dict:
+        log.info("\n\n -*-*-* client.call start \n\n")
         url = f"https://{self.domain}/rest/{method}.json?auth={self.access_token}"
+        log.info(f"\n\n -*-*-* client.call url {url} \n\n")
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(url, json=params if use_json else None, data=None if use_json else params)
             if not resp.is_success:
                 log.error(f"Bitrix API error {resp.status_code}: {resp.text}")
             resp.raise_for_status()
+            log.info(f"\n\n -*-*-* client.call end resp {resp} \n\n")
             return resp.json()
 
     @classmethod
@@ -224,6 +227,7 @@ class BitrixClient:
 
     async def update_message(self, connector_id: str, line_id: str, user_id: str, chat_id: str, msg_id: str,
                              text: str) -> dict:
+        log.info("\n\n -*-*-* client.update_message start \n\n")
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
@@ -235,6 +239,7 @@ class BitrixClient:
                 }
             ],
         }
+        log.info("\n\n -*-*-* client.update_message end \n\n")
         return await self.call("imconnector.update.messages", params, use_json=True)
 
 
