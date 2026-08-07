@@ -26,6 +26,7 @@ async def process_message(
     event_data: dict,
     channel_type: str,
     chat_service: ChatService,
+    crm_service: CrmService,
 ):
     if event_data.get("action") == "edit":
         current_user = UserContext(
