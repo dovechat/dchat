@@ -69,7 +69,7 @@ class TelegramBotSender(BaseSender):
             raise Exception(f"Telegram API error: {result}")
 
     async def _send_file(self, data: MessageCreate) -> dict:
-        log.info(f"\n\n send FILE")
+        log.info(f"\n\n send FILE data {data.media}")
         result = None
         for m in data.media:
             file_bytes, filename = await get_file_from_s3(m["id"])
