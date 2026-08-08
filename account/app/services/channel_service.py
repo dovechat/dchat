@@ -343,7 +343,10 @@ class ChannelAccountService:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"https://api.green-api.com/waInstance{id_instance}/getWaSettings/{token}")
             settings = resp.json()
+            log.info("*********************")
+            log.info(f"Green settings: {settings}")
             wid = settings.get("wid")
+            log.info(f"Green wid: {wid}")
             if wid:
                 phone = "+" + wid.split("@")[0]
         log.info(f"Green phone resolved: {phone}")
@@ -391,7 +394,8 @@ class ChannelAccountService:
         # 3. Берём свободный инстанс
         log.info(f"******** channel_service connect_whatsapp_green account {account}")
         instance = await self.instance_repo.get_free_green_instance()
-        log.info(f"******** channel_service connect_whatsapp_green instance {instance} {instance.__dict__} ")
+        if instance:
+            log.info(f"******** channel_service connect_whatsapp_green instance {instance} {instance.__dict__} ")
         if not instance:
             log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} No free WhatsApp Green instance available")
             raise HTTPException(404, "No free WhatsApp Green instance available")
