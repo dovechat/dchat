@@ -180,6 +180,7 @@ class ChannelAccountService:
         credentials.secret_token = token
 
         log.debug(f"\n\n ******* credentials {credentials} \n\n")
+        phone = credentials.split(":")[0]
 
         encrypted = self._encrypt_credentials(credentials.model_dump())
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.TELEGRAM_BOT)
@@ -189,9 +190,10 @@ class ChannelAccountService:
             updated = await self.channel_repo.create_account(
                 line_id=line_id,
                 channel_type=ChannelType.TELEGRAM_BOT,
-                credentials_encrypted=encrypted
+                credentials_encrypted=encrypted,
+                phone=phone
             )
-        await self.channel_repo.update_account(account, connection_status="connected")
+        await self.channel_repo.update_account(account, connection_status="connected", phone=phone)
         await self.set_webhook(line_id, credentials.bot_token, token)
         return ChannelAccountResponse(
             id=updated.id,
