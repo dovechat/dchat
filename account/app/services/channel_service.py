@@ -27,6 +27,8 @@ PHKEYS = {
     "telegram_user": "phone",
     "telegram_bot": "group_id",
     "vk": "group_id",
+    'whatsapp_green':"instance",
+    "waba": "",
 }
 
 class ChannelAccountService:
