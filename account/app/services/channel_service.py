@@ -209,9 +209,9 @@ class ChannelAccountService:
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
         log.info(f"\n\n --------- credentials {credentials.__dict__}\n\n")
+        if not credentials.phone.startswith("+"):
+            credentials.phone = "+" + credentials.phone
         phone = credentials.phone
-        if not phone.startswith("+"):
-            phone = "+" + phone
         session_string = credentials.session_string
         encrypted = self._encrypt_credentials(credentials.model_dump())
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.TELEGRAM_USER)
