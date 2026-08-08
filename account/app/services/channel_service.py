@@ -101,6 +101,12 @@ class ChannelAccountService:
             updated_at=account.updated_at.isoformat() if account.updated_at else None
         )
 
+    phkeys  = {
+        "telegram_user": "phone",
+        "telegram_bot": "group_id",
+        "vk": "group_id",
+    }
+
     async def get_accounts(
             self,
             line_id: uuid.UUID,
@@ -111,7 +117,9 @@ class ChannelAccountService:
         result = []
         for account in accounts:
             credentials = self._decrypt_credentials(account.credentials_encrypted)
-            phone = credentials.get("phone") if credentials and "phone" in credentials.keys()  else account.phone
+            phkey = phkeys[str(account.channel_type)]
+            # phone = credentials.get("phone") if credentials and "phone" in credentials.keys()  else account.phone
+            phone = credentials.get(phkey) if  credentials and  phkey in credentials.keys()  else account.phone
             log.info(f"\n\n --++--  channes_service get_accounts  account {account} ch_type {account.channel_type}  phone {account.phone} credentials {credentials} phone {phone}\n\n")
             amo_link = await self.crm_line_repo.get_by_line_and_channel(
                 account.line_id, account.channel_type.value
