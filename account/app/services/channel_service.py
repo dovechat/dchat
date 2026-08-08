@@ -340,6 +340,7 @@ class ChannelAccountService:
             log.info("Webhook set")
 
         phone = None
+        import asyncio
         async with httpx.AsyncClient() as client:
             for attempt in range(3):
                 resp = await client.get(f"https://api.green-api.com/waInstance{id_instance}/getWaSettings/{token}")
