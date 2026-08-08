@@ -354,7 +354,7 @@ class ChannelAccountService:
         log.info(f"Green phone resolved: {phone}")
 
         # Сохраняем credentials
-        credentials = {"id_instance": id_instance, "api_token": token}
+        credentials = {"id_instance": id_instance, "api_token": token, "phone": phone}
         encrypted = self._encrypt_credentials(credentials)
         log.info("Credentials encrypted")
 
