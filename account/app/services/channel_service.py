@@ -180,7 +180,7 @@ class ChannelAccountService:
         credentials.secret_token = token
 
         log.debug(f"\n\n ******* credentials {credentials} \n\n")
-        phone = credentials.split(":")[0]
+        phone = credentials.bot_token.split(":")[0]
 
         encrypted = self._encrypt_credentials(credentials.model_dump())
         account = await self.channel_repo.get_by_line_and_type(line_id, ChannelType.TELEGRAM_BOT)
