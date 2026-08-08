@@ -1,5 +1,6 @@
 """Expire DAG — hourly check for channel_accounts past their expires_at."""
 import asyncio
+import httpx
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
@@ -56,6 +57,13 @@ async def _expire_channels(now: datetime) -> None:
                     expires_at=channel.expires_at,
                     channel_type=channel.channel_type.value,
                 )
+
+                if channel.channel_type.value == "telegram_user":
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            await client.post(f"http://tg-connector:8000/channels/{line.id}/stop")
+                    except Exception as e:
+                        log.error(f"expire_channels: tg-connector stop failed line={line.id}: {e}")
 
                 if item["line_expired"]:
                     for ch in item["all_channels"]:

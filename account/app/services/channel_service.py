@@ -111,6 +111,7 @@ class ChannelAccountService:
         result = []
         for account in accounts:
             credentials = self._decrypt_credentials(account.credentials_encrypted)
+            log.info(f"\n\n --++--  channes_service get_accounts credentials {credentials}\n\n")
             phone = credentials.get("phone") if credentials else None
             amo_link = await self.crm_line_repo.get_by_line_and_channel(
                 account.line_id, account.channel_type.value
@@ -207,7 +208,7 @@ class ChannelAccountService:
             credentials: TelegramUserCredentials
     ) -> ChannelAccountResponse:
         await self._verify_line_exists(line_id, tenant_id)
-        log.info(f"credentials {credentials}")
+        log.info(f"\n\n --------- credentials {credentials.__dict__}\n\n")
         phone = credentials.phone
         session_string = credentials.session_string
         encrypted = self._encrypt_credentials(credentials.model_dump())

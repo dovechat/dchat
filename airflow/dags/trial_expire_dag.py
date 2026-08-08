@@ -1,5 +1,6 @@
 """Trial Expire DAG — daily cleanup of trial users older than 2 days."""
 import asyncio
+import httpx
 from datetime import datetime, timedelta, timezone
 
 from airflow import DAG
@@ -97,6 +98,13 @@ async def _expire_trial_users(now: datetime) -> None:
                                 log.info(f"Cleaned channel {channel.id} (line={line.id}, type={channel.channel_type.value})")
                             except Exception as e:
                                 log.error(f"cleanup_line failed line={line.id} channel={channel.id}: {e}")
+
+                            if channel.channel_type.value == "telegram_user":
+                                try:
+                                    async with httpx.AsyncClient() as client:
+                                        await client.post(f"http://tg-connector:8000/channels/{line.id}/stop")
+                                except Exception as e:
+                                    log.error(f"expire_channels: tg-connector stop failed line={line.id}: {e}")
 
                         # Уведомление об истечении линии
                         try:

@@ -86,6 +86,8 @@ async def _wait_for_qr(token: str):
         session = state["client"].client.session.save()
         state["status"] = "authorized"
         state["session"] = session
+        me = await state["client"].client.get_me()
+        state["phone"] = me.phone
     except asyncio.TimeoutError:
         state["status"] = "expired"
     except Exception as e:
@@ -125,8 +127,8 @@ async def check_qr_status(token: str):
     state = _qr_state.get(token)
     if not state:
         return {"status": "not_found"}
-
-    return {"status": state["status"], "session": state.get("session")}
+    log.info(f"\n\n --- state {state} \n\n")
+    return {"status": state["status"], "session": state.get("session"), "phone": state.get("phone")}
 
 
 @app.post("/prod/check-phone")
