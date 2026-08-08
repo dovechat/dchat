@@ -116,7 +116,7 @@ class ChannelAccountService:
         result = []
         for account in accounts:
             credentials = self._decrypt_credentials(account.credentials_encrypted)
-            phkey = PHKEYS[str(account.channel_type)]
+            phkey = PHKEYS[account.channel_type.value]
             # phone = credentials.get("phone") if credentials and "phone" in credentials.keys()  else account.phone
             phone = credentials.get(phkey) if  credentials and  phkey in credentials.keys()  else account.phone
             log.info(f"\n\n --++--  channes_service get_accounts  account {account} ch_type {account.channel_type}  phone {phone}  credentials {credentials} phone {phone}\n\n")
