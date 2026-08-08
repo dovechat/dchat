@@ -27,7 +27,7 @@ PHKEYS = {
     "telegram_user": "phone",
     "telegram_bot": "group_id",
     "vk": "group_id",
-    'whatsapp_green':"instance",
+    'whatsapp_green':"phone",
     "waba": "",
 }
 
@@ -338,6 +338,15 @@ class ChannelAccountService:
         if id_instance and api_token:
             await self._set_green_webhook(line_id, id_instance, token)
             log.info("Webhook set")
+
+        phone = None
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"https://api.green-api.com/waInstance{id_instance}/getWaSettings/{token}")
+            settings = resp.json()
+            wid = settings.get("wid")
+            if wid:
+                phone = "+" + wid.split("@")[0]
+        log.info(f"Green phone resolved: {phone}")
 
         # Сохраняем credentials
         credentials = {"id_instance": id_instance, "api_token": token}
