@@ -23,6 +23,11 @@ from models.lines import ChannelAccount, Line
 import logging
 log = logging.getLogger("uvicorn.error")
 
+PHKEYS = {
+    "telegram_user": "phone",
+    "telegram_bot": "group_id",
+    "vk": "group_id",
+}
 
 class ChannelAccountService:
     """Service for managing channel accounts and credentials"""
@@ -101,12 +106,6 @@ class ChannelAccountService:
             updated_at=account.updated_at.isoformat() if account.updated_at else None
         )
 
-    phkeys  = {
-        "telegram_user": "phone",
-        "telegram_bot": "group_id",
-        "vk": "group_id",
-    }
-
     async def get_accounts(
             self,
             line_id: uuid.UUID,
@@ -117,7 +116,7 @@ class ChannelAccountService:
         result = []
         for account in accounts:
             credentials = self._decrypt_credentials(account.credentials_encrypted)
-            phkey = phkeys[str(account.channel_type)]
+            phkey = PHKEYS[str(account.channel_type)]
             # phone = credentials.get("phone") if credentials and "phone" in credentials.keys()  else account.phone
             phone = credentials.get(phkey) if  credentials and  phkey in credentials.keys()  else account.phone
             log.info(f"\n\n --++--  channes_service get_accounts  account {account} ch_type {account.channel_type}  phone {phone}  credentials {credentials} phone {phone}\n\n")
