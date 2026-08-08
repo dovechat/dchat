@@ -84,10 +84,10 @@ async def _wait_for_qr(token: str):
     try:
         await state["qr_login"].wait(timeout=120)
         session = state["client"].client.session.save()
-        state["status"] = "authorized"
-        state["session"] = session
         me = await state["client"].client.get_me()
+        state["session"] = session
         state["phone"] = me.phone
+        state["status"] = "authorized"
     except asyncio.TimeoutError:
         state["status"] = "expired"
     except Exception as e:
