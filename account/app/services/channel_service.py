@@ -120,7 +120,7 @@ class ChannelAccountService:
             phkey = phkeys[str(account.channel_type)]
             # phone = credentials.get("phone") if credentials and "phone" in credentials.keys()  else account.phone
             phone = credentials.get(phkey) if  credentials and  phkey in credentials.keys()  else account.phone
-            log.info(f"\n\n --++--  channes_service get_accounts  account {account} ch_type {account.channel_type}  phone {account.phone} credentials {credentials} phone {phone}\n\n")
+            log.info(f"\n\n --++--  channes_service get_accounts  account {account} ch_type {account.channel_type}  phone {phone}  credentials {credentials} phone {phone}\n\n")
             amo_link = await self.crm_line_repo.get_by_line_and_channel(
                 account.line_id, account.channel_type.value
             )
