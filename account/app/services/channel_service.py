@@ -522,6 +522,7 @@ class ChannelAccountService:
                     },
                     json = data
                 )
+                log.info(f"res {res}")
             if not str(res.status_code).startswith("2"):
                 log.error(f"Send WABA set_webhook returned wrong status code: {res.status_code}")
         except httpx.ReadTimeout:
