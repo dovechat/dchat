@@ -342,7 +342,7 @@ class ChannelAccountService:
         phone = None
         import asyncio
         async with httpx.AsyncClient() as client:
-            for attempt in range(3):
+            for attempt in range(5):
                 resp = await client.get(f"https://api.green-api.com/waInstance{id_instance}/getWaSettings/{token}")
                 settings = resp.json()
                 phone_raw = settings.get("phone")
@@ -350,7 +350,7 @@ class ChannelAccountService:
                     phone = "+" + phone_raw
                     break
                 log.info(f"Green phone not ready yet, attempt {attempt + 1}")
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
         log.info(f"Green phone resolved: {phone}")
 
         # Сохраняем credentials
