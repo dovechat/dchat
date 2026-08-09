@@ -280,6 +280,73 @@ class ChannelAccountService:
         )
         '''
 
+    async def _resolve_pending_green_instance(
+            self,
+            account: ChannelAccount,
+            line_id: uuid.UUID,
+    ) -> Instance:
+        """
+        Флоу аренды инстанса из общего пула Green API (кнопка "Подключить инстанс" без полей формы).
+        Ранее отдельным запросом юзеру был выделен свободный инстанс из пула,
+        его id сохранён в account.state_json["pending_instance_id"].
+        Здесь мы забираем этот инстанс, проверяем что он свободен и что линия
+        ещё не занята другим инстансом, привязываем его к линии и чистим pending.
+        """
+        pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
+        log.info(f"Pending instance id: {pending_id}")
+        if not pending_id:
+            log.error("Нет pending-инстанса, отдаём 400")
+            raise HTTPException(400, "Нет pending-инстанса. Сначала подключите инстанс.")
+
+        instance = await self.instance_repo.get_by_id(pending_id)
+        log.info(
+            f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
+        if not instance or instance.provider.value != "green":
+            raise HTTPException(400, "Некорректный инстанс")
+        if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
+            raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
+
+        existing = await self.instance_repo.get_instance_by_line(line_id)
+        if existing and existing.id != instance.id:
+            raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
+
+        instance.status = "busy"
+        instance.allocated_to_line_id = line_id
+        await self.instance_repo.update(instance)
+        log.info(f"Используем креды инстанса: id_instance={instance.external_id}")
+
+        await self.channel_repo.update_account(account, state_json={})
+        log.info("Pending очищен из state_json")
+
+        return instance
+
+
+    async def _resolve_pending_instance(
+            self,
+            account: ChannelAccount,
+            line_id: uuid.UUID,
+    ) -> Instance:
+        """Достаём инстанс из pending и проверяем, что его можно привязать к линии."""
+        pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
+        log.info(f"Pending instance id: {pending_id}")
+        if not pending_id:
+            log.error("Нет pending-инстанса, отдаём 400")
+            raise HTTPException(400, "Нет pending-инстанса. Сначала подключите инстанс.")
+
+        instance = await self.instance_repo.get_by_id(pending_id)
+        log.info(
+            f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
+        if not instance or instance.provider.value != "green":
+            raise HTTPException(400, "Некорректный инстанс")
+        if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
+            raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
+
+        existing = await self.instance_repo.get_instance_by_line(line_id)
+        if existing and existing.id != instance.id:
+            raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
+
+        return instance
+
     async def update_whatsapp_green(
             self,
             line_id: uuid.UUID,
@@ -312,57 +379,18 @@ class ChannelAccountService:
 
         # Если креды не переданы, пытаемся взять из pending
         if not id_instance or not api_token:
-            log.info("Креды не переданы в запросе, проверяем pending...")
-            pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
-            log.info(f"Pending instance id: {pending_id}")
-            if not pending_id:
-                log.error("Нет pending-инстанса, отдаём 400")
-                raise HTTPException(400, "Нет pending-инстанса. Сначала подключите инстанс.")
-            instance = await self.instance_repo.get_by_id(pending_id)
-
-            log.info(
-                f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
-            if not instance or instance.provider.value != "green":
-                raise HTTPException(400, "Некорректный инстанс")
-            if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
-                raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
-            id_instance = instance.external_id
-
-            log.info(
-                f"Instance: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
-            if not instance or instance.provider.value != "green":
-                raise HTTPException(400, "Invalid instance")
+            log.info("Креды не переданы в запросе, забираем из pending-инстанса...")
+            instance = await self._resolve_pending_green_instance(account, line_id)
             id_instance = instance.external_id
             api_token = instance.token
-            instance.status =  "busy"
-            instance.allocated_to_line_id = line_id
 
-            instance = await self.instance_repo.get_by_id(pending_id)
-            log.info(
-                f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
-            if not instance or instance.provider.value != "green":
-                raise HTTPException(400, "Некорректный инстанс")
-
-            existing = await self.instance_repo.get_instance_by_line(line_id)
-            if existing and existing.id != instance.id:
-                raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
-
-            id_instance = instance.external_id
-
-            await self.instance_repo.update(instance)
-            log.info(f"Using instance credentials: id_instance={id_instance}, token={'***' if api_token else None}")
-            # Очищаем pending
-            await self.channel_repo.update_account(account, state_json={})
-            log.info("Cleared pending from state_json")
-
-        token = decrypt(instance.token)  if instance else api_token
+        token = decrypt(instance.token) if instance else api_token
 
         if id_instance and api_token:
             await self._set_green_webhook(line_id, id_instance, token)
             log.info("Webhook set")
 
         phone = None
-        import asyncio
         async with httpx.AsyncClient() as client:
             for attempt in range(5):
                 resp = await client.get(f"https://api.green-api.com/waInstance{id_instance}/getWaSettings/{token}")
@@ -384,7 +412,7 @@ class ChannelAccountService:
         log.info(f"Account updated: {updated.id}")
 
         # Привязываем инстанс, если он был взят из pending
-        if 'instance' in locals() and instance and not instance.allocated_to_line_id:
+        if instance and not instance.allocated_to_line_id:
             await self.instance_repo.allocate_instance(instance, line_id)
             log.info(f"Instance {instance.id} allocated to line {line_id}")
 
