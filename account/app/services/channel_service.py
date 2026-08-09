@@ -312,13 +312,22 @@ class ChannelAccountService:
 
         # Если креды не переданы, пытаемся взять из pending
         if not id_instance or not api_token:
-            log.info("No credentials in request, checking pending...")
+            log.info("Креды не переданы в запросе, проверяем pending...")
             pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
             log.info(f"Pending instance id: {pending_id}")
             if not pending_id:
-                log.error("No pending instance, raising 400")
-                raise HTTPException(400, "No pending instance. Please connect instance first.")
+                log.error("Нет pending-инстанса, отдаём 400")
+                raise HTTPException(400, "Нет pending-инстанса. Сначала подключите инстанс.")
             instance = await self.instance_repo.get_by_id(pending_id)
+
+            log.info(
+                f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
+            if not instance or instance.provider.value != "green":
+                raise HTTPException(400, "Некорректный инстанс")
+            if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
+                raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
+            id_instance = instance.external_id
+
             log.info(
                 f"Instance: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
             if not instance or instance.provider.value != "green":
