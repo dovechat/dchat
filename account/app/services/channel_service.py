@@ -336,6 +336,19 @@ class ChannelAccountService:
             api_token = instance.token
             instance.status =  "busy"
             instance.allocated_to_line_id = line_id
+
+            instance = await self.instance_repo.get_by_id(pending_id)
+            log.info(
+                f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
+            if not instance or instance.provider.value != "green":
+                raise HTTPException(400, "Некорректный инстанс")
+
+            existing = await self.instance_repo.get_instance_by_line(line_id)
+            if existing and existing.id != instance.id:
+                raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
+
+            id_instance = instance.external_id
+
             await self.instance_repo.update(instance)
             log.info(f"Using instance credentials: id_instance={id_instance}, token={'***' if api_token else None}")
             # Очищаем pending
@@ -409,7 +422,7 @@ class ChannelAccountService:
             log.info(f"******** channel_service connect_whatsapp_green instance {instance} {instance.__dict__} ")
         if not instance:
             log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} No free WhatsApp Green instance available")
-            raise HTTPException(404, "No free WhatsApp Green instance available")
+            raise HTTPException(404, "Нет доступных свободных инстансов")
 
         state = {}
         state["pending_instance_id"] = str(instance.id)
