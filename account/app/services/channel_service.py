@@ -18,8 +18,7 @@ from schemas.line_schemas import ChannelType
 from services.cleanup_service import CleanupService
 from core.config import settings
 from infra.crypto import decrypt, encrypt
-from models.lines import ChannelAccount, Line
-from models.instances import Instance
+from models.lines import ChannelAccount, Instance, Line
 
 import logging
 log = logging.getLogger("uvicorn.error")
