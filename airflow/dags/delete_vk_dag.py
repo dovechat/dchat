@@ -62,6 +62,8 @@ async def _sync_vk_deletes_once() -> None:
             vk_accounts = await channel_repo.get_multi(filters={"channel_type": "vk"})
 
             for account in vk_accounts:
+                if not account.credentials_encrypted: 
+                    continue
                 creds = json.loads(decrypt(account.credentials_encrypted["encrypted_data"]))
                 access_token = creds.get("access_token")
                 line = await line_repo.get_by_id(account.line_id)
