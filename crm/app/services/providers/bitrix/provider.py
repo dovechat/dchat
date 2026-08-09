@@ -75,8 +75,21 @@ class BitrixProvider(CrmProvider):
         log.info(f"provider.edit_message res {res}")
         return res
 
-    async def delete_message(self, message_id: str) -> dict:
+    async def delete_message(
+            self,
+            message_id: str,
+            connector_id: str,
+            line_id: str,
+            user_id: str,
+            chat_id: str,
+    ) -> dict:
         bx = self._client()
-        return await bx.delete_message(message_id=message_id)
+        return await bx.delete_message(
+            connector_id=connector_id,
+            line_id=line_id,
+            user_id=user_id,
+            message_id=message_id,
+            chat_id=chat_id,
+        )
     
     
