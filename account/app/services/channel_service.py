@@ -280,72 +280,37 @@ class ChannelAccountService:
         )
         '''
 
+    async def _check_can_bind_instance(self, instance: Instance | None, line_id: uuid.UUID) -> None:
+        if not instance or instance.provider.value != "green":
+            raise HTTPException(400, "Некорректный инстанс")
+        existing = await self.instance_repo.get_instance_by_line(line_id)
+        if existing:
+            raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
+        if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
+            raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
+
     async def _resolve_pending_green_instance(
             self,
             account: ChannelAccount,
             line_id: uuid.UUID,
     ) -> Instance:
         """
-        Флоу аренды инстанса из общего пула Green API (кнопка "Подключить инстанс" без полей формы).
-        Ранее отдельным запросом юзеру был выделен свободный инстанс из пула,
-        его id сохранён в account.state_json["pending_instance_id"].
-        Здесь мы забираем этот инстанс, проверяем что он свободен и что линия
-        ещё не занята другим инстансом, привязываем его к линии и чистим pending.
+        Флоу аренды инстанса из общего пула Green API.
+        id инстанса взят ранее и сохранён в account.state_json["pending_instance_id"].
+        Забираем инстанс, привязываем к линии, чистим pending.
         """
         pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
         log.info(f"Pending instance id: {pending_id}")
         if not pending_id:
-            log.error("Нет pending-инстанса, отдаём 400")
             raise HTTPException(400, "Нет pending-инстанса. Сначала подключите инстанс.")
-
         instance = await self.instance_repo.get_by_id(pending_id)
-        log.info(
-            f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
-        if not instance or instance.provider.value != "green":
-            raise HTTPException(400, "Некорректный инстанс")
-        if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
-            raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
-
-        existing = await self.instance_repo.get_instance_by_line(line_id)
-        if existing and existing.id != instance.id:
-            raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
-
+        await self._check_can_bind_instance(instance, line_id)
         instance.status = "busy"
         instance.allocated_to_line_id = line_id
         await self.instance_repo.update(instance)
-        log.info(f"Используем креды инстанса: id_instance={instance.external_id}")
-
         await self.channel_repo.update_account(account, state_json={})
-        log.info("Pending очищен из state_json")
-
         return instance
 
-
-    async def _resolve_pending_instance(
-            self,
-            account: ChannelAccount,
-            line_id: uuid.UUID,
-    ) -> Instance:
-        """Достаём инстанс из pending и проверяем, что его можно привязать к линии."""
-        pending_id = account.state_json.get("pending_instance_id") if account.state_json else None
-        log.info(f"Pending instance id: {pending_id}")
-        if not pending_id:
-            log.error("Нет pending-инстанса, отдаём 400")
-            raise HTTPException(400, "Нет pending-инстанса. Сначала подключите инстанс.")
-
-        instance = await self.instance_repo.get_by_id(pending_id)
-        log.info(
-            f"Инстанс: {instance.id if instance else None}, provider={instance.provider if instance else None}, external_id={instance.external_id if instance else None}")
-        if not instance or instance.provider.value != "green":
-            raise HTTPException(400, "Некорректный инстанс")
-        if instance.allocated_to_line_id and instance.allocated_to_line_id != line_id:
-            raise HTTPException(400, "Инстанс уже привязан к линии, проведите очистку инстанса")
-
-        existing = await self.instance_repo.get_instance_by_line(line_id)
-        if existing and existing.id != instance.id:
-            raise HTTPException(400, "Линия уже привязана к другому инстансу, проведите очистку линии")
-
-        return instance
 
     async def update_whatsapp_green(
             self,
@@ -451,6 +416,8 @@ class ChannelAccountService:
         if not instance:
             log.error(f"!!! --- ERROR --- channel_service connect_whatsapp_green line {line} No free WhatsApp Green instance available")
             raise HTTPException(404, "Нет доступных свободных инстансов")
+
+        await self._check_can_bind_instance(instance, line_id)
 
         state = {}
         state["pending_instance_id"] = str(instance.id)
