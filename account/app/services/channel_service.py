@@ -19,6 +19,7 @@ from services.cleanup_service import CleanupService
 from core.config import settings
 from infra.crypto import decrypt, encrypt
 from models.lines import ChannelAccount, Line
+from models.instances import Instance
 
 import logging
 log = logging.getLogger("uvicorn.error")
