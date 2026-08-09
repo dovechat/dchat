@@ -83,7 +83,9 @@ async def _sync_vk_deletes_once() -> None:
                     msgs_from_vk = await _get_recent_conversation_message_ids(access_token, peer_id)
 
                     messages = await msg_repo.get_multi(
-                        filters={"conversation_id": conv.id, "direction": "inbound"}
+                        filters={"conversation_id": conv.id, "direction": "inbound"},
+                        order_by=[("created_at", "desc")],
+                        limit=20,
                     )
 
                     for message in messages:
