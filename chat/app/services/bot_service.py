@@ -66,6 +66,23 @@ class BotService:
             "text": text,
         })
 
+        try:
+            from crm.app.services.crm_service import CrmService
+            from crm.app.core.uow import CrmUnitOfWork
+            crm_uow = CrmUnitOfWork(self.db)
+            crm_service = CrmService(crm_uow)
+            await crm_service.edit_to_crm(
+                tenant_id=line.tenant_id,
+                conversation_id=conversation.id,
+                message_id=str(db_message.id),
+                text=text,
+                channel_type="telegram_bot",
+            )
+        except Exception as e:
+            log.error(f"_handle_edited_message: edit_to_crm failed: {e}")
+
+        return {"ok": True}
+
         return {"ok": True}
 
 
@@ -98,6 +115,7 @@ class BotService:
                 log.info(f" *** --  **  bot_service.handle_webhook edited  before {edited}")
                 if edited:
                     await self._handle_edited_message(line_id, line, edited)
+                    return {"ok": True}
 
                 log.info(f" *** --  **  bot_service.handle_webhook edited after {edited}")
         
