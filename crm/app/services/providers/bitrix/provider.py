@@ -77,6 +77,6 @@ class BitrixProvider(CrmProvider):
 
     async def delete_message(self, message_id: str) -> dict:
         bx = self._client()
-        return await bx.delete_message_im(message_id=message_id)
+        return await bx.delete_message(message_id=message_id)
     
     
