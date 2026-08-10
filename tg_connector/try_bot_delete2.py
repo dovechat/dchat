@@ -5,8 +5,6 @@ import sys
 from telethon import events
 
 from tg_client import TelegramClientWrapper
-from core.config import settings
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,33 +20,30 @@ async def main():
 
     client = TelegramClientWrapper()
 
-    # Создаём MTProto-соединение через твой прокси
     await client.connect()
     log.info("Connected to Telegram")
 
-    # Авторизуем именно BOT через MTProto
     await client.client.sign_in(
         bot_token="7899850117:AAG8YhcGRIDBrFO2oSj7YRSCvx2mNxi5zh8",
     )
 
-    me = await client.get_entity("me")
+    me = await client.client.get_me()
 
     log.warning(
         "MTProto AUTH: id=%s username=%s bot=%s",
         me.id,
         me.username,
-        getattr(me, "bot", None),
+        me.bot,
     )
 
-    log.info("Bot authorized via MTProto")
-
-    me = await client.get_entity("me")
-
-    log.info(
-        "Logged in: id=%s username=%s",
-        me.id,
-        me.username,
-    )
+    @client.on(events.NewMessage)
+    async def new_message(event):
+        log.warning(
+            "!!! NEW MESSAGE !!! chat_id=%s sender_id=%s text=%r",
+            event.chat_id,
+            event.sender_id,
+            event.raw_text,
+        )
 
     @client.on(events.MessageDeleted)
     async def deleted(event):
@@ -56,18 +51,7 @@ async def main():
         log.warning("deleted_ids=%s", event.deleted_ids)
         log.warning("raw=%s", event.original_update)
 
-
-    @client.on(events.NewMessage)
-    async def new_message(event):
-        log.warning(
-            "NEW MESSAGE: chat_id=%s sender_id=%s text=%r",
-            event.chat_id,
-            event.sender_id,
-            event.raw_text,
-        )
-
-
-    log.info("Listening for message deletions...")
+    log.info("Listening for messages and deletions...")
 
     try:
         await client.run_until_disconnected()
