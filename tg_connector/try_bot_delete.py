@@ -1,6 +1,10 @@
 import asyncio
+import logging
 from telethon import TelegramClient, events
 from core.config import settings
+
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s", stream=sys.stdout)
+log = logging.getLogger("uvicorn")
 
 API_ID = settings.tg_api_id
 API_HASH = settings.tg_api_hash
@@ -11,22 +15,24 @@ client = TelegramClient("telegram_user", API_ID, API_HASH)
 
 @client.on(events.MessageDeleted)
 async def deleted(event):
-    print("DELETED:", event.deleted_ids)
-    print("RAW:", event.original_update)
+    log.info(f"DELETED: {event.deleted_ids}")
+    log.info(f"RAW {event.original_update}:")
 
 
 async def main():
+    log.info("START tg_bot_delete ")
     await client.start()
+    log.info("after await client.start()")
 
     me = await client.get_me()
-    print(f"Logged in: {me.id} @{me.username}")
+    log.info(f"Logged in: {me.id} @{me.username}")
 
     # Просто показываем диалоги, чтобы найти бота
     async for dialog in client.iter_dialogs():
         if dialog.is_user:
-            print(dialog.id, dialog.name, dialog.entity.username)
+            log.info(dialog.id, dialog.name, dialog.entity.username)
 
-    print("Listening for deletions...")
+    log.info("Listening for deletions...")
     await client.run_until_disconnected()
 
 
