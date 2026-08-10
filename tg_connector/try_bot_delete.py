@@ -2,8 +2,8 @@ import asyncio
 from telethon import TelegramClient, events
 from core.config import settings
 
-API_ID = settings.api_id
-API_HASH = settings.api_hash
+API_ID = settings.tg_api_id
+API_HASH = settings.tg_api_hash
 
 # Сессия сохранится в telegram_user.session
 client = TelegramClient("telegram_user", API_ID, API_HASH)
