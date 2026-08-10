@@ -69,7 +69,7 @@ async def main():
         log.info("Ctrl-C received")
     finally:
         log.info("Logging out test session...")
-        # await client.client.log_out()
+        await client.client.log_out()
         await client.disconnect()
         log.info("Test session logged out")
 
