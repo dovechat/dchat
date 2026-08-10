@@ -70,7 +70,6 @@ async def main():
             event.raw_text,
         )
 
-
     log.info("Listening for message deletions...")
 
     try:
