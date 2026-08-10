@@ -61,6 +61,16 @@ async def main():
         log.warning("deleted_ids=%s", event.deleted_ids)
         log.warning("raw=%s", event.original_update)
 
+    @client.on(events.NewMessage)
+    async def new_message(event):
+        log.warning(
+            "NEW MESSAGE: chat_id=%s sender_id=%s text=%r",
+            event.chat_id,
+            event.sender_id,
+            event.raw_text,
+        )
+
+
     log.info("Listening for message deletions...")
 
     try:
