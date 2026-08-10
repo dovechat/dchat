@@ -51,6 +51,12 @@ async def main():
         log.warning("deleted_ids=%s", event.deleted_ids)
         log.warning("raw=%s", event.original_update)
 
+    @client.client.on(events.Raw)
+    async def raw_update(event):
+        log.warning("=== RAW UPDATE ===")
+        log.warning("type=%s", type(event).__name__)
+        log.warning("data=%r", event)
+
     log.info("Listening for messages and deletions...")
 
     try:
