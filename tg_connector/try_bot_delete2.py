@@ -31,6 +31,15 @@ async def main():
         bot_token="7899850117:AAG8YhcGRIDBrFO2oSj7YRSCvx2mNxi5zh8",
     )
 
+    me = await client.get_entity("me")
+
+    log.warning(
+        "MTProto AUTH: id=%s username=%s bot=%s",
+        me.id,
+        me.username,
+        getattr(me, "bot", None),
+    )
+
     log.info("Bot authorized via MTProto")
 
     me = await client.get_entity("me")
