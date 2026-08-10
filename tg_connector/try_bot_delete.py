@@ -63,7 +63,15 @@ async def main():
 
     log.info("Listening for message deletions...")
 
-    await client.run_until_disconnected()
+    try:
+        await client.run_until_disconnected()
+    except KeyboardInterrupt:
+        log.info("Ctrl-C received")
+    finally:
+        log.info("Logging out test session...")
+        # await client.client.log_out()
+        await client.disconnect()
+        log.info("Test session logged out")
 
 
 if __name__ == "__main__":
