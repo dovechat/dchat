@@ -749,8 +749,16 @@ class CrmService:
         access_token = bx_auth.get("access_token", "")
         refresh_token = bx_auth.get("refresh_token", "")
 
+        line = await self._uow.lines.get_by_id(line_id)  # ← подняли сюда
+        if not line:
+            return {"error": "Линия не найдена"}
+
         rows = await self._uow.crm_accounts.get_multi(filters={"domain": domain}, limit=1)
         account = rows[0] if rows else None
+
+        if account and account.tenant_id and account.tenant_id != line.tenant_id:
+            return {"error": "Этот портал Bitrix уже привязан к другому тенанту DoveChat"}
+
         if account and account.bitrix_client_id_enc and account.bitrix_client_secret_enc:
             try:
                 refreshed = await BitrixClient.refresh_tokens(
@@ -763,9 +771,6 @@ class CrmService:
             except Exception as e:
                 log.error(f"connect_line token refresh failed: {e}")
                 return {"error": "Ошибка обновления токена Битрикс"}
-        line = await self._uow.lines.get_by_id(line_id)
-        if not line:
-            return {"error": "Линия не найдена"}
 
         if account:
             await self._uow.crm_accounts.update(
@@ -812,6 +817,15 @@ class CrmService:
         log.info(
             f"connect_line crm_line_id={crm_line_id!r} member_id={member_id} connector_id={connector_id} line_conn={line_conn}"
         )
+
+        conflict_rows = await self._uow.crm_line_connections.get_multi(
+            filters={"crm_line_id": crm_line_id, "connector_id": connector_id, "is_active": True}
+        )
+        conflict = next((r for r in conflict_rows if r.line_id != line_id), None)
+        if conflict:
+            return {
+                "error": f"Открытая линия Bitrix уже привязана к другой линии DoveChat (line_id={conflict.line_id})"}
+
 
         link_result = await bx.link_connector(crm_line_id, connector_id)
         log.info(f"link_connector result: {link_result}")
