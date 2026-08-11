@@ -186,6 +186,9 @@ class GreenWhatsAppListener:
                 })
 
                 crm_message_id = (message.raw_content or {}).get("crm_message_id")
+
+                log.info(f"\n\n ---------  EDIT crm_message_id {crm_message_id}   \n\n")
+
                 if crm_message_id:
                     try:
                         from crm.app.services.crm_service import CrmService
