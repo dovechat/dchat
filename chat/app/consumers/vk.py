@@ -120,7 +120,7 @@ class VkListener:
             log.warning(f"No message in VK edit payload: {payload}")
             return
 
-        msg_id = str(msg.get("id"))
+        msg_id = str(msg.get("conversation_message_id"))
         from_id = msg.get("from_id")
         text = msg.get("text", "")
         phone = str(from_id)
