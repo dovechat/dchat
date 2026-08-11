@@ -247,7 +247,7 @@ class BitrixClient:
                 }
             ],
         }
-        log.info("\n\n -*-*-* client.update_message end \n\n")
+        log.info(f"\n\n -*-*-* client.update_message end params {params} \n\n")
         return await self.call("imconnector.update.messages", params, use_json=True)
 
 
