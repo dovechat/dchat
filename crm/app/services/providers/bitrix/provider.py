@@ -85,6 +85,7 @@ class BitrixProvider(CrmProvider):
             chat_id: str,
     ) -> dict:
         bx = self._client()
+        user_id = user_id.lstrip("+")
         return await bx.delete_message(
             connector_id=connector_id,
             line_id=line_id,
