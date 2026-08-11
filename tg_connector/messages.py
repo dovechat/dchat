@@ -82,11 +82,11 @@ async def process_media(event):
         }
     ]
 
-def serialize_edited_message(event, line_id: str, conversation_id: uuid.UUID):
+def serialize_edited_message(event, line_id: str, peer_phone: str):
     return {
         "line_id": line_id,
         "event_type": "message_edit",
-        "conversation_id": str(conversation_id),
+        "peer_phone": peer_phone,
         "message": {
             "id": event.message.id,
             "text": event.message.text or "",
@@ -94,10 +94,10 @@ def serialize_edited_message(event, line_id: str, conversation_id: uuid.UUID):
     }
 
 
-def serialize_deleted_message(message_ids, line_id: str, conversation_id):
+def serialize_deleted_message(message_ids, line_id: str, peer_phone: str):
     return {
         "line_id": line_id,
-        "conversation_id": str(conversation_id),
+        "peer_phone": peer_phone,
         "event_type": "message_delete",
         "message_ids": message_ids,
     }

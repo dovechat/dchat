@@ -7,7 +7,6 @@ from uuid import UUID
 from contextlib import asynccontextmanager
 from aiokafka import AIOKafkaConsumer
 
-from airflow.tests.test_cleanup_service import line_id
 from core.config import settings
 from core.database import get_db
 from crm.app.services.crm_service import CrmService
@@ -29,17 +28,15 @@ async def process_message(
 ):
     log.info(f"\n\n process_message event_data {event_data} \n\n")
 
-    line_id_ = event_data.get("line_id", "")
-    log.info(f"\n\n process_message line_id_ {type(line_id_)} {line_id_}  \n\n")
-
     line_id_1 = UUID(line_id_)
     log.info(f"\n\n process_message line_id_1 {type(line_id_1)} {line_id_1}  \n\n")
 
-    conversation_id = (
-        UUID(event_data["conversation_id"])
-        if event_data.get("conversation_id")
-        else None
+    conversation = await chat_service.get_or_create_conversation(
+        line_id=line_id_1,
+        peer_phone=event_data.get("peer_phone", ""),
+        channel_type="telegram_user",
     )
+    conversation_id = conversation.id
 
     log.info(f"\n\n process_message conversation_id {conversation_id} \n\n")
 

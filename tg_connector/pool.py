@@ -85,9 +85,7 @@ class ChannelConnection:
             session_string=session_string
         )
 
-        peer_phone = await self._get_peer_phone()
-
-        log.info(f"\n\n[pool] CONNECT LINE id={self.line_id}, peer_phone={peer_phone}\n\n")
+        log.info(f"\n\n[pool] CONNECT LINE id={self.line_id}\n\n")
 
         await self.client.connect()
 
@@ -104,10 +102,7 @@ class ChannelConnection:
 
             sender = await event.get_sender()
             sender_phone = (getattr(sender, "phone", "") or "").lstrip("+")
-            log.info(f"[pool] NewMessage sender_phone={sender_phone} peer_phone {peer_phone}")
-
-            if sender_phone != peer_phone.lstrip("+"):
-                return
+            log.info(f"[pool] NewMessage sender_phone={sender_phone}")
 
             media_group_id = getattr(event.message, 'grouped_id', None)
             if media_group_id:
@@ -118,23 +113,23 @@ class ChannelConnection:
                 if media_group_id in self._album_tasks:
                     self._album_tasks[media_group_id].cancel()
                 self._album_tasks[media_group_id] = asyncio.create_task(
-                    self._flush_album(media_group_id, event)
+                    self._flush_album(media_group_id, event, sender_phone)
                 )
                 return
 
             payload = await serialize_message(
-                event, self.line_id, self.conversation_id, peer_phone,
+                event, self.line_id, None, sender_phone,
             )
             await send_event("telegram_user_incoming", payload)
 
-        async def _flush_album(self, mgid: str, event):
+        async def _flush_album(self, mgid: str, event, sender_phone: str):
             await asyncio.sleep(1)
             items = self._album_buffer.pop(mgid, [])
             self._album_tasks.pop(mgid, None)
             if not items:
                 return
             payload = await serialize_message(
-                event, self.line_id, self.conversation_id, peer_phone,
+                event, self.line_id, None, sender_phone,
             )
             payload["message"]["media"] = items
             await send_event("telegram_user_incoming", payload)
@@ -148,40 +143,35 @@ class ChannelConnection:
 
             sender = await event.get_sender()
             sender_phone = (getattr(sender, "phone", "") or "").lstrip("+")
-            log.info(
-                f"[pool] MessageEdited sender_phone={sender_phone} "
-                f"peer_phone={peer_phone}"
-            )
-
-            if sender_phone != peer_phone.lstrip("+"):
-                return
+            log.info(f"[pool] MessageEdited sender_phone={sender_phone}")
 
             await send_event(
                 "telegram_user_message_edit",
                 serialize_edited_message(
                     event,
                     self.line_id,
-                    self.conversation_id,
+                    sender_phone,
                 ),
             )
 
         @self.client.on(events.MessageDeleted)
         async def _on_deleted(event):
-            log.info(f"\n\n  *** telegram_user_message_delete self.conversation_id {self.conversation_id}\n\n ")
+            sender_phone = ""
+            if event.chat_id:
+                entity = await self.client.get_entity(event.chat_id)
+                sender_phone = (getattr(entity, "phone", "") or "").lstrip("+")
+
+            log.info(f"\n\n  *** telegram_user_message_delete sender_phone={sender_phone}\n\n ")
             await send_event(
                 "telegram_user_message_delete",
                 serialize_deleted_message(
                     event.deleted_ids,
                     self.line_id,
-                    self.conversation_id,
+                    sender_phone,
                 ),
             )
 
-            log.info(f"SEND EVENT DELETE conversation_id {self.conversation_id,}")
-
-        await self._set_status(ConnectionStatus.connected)
-        self._reconnect_delay = 1
-        log.info(f"[pool] connected line={self.line_id}")
+            log.info(f"SEND EVENT DELETE sender_phone={sender_phone}")
 
     async def disconnect(self):
         if self.client:
