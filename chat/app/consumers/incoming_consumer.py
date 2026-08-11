@@ -165,15 +165,14 @@ async def process_message(
                     raw_content={"crm_message_id": crm_message_id},
                 )
 
-            log.info(f"\n\n **--**--**-- test recording crm_message_id {crm_message_id} \n\n")
-            test_message = await chat_service.msg_repo.get_by_id(message_data.id)
-
-            log.info(f"\n\n **--===============--**-- test recording test_message {test_message} \n\n")
-
-
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
         log.info(f"\n\n process_message event_type IS message_created after\n\n")
+
+    log.info(f"\n\n **--==============--**-- test recording crm_message_id {crm_message_id} \n\n")
+    test_message = await chat_service.msg_repo.get_by_id(message_data.id)
+
+    log.info(f"\n\n **--===============--**-- test recording test_message {test_message} \n\n")
 
     await manager.send_new_message(
         conversation_id,
