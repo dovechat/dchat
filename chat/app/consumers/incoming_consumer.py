@@ -172,7 +172,7 @@ async def process_message(
     log.info(f"\n\n **--==============--**-- test recording crm_message_id {crm_message_id} \n\n")
     test_message = await chat_service.msg_repo.get_by_id(message_data.id)
 
-    log.info(f"\n\n **--===============--**-- test recording test_message {test_message} \n\n")
+    log.info(f"\n\n **--===============--**-- test recording test_message {test_message.raw_content} \n\n")
 
     await manager.send_new_message(
         conversation_id,
