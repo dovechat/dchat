@@ -142,9 +142,9 @@ class CrmService:
             crm_message_id = result["result"]
             session_chat_id = conversation.crm_chat_id
             else:
-            data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-            crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else None
-            session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
+                data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
+                crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else None
+                session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
 
         if not session_chat_id:
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
