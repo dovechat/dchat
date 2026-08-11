@@ -28,6 +28,9 @@ async def process_message(
 ):
     log.info(f"\n\n process_message event_data {event_data} \n\n")
 
+    line_id_ = event_data.get("line_id", "")
+    log.info(f"\n\n process_message line_id_ {type(line_id_)} {line_id_}  \n\n")
+
     line_id_1 = UUID(line_id_)
     log.info(f"\n\n process_message line_id_1 {type(line_id_1)} {line_id_1}  \n\n")
 
