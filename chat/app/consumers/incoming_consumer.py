@@ -92,18 +92,11 @@ async def process_message(
             line = await crm_service._uow.lines.get_by_id(line_id_1)
             log.info(f"DELETE CRM messages found={len(messages)}")
             for message in messages:
-                log.info(f"DELETE CRM message {message}")
-                crm_message_id = (message.raw_content or {}).get("crm_message_id")
-                log.info(f"DELETE CRM crm_message_id {crm_message_id}")
-                if not crm_message_id:
-                    log.info("DELETE CRM if not crm_message_id")
-                    continue
-
                 await crm_service.delete_from_crm(
                     tenant_id=line.tenant_id,
                     conversation_id=conversation_id,
                     client_phone="",
-                    message_id=str(crm_message_id),
+                    message_id=str(message.id),
                     channel_type="telegram_user",
                 )
 
