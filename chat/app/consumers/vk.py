@@ -363,9 +363,10 @@ class VkListener:
                 channel_type="vk",
                 media=media_items,
             )
-            log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+            log.info(f"send_to_crm bx_chat={bx_chat}")
             if bx_chat:
                 bx_chat_id = bx_chat[0]
+                log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
                 await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
