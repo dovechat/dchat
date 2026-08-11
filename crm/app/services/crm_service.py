@@ -129,7 +129,6 @@ class CrmService:
 
         log.info(f"send_to_crm result {result}")
 
-
         # --- AmoCRM ---
         if conn.crm_type == "amocrm":
             amo_chat_id = result.get("crm_chat_id", f"dc_{conversation_id}")
