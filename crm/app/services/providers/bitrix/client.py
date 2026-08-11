@@ -45,6 +45,14 @@ class BitrixClient:
             raise ValueError(f"Token refresh failed: {data}")
         return data
 
+    async def get_real_message_id(self, chat_id: str) -> str | None:
+        resp = await self.call(
+            "im.dialog.messages.get",
+            {"DIALOG_ID": f"chat{chat_id}", "LIMIT": 1},
+        )
+        messages = resp.get("result", {}).get("messages", [])
+        return str(messages[0]["id"]) if messages else None
+
     async def send_message_to_deal_chat(
             self,
             deal_id: str,

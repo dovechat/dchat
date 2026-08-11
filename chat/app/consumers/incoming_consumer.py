@@ -62,14 +62,12 @@ async def process_message(
                 }
             )
             line = await crm_service._uow.lines.get_by_id(line_id_1)
-            for message in messages:
-                crm_message_id = (message.raw_content or {}).get("crm_message_id")
-                if not crm_message_id:
-                    continue
+            if messages:
+                message = messages[0]
                 await crm_service.edit_to_crm(
                     tenant_id=line.tenant_id,
                     conversation_id=conversation_id,
-                    message_id=str(crm_message_id),
+                    message_id=str(message.id),
                     text=event_data["message"].get("text") or "",
                     channel_type="telegram_user",
                 )
@@ -142,6 +140,7 @@ async def process_message(
             log.info(f"send_to_crm line={line}")
             sender = event_data["message"].get("sender") or {}
             log.info(f"send_to_crm sender={sender}")
+
             bx_chat_id, crm_message_id = await crm_service.send_to_crm(
                 tenant_id=line.tenant_id,
                 conversation_id=conversation_id,
@@ -162,14 +161,14 @@ async def process_message(
                 msg_orm = await chat_service.msg_repo.get_by_id(message_data.id)
                 await chat_service.msg_repo.update(
                     msg_orm,
-                    raw_content={"crm_message_id": crm_message_id},
+                    raw_content={"crm_message_id": crm_message_id, "bx_real_id": crm_message_id},
                 )
 
         except Exception as e:
             log.error(f"CRM send_to_crm failed: {e}")
         log.info(f"\n\n process_message event_type IS message_created after\n\n")
 
-    log.info(f"\n\n **--==============--**-- test recording crm_message_id {crm_message_id} \n\n")
+    log.info(f"\n\n **--==============--**-- test recording crm_message_id \n\n")
     test_message = await chat_service.msg_repo.get_by_id(message_data.id)
 
     log.info(f"\n\n **--===============--**-- test recording test_message {test_message.raw_content} \n\n")

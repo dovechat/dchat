@@ -50,11 +50,9 @@ class CrmService:
         if not conn:
             return
 
-        log.info(f"send_to_crm conn2 {conn}")
         provider = get_provider(conn)
         conversation = await self._uow.conversations.get_by_id(conversation_id)
         crm_chat_id = conversation.crm_chat_id
-        log.info(f"send_to_crm crm_chat_id {crm_chat_id}")
 
         # 1. Отправляем сообщение, при 401 — рефрешим и повторяем
         try:
@@ -62,25 +60,6 @@ class CrmService:
                 conversation_id=str(conversation_id), client_phone=client_phone, client_name=client_name,
                 text=text, message_id=message_id, crm_chat_id=crm_chat_id, media=media)
             log.info(f"CRM result: {result}")
-
-            raw_result = result.get("result")
-            if False:
-                pass
-            else:
-                raw_result = result.get("result")
-                if isinstance(raw_result, int):
-                    crm_message_id = str(raw_result)
-                elif isinstance(raw_result, dict):
-                    data_result = raw_result.get("DATA", {}).get("RESULT", [{}])
-                    crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else ""
-                else:
-                    crm_message_id = ""
-
-            if crm_message_id:
-                await self._uow.msg_repo.update_by_id(
-                    int(message_id),
-                    raw_content={"crm_message_id": crm_message_id},
-                )
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code != 401:
@@ -104,25 +83,6 @@ class CrmService:
 
             log.info(f"CRM result after refresh: {result}")
 
-            raw_result = result.get("result")
-            if False:
-                pass
-            else:
-                raw_result = result.get("result")
-                if isinstance(raw_result, int):
-                    crm_message_id = str(raw_result)
-                elif isinstance(raw_result, dict):
-                    data_result = raw_result.get("DATA", {}).get("RESULT", [{}])
-                    crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else ""
-                else:
-                    crm_message_id = ""
-
-            if crm_message_id:
-                await self._uow.msg_repo.update_by_id(
-                    int(message_id),
-                    raw_content={"crm_message_id": crm_message_id},
-                )
-
         except Exception as e:
             log.error(f"CRM send failed: {e}", exc_info=True)
             return
@@ -138,15 +98,10 @@ class CrmService:
         
         # --- Bitrix24 ---
         log.info(f' \n\n -------- result {result.get("result")} -------- \n\n')
+        data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
         if isinstance(result.get("result"), int):
-            crm_message_id = result["result"]
             session_chat_id = conversation.crm_chat_id
         else:
-            data_result = result.get("result", {}).get("DATA", {}).get("RESULT", [{}])
-            crm_message_id = str(data_result[0].get("message", {}).get("id", "")) if data_result else None
-            session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
-
-        if not session_chat_id:
             session_chat_id = str(data_result[0].get("session", {}).get("CHAT_ID", ""))
 
         log.info(f"\n\n -------  crm_service.send_to_crm data_result {data_result} \n\n")
@@ -154,9 +109,11 @@ class CrmService:
         if session_chat_id and session_chat_id != conversation.crm_chat_id:
             await self._uow.conversations.update(conversation, crm_chat_id=session_chat_id)
             log.info(f"send_to_crm session_chat_id={session_chat_id}")
-        
+
         try:
             bx = provider._client()
+            crm_message_id = message_id
+            real_message_id = await bx.get_real_message_id(session_chat_id)
             contact_id = await bx.find_contact_by_phone(client_phone)
             log.info(f"find_contact_by_phone client_phone={client_phone} contact_id={contact_id}")
             if contact_id:
@@ -185,7 +142,7 @@ class CrmService:
             log.error("CRM contact/deal lookup failed: %s", e, exc_info=True)
 
         log.info(f"send_to_crm session_chat_id {session_chat_id} crm_message_id {crm_message_id}")
-        return session_chat_id, crm_message_id
+        return session_chat_id, real_message_id
 
     async def handle_webhook(self, tenant_id: uuid.UUID, crm_type: str, data: dict) -> dict:
         conn = await self._uow.crm_accounts.get_by_tenant(tenant_id, crm_type)
