@@ -184,27 +184,22 @@ class GreenWhatsAppListener:
                     "message_id": str(message.id),
                     "text": new_text,
                 })
-
-                crm_message_id = (message.raw_content or {}).get("crm_message_id")
-
-                log.info(f"\n\n ---------  EDIT crm_message_id {crm_message_id}   \n\n")
-
-                if crm_message_id:
-                    try:
-                        from crm.app.services.crm_service import CrmService
-                        from crm.app.core.uow import CrmUnitOfWork
-                        crm_uow = CrmUnitOfWork(db)
-                        crm_service = CrmService(crm_uow)
-                        line = await crm_uow.lines.get_by_id(line_id)
-                        await crm_service.edit_to_crm(
-                            tenant_id=line.tenant_id,
-                            conversation_id=message.conversation_id,
-                            message_id=str(message.id),
-                            text=new_text,
-                            channel_type="whatsapp_green",
-                        )
-                    except Exception as e:
-                        log.error(f"CRM edit_to_crm failed: {e}")
+                
+                try:
+                    from crm.app.services.crm_service import CrmService
+                    from crm.app.core.uow import CrmUnitOfWork
+                    crm_uow = CrmUnitOfWork(db)
+                    crm_service = CrmService(crm_uow)
+                    line = await crm_uow.lines.get_by_id(line_id)
+                    await crm_service.edit_to_crm(
+                        tenant_id=line.tenant_id,
+                        conversation_id=message.conversation_id,
+                        message_id=str(message.id),
+                        text=new_text,
+                        channel_type="whatsapp_green",
+                    )
+                except Exception as e:
+                    log.error(f"CRM edit_to_crm failed: {e}")
 
             log.info(f"\n\n ---------  EDIT text {text}  message {message.__dict__} \n\n")
             return
