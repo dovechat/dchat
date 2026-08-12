@@ -147,6 +147,9 @@ class VkListener:
         crm_message_id = (message.raw_content or {}).get("crm_message_id")
 
         log.info(f"VK _handle_edited_message crm_message_id {crm_message_id}")
+        
+        if message and not crm_message_id:
+            crm_message_id = message.id
 
         if crm_message_id:
             try:
