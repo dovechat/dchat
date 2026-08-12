@@ -206,6 +206,8 @@ class VkListener:
             async with get_session() as db:
                 chat_service = ChatService(db)
                 return await self._handle_edited_message(line_id, payload, chat_service, db)
+        elif event_type == "message_delete":
+            log.info("\n\n - --  --  -- event_type message_delete \n\n")
         else:
             log.warning(f"Ignoring VK webhook type: {event_type}")
 
