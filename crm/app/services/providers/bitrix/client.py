@@ -236,7 +236,7 @@ class BitrixClient:
             ],
         }
         log.info(f"\n\n -*-*-* client.update_message end params {params} \n\n")
-        return await self.call("imconnector.update.messages", params, use_json=True)
+        return await self.call("imconnector.update.messages", params, use_json=False)
 
 
     async def find_contact_by_phone(self, phone: str) -> str | None:
