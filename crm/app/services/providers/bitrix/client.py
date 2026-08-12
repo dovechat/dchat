@@ -233,7 +233,7 @@ class BitrixClient:
             "MESSAGES[0][chat][id]": chat_id,
         }
         log.info(f"\n\n -*-*-* client.update_message end params {params} \n\n")
-        resp = await client.post(url, json=params if use_json else None, data=None if use_json else params)
+        resp = await self.call("imconnector.update.messages", params, use_json=False)(url, json=params if use_json else None, data=None if use_json else params)
         log.info(f"======== REQ HEADERS {dict(resp.request.headers)} REQ BODY {resp.request.content}")
         return resp
 
