@@ -396,7 +396,7 @@ class ChatService:
             filename = None
             if msg.raw_content:
                 if msg.raw_content.get("file_name") is not None:
-                    filename = msg.raw_content.get("file_name")
+                    filename = msg.raw_content.get("file_name") 
                 if filename is None and msg.raw_content is not None:
                     raw = msg.raw_content or {}
                     filename = (
