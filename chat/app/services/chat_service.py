@@ -935,7 +935,7 @@ class ChatService:
         return {"status": "ok", "conversation_id": str(conv.id)}
 
     from typing import Any
-    async def robot_send(self, data: CrmMessageOut, tg_listener: Any=None) -> dict:
+    async def robot_send(self, data: CrmMessageOut) -> dict:
         filters = {"line_id": data.line_id, "client_phone": data.client_phone}
         if data.channel_type:
             filters["channel_type"] = data.channel_type
@@ -988,9 +988,7 @@ class ChatService:
             media = data.media
 
         # sender = SenderFactory.get_sender(channel_type)
-        sender = await self._init_sender(channel_type, conv.id, tg_listener)
-        if hasattr(sender, "set_listener"):
-            sender.set_listener(tg_listener)
+        sender = await self._init_sender(channel_type, conv.id)
         if hasattr(sender, "set_bot_token"):
             sender.set_bot_token(creds.get("bot_token"))
 
