@@ -206,9 +206,12 @@ class GreenWhatsAppListener:
 
         log.info(f"\n\n ---------  AFTER EDIT \n\n")
 
-        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
-        log.info(f"_handle_incoming_message conv  {conv}")
-        
+        conv = None
+        try:
+            conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "whatsapp_green")
+            log.info(f"_handle_incoming_message conv  {conv}")
+        except Exception as e:
+            log.error(f"!!!! ---- ERROR ----  !!!!  _handle_incoming_message e {e}")
 
         if msg_type == "deletedMessage":
             log.info(f"_handle_incoming_message IN deletedMessage ")
