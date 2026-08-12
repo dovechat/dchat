@@ -227,13 +227,10 @@ class BitrixClient:
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
-            "MESSAGES": [
-                {
-                    "user": {"id": user_id},
-                    "message": {"id": msg_id, "text": text or " "},
-                    "chat": {"id": chat_id},
-                }
-            ],
+            "MESSAGES[0][user][id]": user_id,
+            "MESSAGES[0][message][id]": msg_id,
+            "MESSAGES[0][message][text]": text or " ",
+            "MESSAGES[0][chat][id]": chat_id,
         }
         log.info(f"\n\n -*-*-* client.update_message end params {params} \n\n")
         return await self.call("imconnector.update.messages", params, use_json=False)
