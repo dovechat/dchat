@@ -52,6 +52,7 @@ async def _get_recent_conversation_message_ids(access_token: str, peer_id: str) 
 
 
 async def _sync_vk_deletes_once() -> None:
+    r = redis.Redis(host="redis", port=6379, db=0)
     async with AsyncSessionLocal() as session:
         try:
             channel_repo = ChannelAccountRepository(session)
@@ -112,6 +113,11 @@ async def _sync_vk_deletes_once() -> None:
                             log.error(
                                 f"vk_delete_sync: delete_from_crm failed message.id={message.id}: {e}"
                             )
+
+                        r.publish(
+                            f"ws:message_update:{conversation_id}",
+                            json.dumps({"type": "delete", "message_id": str(message.id)})
+                        )
 
             await session.commit()
         except Exception:
