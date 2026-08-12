@@ -247,7 +247,7 @@ class GreenWhatsAppListener:
                                 tenant_id=line.tenant_id,
                                 conversation_id=conversation_id,
                                 client_phone="",
-                                message_id=str(crm_message_id),
+                                message_id=conv.id,  # str(crm_message_id),
                                 channel_type="whatsapp_green",
                             )
                         except Exception as e:
