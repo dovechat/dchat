@@ -115,10 +115,13 @@ class VkListener:
         log.info("VkListener initialized")
 
     async def _handle_edited_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession):
+        log.info("VK _handle_edited_message start")
         msg = payload.get("object", {})
         if not msg:
             log.warning(f"No message in VK edit payload: {payload}")
             return
+
+        log.info(f"VK _handle_edited_message msg {msg}")
 
         msg_id = str(msg.get("conversation_message_id"))
         from_id = msg.get("from_id")
@@ -129,6 +132,8 @@ class VkListener:
         if not conv:
             return
 
+        log.info(f"VK _handle_edited_message conv {conv}")
+
         msg_repo = MessageRepository(db)
         messages = await msg_repo.get_multi(filters={"channel_msg_id": msg_id, "conversation_id": conv.id})
         if not messages:
@@ -137,7 +142,12 @@ class VkListener:
         message = messages[0]
         await msg_repo.update(message, text=text)
 
+        log.info(f"VK _handle_edited_message message {message}")
+
         crm_message_id = (message.raw_content or {}).get("crm_message_id")
+
+        log.info(f"VK _handle_edited_message crm_message_id {crm_message_id}")
+
         if crm_message_id:
             try:
                 from crm.app.services.crm_service import CrmService
