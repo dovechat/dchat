@@ -222,16 +222,16 @@ class BitrixClient:
         return result
 
     async def update_message(self, connector_id: str, line_id: str, user_id: str, chat_id: str, msg_id: str,
-                             text: str, crm_entity_type: str | None = None, crm_entity_id: str | None = None) -> dict:
+                             text: str) -> dict:
         log.info("\n\n -*-*-* client.update_message start \n\n")
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
             "MESSAGES": [
                 {
-                    "user": {"id": user_id, "phone": user_id, "skip_phone_validate": "Y"},
+                    "user": {"id": user_id},
                     "message": {"id": msg_id, "text": text or " "},
-                    "chat": {"id": chat_id, "crm_entity_type": crm_entity_type, "crm_entity_id": crm_entity_id},
+                    "chat": {"id": chat_id},
                 }
             ],
         }

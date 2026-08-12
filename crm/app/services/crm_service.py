@@ -1604,28 +1604,6 @@ class CrmService:
         if not conversation.crm_chat_id:
             return
         provider = get_provider(conn)
-
-        crm_entity_type = None
-        crm_entity_id = None
-        try:
-            bx = provider._client()
-            contact_id = await bx.find_contact_by_phone(conversation.client_phone)
-            if contact_id:
-                deal_id = await bx.find_open_deal(contact_id)
-                if deal_id:
-                    crm_entity_type = "deal"
-                    crm_entity_id = str(deal_id)
-        except Exception as e:
-            log.error(f"edit_to_crm deal lookup failed tenant={tenant_id}: {e}")
-
-        log.info(
-            f"EDIT DEBUG client_phone={conversation.client_phone!r} "
-            f"message_id={message_id!r} "
-            f"chat_id={conn.connector_id}_conv{conversation_id!r} "
-            f"connector_id={conn.connector_id!r} "
-            f"crm_line_id={conn.crm_line_id!r}"
-        )
-
         try:
             result = await provider.edit_message(
                 message_id=message_id,
@@ -1634,8 +1612,6 @@ class CrmService:
                 line_id=str(conn.crm_line_id),
                 user_id=conversation.client_phone,
                 chat_id=f"{conn.connector_id}_conv{conversation_id}",
-                crm_entity_type=crm_entity_type,
-                crm_entity_id=crm_entity_id,
             )
             log.info(f"\n\n --------- edit_to_crm result={result}\n\n")
         except httpx.HTTPStatusError as e:
@@ -1653,8 +1629,6 @@ class CrmService:
                 line_id=str(conn.crm_line_id),
                 user_id=conversation.client_phone,
                 chat_id=f"{conn.connector_id}_conv{conversation_id}",
-                crm_entity_type=crm_entity_type,
-                crm_entity_id=crm_entity_id,
             )
             log.info(f"\n\n --------- edit_to_crm result (after refresh)={result}\n\n")
         except Exception as e:
