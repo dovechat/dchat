@@ -41,6 +41,7 @@ class BitrixClient:
                 "refresh_token": refresh_token,
             })
             resp.raise_for_status()
+            log.error(f"handle_robot token refresh failed body={resp.text}")
             data = resp.json()
         if not data.get("access_token"):
             raise ValueError(f"Token refresh failed: {data}")
