@@ -234,7 +234,7 @@ class BitrixClient:
         }
         log.info(f"\n\n -*-*-* client.update_message end params {params} \n\n")
         resp = await client.post(url, json=params if use_json else None, data=None if use_json else params)
-        log.info(f"REQ HEADERS {dict(resp.request.headers)} REQ BODY {resp.request.content}")
+        log.info(f"======== REQ HEADERS {dict(resp.request.headers)} REQ BODY {resp.request.content}")
         return resp
 
 
