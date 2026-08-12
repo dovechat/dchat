@@ -396,7 +396,7 @@ async def crm_robot_send(
     data: CrmMessageOut,
     chat_service: ChatService = Depends(get_chat_service),
 ):
-    return await chat_service.robot_send(datа)
+    return await chat_service.robot_send(data)
 
 
 from app.schemas.chat_schemas import MessageEditRequest
