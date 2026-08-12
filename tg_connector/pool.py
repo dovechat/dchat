@@ -43,7 +43,7 @@ async def get_known_peers(line_id: str) -> set[str]:
             filters={"line_id": line_id, "channel_type": "telegram_user"},
             limit=10000,
         )
-    peers = {c.client_phone for c in conversations if c.client_phone}
+    peers = {c.client_phone.lstrip("+") for c in conversations if c.client_phone}
     if peers:
         await rdb.sadd(key, *peers)
         await rdb.expire(key, CACHE_TTL)
