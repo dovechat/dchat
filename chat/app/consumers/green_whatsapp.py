@@ -210,9 +210,11 @@ class GreenWhatsAppListener:
 
         if msg_type == "deletedMessage":
             stanza_id = message_data.get("deletedMessageData", {}).get("stanzaId")
+            log.info(f"_handle_incoming_message deletedMessage stanza_id {stanza_id}")
             if stanza_id:
                 msg_repo = MessageRepository(db)
                 message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
+                log.info(f"_handle_incoming_message deletedMessage stanza_id {stanza_id}")
                 if message:
                     crm_message_id = (message.raw_content or {}).get("crm_message_id")
                     conversation_id = message.conversation_id
@@ -225,6 +227,8 @@ class GreenWhatsAppListener:
                         "type": "delete",
                         "message_id": str(message_id_local),
                     })
+
+                    log.info(f"_handle_incoming_message deletedMessage crm_message_id {crm_message_id}")
 
                     if crm_message_id:
                         try:
