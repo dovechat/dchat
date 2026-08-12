@@ -220,7 +220,7 @@ class GreenWhatsAppListener:
             if stanza_id:
                 msg_repo = MessageRepository(db)
                 message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
-                log.info(f"_handle_incoming_message deletedMessage stanza_id {stanza_id}")
+                log.info(f"_handle_incoming_message deletedMessage message {message}")
                 if message:
                     crm_message_id = (message.raw_content or {}).get("crm_message_id") or message.id
                     conversation_id = message.conversation_id
@@ -247,7 +247,7 @@ class GreenWhatsAppListener:
                                 tenant_id=line.tenant_id,
                                 conversation_id=conversation_id,
                                 client_phone="",
-                                message_id=conv.id,  # str(crm_message_id),
+                                message_id=str(crm_message_id),
                                 channel_type="whatsapp_green",
                             )
                         except Exception as e:
