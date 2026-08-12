@@ -222,7 +222,7 @@ class GreenWhatsAppListener:
                 message = await msg_repo.get_message_by_channel_msg_id(stanza_id)
                 log.info(f"_handle_incoming_message deletedMessage stanza_id {stanza_id}")
                 if message:
-                    crm_message_id = (message.raw_content or {}).get("crm_message_id")
+                    crm_message_id = (message.raw_content or {}).get("crm_message_id") or message.id
                     conversation_id = message.conversation_id
                     if not conversation_id:
                         conversation_id = conv.id
