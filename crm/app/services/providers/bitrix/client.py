@@ -18,6 +18,7 @@ class BitrixClient:
         log.info(f"\n\n -*-*-* client.call url {url} params {params}\n\n")
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(url, json=params if use_json else None, data=None if use_json else params)
+            log.info(f"======== REQ HEADERS {dict(resp.request.headers)} REQ BODY {resp.request.content}")
             if not resp.is_success:
                 log.error(f"Bitrix API error {resp.status_code}: {resp.text}")
             resp.raise_for_status()
@@ -223,7 +224,6 @@ class BitrixClient:
 
     async def update_message(self, connector_id: str, line_id: str, user_id: str, chat_id: str, msg_id: str,
                              text: str) -> dict:
-        log.info("\n\n -*-*-* client.update_message start \n\n")
         params = {
             "CONNECTOR": connector_id,
             "LINE": line_id,
@@ -232,10 +232,7 @@ class BitrixClient:
             "MESSAGES[0][message][text]": text or " ",
             "MESSAGES[0][chat][id]": chat_id,
         }
-        log.info(f"\n\n -*-*-* client.update_message end params {params} \n\n")
-        resp = await self.call("imconnector.update.messages", params, use_json=False)(url, json=params if use_json else None, data=None if use_json else params)
-        log.info(f"======== REQ HEADERS {dict(resp.request.headers)} REQ BODY {resp.request.content}")
-        return resp
+        return await self.call("imconnector.update.messages", params, use_json=False)
 
 
     async def find_contact_by_phone(self, phone: str) -> str | None:
