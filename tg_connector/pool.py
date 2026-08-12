@@ -25,6 +25,29 @@ logging.getLogger('telethon').setLevel(logging.DEBUG)
 log = logging.getLogger("uvicorn.error")
 
 
+from core.redis import rdb
+from repo.conversation_repo import ConversationRepository
+from core.database import AsyncSessionLocal
+
+CACHE_TTL = 300
+
+async def get_known_peers(line_id: str) -> set[str]:
+    key = f"known_peers:{line_id}"
+    cached = await rdb.smembers(key)
+    if cached:
+        return {p.decode() if isinstance(p, bytes) else p for p in cached}
+
+    async with AsyncSessionLocal() as session:
+        repo = ConversationRepository(session)
+        conversations = await repo.get_multi(
+            filters={"line_id": line_id, "channel_type": "telegram_user"},
+            limit=10000,
+        )
+    peers = {c.client_phone for c in conversations if c.client_phone}
+    if peers:
+        await rdb.sadd(key, *peers)
+        await rdb.expire(key, CACHE_TTL)
+    return peers
 
 class ChannelConnection:
     def __init__(self, line_id: str, conversation_id: uuid.UUID | None, phone: str):
@@ -103,6 +126,11 @@ class ChannelConnection:
             sender = await event.get_sender()
             sender_phone = (getattr(sender, "phone", "") or "").lstrip("+")
             log.info(f"[pool] NewMessage sender_phone={sender_phone}")
+
+            known_peers = await get_known_peers(self.line_id)
+            if sender_phone not in known_peers:
+                log.info(f"[pool] skip: no conversation for phone={sender_phone} line={self.line_id}")
+                return
 
             media_group_id = getattr(event.message, 'grouped_id', None)
             if media_group_id:
@@ -252,6 +280,8 @@ class ConnectionPool:
                     }
                 )
                 conversation_id = conversations[0].id if conversations else None
+
+            await rdb.delete(f"known_peers:{line_id}")
 
             conn = ChannelConnection(line_id, conversation_id, phone)
             self.connections[line_id] = conn

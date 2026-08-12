@@ -77,6 +77,7 @@ class ChatRepository(BaseRepository[Conversation]):
         if res:
             return res[0]
 
+
     async def get_conversations_by_phone(
         self,
         line_id: uuid.UUID,
