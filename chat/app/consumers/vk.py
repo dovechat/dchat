@@ -99,7 +99,7 @@ class VkConnection:
         })
     
     async def delete_message(self, peer_id: int, message_id: int) -> dict:
-        log.info("\n\n ---++--- VK listener delete_message\n\n")
+        log.info("\n\n ---++--- VK listener delete_message -- \n\n")
         return await self.call("messages.delete", {
             "peer_id": peer_id,
             "message_ids": message_id,
