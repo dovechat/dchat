@@ -19,6 +19,7 @@ sqlalchemy = "^2.0.51"
 asyncpg = "^0.31.0"
 cryptography = "^49.0.0"
 minio = "^7.2.20"
+redis = "^8.1.0"
 
 [build-system]
 requires = ["poetry-core"]
