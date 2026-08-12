@@ -37,10 +37,12 @@ class BitrixProvider(CrmProvider):
         bx = self._client()
         chat_id = f"{self.conn.connector_id}_conv{conversation_id}"
 
+        user_id = client_phone.lstrip("+")
+
         result = await bx.send_message(
             connector_id=self.conn.connector_id,
             line_id=self.conn.crm_line_id,
-            user_id=client_phone,
+            user_id=user_id,
             user_name=client_name or self.conn.channel_type,
             chat_id=chat_id,
             text=text,
