@@ -1618,6 +1618,14 @@ class CrmService:
         except Exception as e:
             log.error(f"edit_to_crm deal lookup failed tenant={tenant_id}: {e}")
 
+        log.info(
+            f"EDIT DEBUG client_phone={conversation.client_phone!r} "
+            f"message_id={message_id!r} "
+            f"chat_id={conn.connector_id}_conv{conversation_id!r} "
+            f"connector_id={conn.connector_id!r} "
+            f"crm_line_id={conn.crm_line_id!r}"
+        )
+
         try:
             result = await provider.edit_message(
                 message_id=message_id,
