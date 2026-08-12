@@ -34,9 +34,6 @@ async def redis_subscriber():
                         except Exception as e:
                             log.error(f"redis_subscriber send_message_status error: {e}")
             elif "message_update" in channel:
-                log.info(
-                    f"active={list(manager.active_connections.keys())}"
-                )
                 if conversation_id in manager.active_connections:
                     for ws in manager.active_connections[conversation_id][:]:
                         try:
