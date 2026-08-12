@@ -3,6 +3,7 @@ diffs against our stored inbound messages, and mirrors deletions to CRM."""
 import asyncio
 import time
 import httpx
+import redis
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
@@ -115,7 +116,7 @@ async def _sync_vk_deletes_once() -> None:
                             )
 
                         r.publish(
-                            f"ws:message_update:{conversation_id}",
+                            f"ws:message_update:{conv.id}",
                             json.dumps({"type": "delete", "message_id": str(message.id)})
                         )
 
