@@ -135,12 +135,13 @@ async def check_qr_status(token: str):
 
 @app.post("/prod/check-phone")
 async def check_phone(req: PhoneRequest):
+    log.info("\n\n ------ /prod/check-phone check_phone start")
     if not req.session_string:
         return {"error": "session_string required"}
     client = TelegramClientWrapper(
         session_string=req.session_string
     )
-
+    log.info(f"\n\n ------ check_phone client {client}")
     try:
         await client.connect()
         result = await client(ImportContactsRequest([
@@ -148,10 +149,12 @@ async def check_phone(req: PhoneRequest):
         ]))
         exists = len(result.users) > 0
         user_id = result.users[0].id if exists else None
-        return {"exists": exists, "user_id": user_id}
+        res = {"exists": exists, "user_id": user_id}
+        log.info(f"\n\n ------ check_phone client return res {res}")
+        return res
     finally:
         await client.disconnect()
-
+        log.info("\n\n ------ check_phone finish")
 
 # ---- Пул активных telegram_user каналов (новое) ----
 
