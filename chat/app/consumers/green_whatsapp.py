@@ -265,10 +265,10 @@ class GreenWhatsAppListener:
             text = media_data.get("caption", "")
             file_url = media_data.get("downloadUrl")
             mime_type = media_data.get("mimeType")
-            log.info("_handle_incoming_message msg_type in imageMessage middle")
             media_id = uuid.uuid4()
             file_name_rcv = media_data.get("fileName")
             ext = file_name_rcv.split(".")[1]
+            log.info("_handle_incoming_message msg_type in imageMessage middle")
             file_name = f"{media_id}.{ext}"
             original_file_name = file_name_rcv
             log.info("_handle_incoming_message msg_type in imageMessage end")
