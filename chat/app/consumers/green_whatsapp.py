@@ -272,7 +272,7 @@ class GreenWhatsAppListener:
         if conv is None:
             return
 
-        log.info(f"\n\n -------- green wh- save to db \")
+        log.info(f"\n\n -------- green wh- save to db ")
 
         # Сохраняем в БД
         try:
