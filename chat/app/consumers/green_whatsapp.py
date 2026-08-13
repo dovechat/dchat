@@ -290,7 +290,7 @@ class GreenWhatsAppListener:
             log.error(f"\n\n !!! --- ERROR chat_service.save_incoming_green {e}---  \n\n")
             return
 
-        log.info(f"\n\n ------- green wh- after- save to db \")
+        log.info(f"\n\n ------- green wh- after- save to db ")
 
         ws_message = {
             "id": str(message.id),
