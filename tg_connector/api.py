@@ -15,6 +15,8 @@ from schemas import DeleteMessageRequest, EditMessageRequest, PhoneRequest, Send
 from core.config import settings
 from sender import send_message
 from tg_client import TelegramClientWrapper
+from telethon.tl.functions.contacts import ImportContactsRequest
+from telethon.tl.types import InputPhoneContact
 
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s", stream=sys.stdout)
 log = logging.getLogger("uvicorn")
