@@ -44,18 +44,6 @@ class ConnectionManager:
                 await websocket.close(code=1008, reason="Conversation not found")
                 return
 
-            my_phone_stmt = (
-                select(ChannelAccount.phone)
-                .join(Conversation, and_(
-                    Conversation.line_id == ChannelAccount.line_id,
-                    Conversation.channel_type == ChannelAccount.channel_type
-                ))
-                .where(Conversation.id == conversation_id)
-            )
-            my_phone_result = await db.execute(my_phone_stmt)
-            my_phone = my_phone_result.scalar_one_or_none() or ''
-            peer_phone = conv.client_phone or ''
-
             user_repo = UserRepository(db)
             membership = await user_repo.get_membership(
                 user_id=uuid.UUID(user_id),
@@ -63,7 +51,7 @@ class ConnectionManager:
             )
             log.info(f"\n\n ---- membership check user_id={user_id} tenant_id={conv.line.tenant_id} result={membership} \n\n")
             if not membership:
-                log.info(f"membership is_active: {membership.is_active}")
+                log.info(f"is not membership")
                 await websocket.close(code=1008, reason="Access denied")
                 return
 
@@ -73,15 +61,6 @@ class ConnectionManager:
         self.active_connections[conversation_id].append(websocket)
 
         log.info(f"---*----*-- websocket_manager Socket state after append: {websocket.client_state.name}")
-
-        # Если это первое соединение - запускаем listener
-        # if len(self.active_connections[conversation_id]) == 1 and conv.channel_type == "telegram_user":
-            # listener = app.state.listener
-            # log.info(f"+++++++++ websocket_manager ConnectionManager.connect listener.start_listening")
-            # await listener.start_listening(conversation_id, my_phone, peer_phone)
-            #log.info(f"+++++++++ websocket_manager ConnectionManager.connect listener.start_listening DONE")
-
-        # log.info(f"+++++++ websocket_manager  ConnectionManager.connect Connected: conversation={conversation_id}, total={len(self.active_connections[conversation_id])}")
 
     async def disconnect(self, conversation_id: str, websocket: WebSocket):
         # listener = websocket.app.state.listener

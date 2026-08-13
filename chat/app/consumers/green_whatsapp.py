@@ -272,6 +272,8 @@ class GreenWhatsAppListener:
         if conv is None:
             return
 
+        log.info(f"\n\n -------- green wh- save to db \")
+
         # Сохраняем в БД
         try:
             message = await chat_service.save_incoming_green(
@@ -287,6 +289,8 @@ class GreenWhatsAppListener:
         except Exception as e:
             log.error(f"\n\n !!! --- ERROR chat_service.save_incoming_green {e}---  \n\n")
             return
+
+        log.info(f"\n\n ------- green wh- after- save to db \")
 
         ws_message = {
             "id": str(message.id),
