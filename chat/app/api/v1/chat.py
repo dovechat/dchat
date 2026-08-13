@@ -285,7 +285,7 @@ async def get_messages(
     current_user: UserContext = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(20, ge=1, le=1000)
 ):
     """Get messages for specific conversation"""
     res = await chat_service.get_messages(
