@@ -254,19 +254,24 @@ class GreenWhatsAppListener:
                             log.error(f"CRM delete_from_crm failed: {e}")
             return
 
+        log.info("_handle_incoming_message after if deletedMessage")
+
         if msg_type == "textMessage":
             log.info(f"\n\n --- msg_type == textMessage message_data {message_data}\n\n")
             text = message_data.get("textMessageData", {}).get("textMessage")
         if msg_type in ["imageMessage", "videoMessage", "documentMessage", "audioMessage"]:
+            log.info("_handle_incoming_message msg_type in imageMessage")
             media_data = message_data.get("fileMessageData", {})  # всегда fileMessageData
             text = media_data.get("caption", "")
             file_url = media_data.get("downloadUrl")
             mime_type = media_data.get("mimeType")
+            log.info("_handle_incoming_message msg_type in imageMessage middle")
             media_id = uuid.uuid4()
             file_name_rcv = media_data.get("fileName")
             ext = file_name_rcv.split(".")[1]
             file_name = f"{media_id}.{ext}"
             original_file_name = file_name_rcv
+            log.info("_handle_incoming_message msg_type in imageMessage end")
 
         log.info(f"\n\n --------- _handle_incoming_message conv {conv}  phone {phone}  text {text} line_id {line_id} file_name {file_name}  file_name {file_name} file_url {file_url} \n\n")
         if conv is None:
