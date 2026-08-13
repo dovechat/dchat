@@ -268,9 +268,14 @@ class GreenWhatsAppListener:
             media_id = uuid.uuid4()
             file_name_rcv = media_data.get("fileName")
             log.info(f"_handle_incoming_message msg_type in imageMessage middle file_name_rcv {file_name_rcv}")
-            ext = file_name_rcv.split(".")[1]
-
-            file_name = f"{media_id}.{ext}"
+            if msg_type == "imageMessage":
+                ext = mime_type.split("/")[1]
+            elif "." in file_name_rcv:
+                ext = file_name_rcv.split(".")[1]
+            if ext:
+                file_name = f"{media_id}.{ext}"
+            else:
+                file_name = media_id
             original_file_name = file_name_rcv
             log.info("_handle_incoming_message msg_type in imageMessage end")
 
