@@ -6,7 +6,7 @@ import random
 from contextlib import asynccontextmanager
 from typing import Dict
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.database import get_db
+from core.database import AsyncSessionLocal, get_db
 from core.redis import rdb
 from infra.crypto import decrypt
 from notification.notification_caller import notify_connection_error
@@ -338,6 +338,7 @@ class VkListener:
 
 
     async def _process_incoming_message(self, line_id: str, msg: dict, from_id: int, text: str, attachments: list):
+        from app.services.chat_service import ChatService
         async with AsyncSessionLocal() as db:
             chat_service = ChatService(db)
             try:
