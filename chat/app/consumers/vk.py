@@ -327,9 +327,9 @@ class VkListener:
         attachments = msg.get("attachments", [])
 
         dedup_key = f"vk_msg:{msg_id}"
-        if await rdb.get(dedup_key):
+        was_set = await rdb.set(dedup_key, "1", ex=300, nx=True)
+        if not was_set:
             return "ok"
-        await rdb.set(dedup_key, "1", ex=300)
 
         task = asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
         self._bg_tasks.add(task)
