@@ -55,6 +55,21 @@ class VkConnection:
                 log.error(f"notify_connection_error failed: {ne}")
             raise
 
+    async def _upload_file(
+            self, upload_url: str, field_name: str, filename: str, file_bytes: bytes, expected_key: str
+    ) -> dict:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(upload_url, files={
+                field_name: (filename, file_bytes, "image/jpeg" if field_name == "photo" else None)})
+            resp.raise_for_status()
+            uploaded = resp.json()
+        if expected_key not in uploaded:
+            log.error(f"VK upload failed, response: {uploaded}")
+            raise ValueError(f"VK upload failed: {uploaded}")
+        log.info(f"VK doc upload response: {uploaded}")
+        return uploaded
+
+
     async def send_message(self, peer_id: int, text: str, random_id: int) -> dict:
         return await self.call("messages.send", {
             "peer_id": peer_id,
@@ -74,10 +89,7 @@ class VkConnection:
         upload_server = await self.call("photos.getMessagesUploadServer", {"peer_id": peer_id})
         upload_url = upload_server["upload_url"]
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(upload_url, files={"photo": (filename, file_bytes, "image/jpeg")})
-            resp.raise_for_status()
-            uploaded = resp.json()
+        uploaded = await self._upload_file(upload_url, "photo", filename, file_bytes, "photo")
 
         saved = await self.call("photos.saveMessagesPhoto", {
             "photo": uploaded["photo"],
@@ -91,11 +103,7 @@ class VkConnection:
         upload_server = await self.call("docs.getMessagesUploadServer", {"peer_id": peer_id})
         upload_url = upload_server["upload_url"]
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(upload_url, files={"file": (filename, file_bytes)})
-            resp.raise_for_status()
-            uploaded = resp.json()
-            log.info(f"VK doc upload response: {uploaded}")
+        uploaded = await self._upload_file(upload_url, "file", filename, file_bytes, "file")
 
         saved = await self.call("docs.save", {
             "file": uploaded["file"],
