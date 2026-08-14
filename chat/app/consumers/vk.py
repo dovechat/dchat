@@ -6,7 +6,7 @@ import random
 from contextlib import asynccontextmanager
 from typing import Dict
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.database import AsyncSessionLocal, get_db
+from core.database import get_db
 from core.redis import rdb
 from infra.crypto import decrypt
 from notification.notification_caller import notify_connection_error
@@ -24,8 +24,6 @@ get_session = asynccontextmanager(get_db)
 
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.199"
-
-_bg_tasks: set = set()
 
 class VkConnection:
     """Соединение с VK API для одной линии"""
@@ -328,108 +326,92 @@ class VkListener:
         attachments = msg.get("attachments", [])
 
         dedup_key = f"vk_msg:{msg_id}"
-        was_set = await rdb.set(dedup_key, "1", ex=300, nx=True)
-        if not was_set:
+        if await rdb.get(dedup_key):
             return "ok"
+        await rdb.set(dedup_key, "1", ex=300)
 
-        task = asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
-        _bg_tasks.add(task)
-        task.add_done_callback(_bg_tasks.discard)
+        asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
         return "ok"
 
+        phone = str(from_id)
 
-    async def _process_incoming_message(self, line_id: str, msg: dict, from_id: int, text: str, attachments: list):
-        from app.services.chat_service import ChatService
-        async with AsyncSessionLocal() as db:
-            chat_service = ChatService(db)
-            try:
+        conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "vk")
+        if not conv:
+            log.warning(f"Conversation not found for line {line_id}, from_id {from_id}")
+            return "ok"
+        conv_id = conv.id
 
+        media_items = []
 
-                phone = str(from_id)
-        
-                conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "vk")
-                if not conv:
-                    log.warning(f"Conversation not found for line {line_id}, from_id {from_id}")
-                    return "ok"
-                conv_id = conv.id
-        
-                media_items = []
-        
-                for att in attachments:
-                    att_type = att.get("type")
-                    att_obj = att.get(att_type, {})
-                    m_id = uuid.uuid4()
-                    if att_type == "photo":
-                        sizes = att_obj.get("sizes", [])
-                        if sizes:
-                            best = max(sizes, key=lambda s: s.get("width", 0))
-                            file_bytes = await self._download_file(best.get("url"))
-                            detected_mime = self.detect_image_mime(file_bytes)
-                            ext = detected_mime.split("/")[-1] if detected_mime else "jpg"
-                            fname = f"{att_obj.get('id')}.{ext}"
-                            await self.storage.save_file(file_bytes, m_id, fname, detected_mime or "application/octet-stream")
-                            media_items.append(
-                                {"id": str(m_id), "file_name": fname, "mime_type": detected_mime or "application/octet-stream",
-                                 "url": self.storage.presigned_url(m_id)}
-                            )
-                    elif att_type == "doc":
-                        file_bytes = await self._download_file(att_obj.get("url"))
-                        fname = att_obj.get("title")
-                        mtype = att_obj.get("mime_type", "application/octet-stream")
-                        await self.storage.save_file(file_bytes, m_id, fname, mtype)
-                        media_items.append({"id": str(m_id), "file_name": fname, "mime_type": mtype, "url": self.storage.presigned_url(m_id)})
-        
-                message = await chat_service.save_incoming_vk(
-                    conversation_id=conv_id,
-                    external_id=msg_id,
-                    text=text,
-                    msg_type="message_new",
-                    media_items=media_items or None,
-                )
-        
-                ws_message = {
-                    "id": str(message.id),
-                    "text": message.text,
-                    "direction": "inbound",
-                    "created_at": message.created_at.isoformat(),
-                    "phone": phone
-                }
-                if media_items:
-                    ws_message["media"] = media_items
-        
-                await manager.send_new_message(conv_id, ws_message)
-        
-                try:
-                    from crm.app.services.crm_service import CrmService
-                    from crm.app.core.uow import CrmUnitOfWork
-                    crm_uow = CrmUnitOfWork(db)
-                    crm_service = CrmService(crm_uow)
-                    line = await crm_uow.lines.get_by_id(line_id)
-                    bx_chat = await crm_service.send_to_crm(
-                        tenant_id=line.tenant_id,
-                        conversation_id=conv_id,
-                        client_phone=phone,
-                        client_name="",
-                        text=text or "",
-                        message_id=str(message.id),
-                        channel_type="vk",
-                        media=media_items,
+        for att in attachments:
+            att_type = att.get("type")
+            att_obj = att.get(att_type, {})
+            m_id = uuid.uuid4()
+            if att_type == "photo":
+                sizes = att_obj.get("sizes", [])
+                if sizes:
+                    best = max(sizes, key=lambda s: s.get("width", 0))
+                    file_bytes = await self._download_file(best.get("url"))
+                    detected_mime = self.detect_image_mime(file_bytes)
+                    ext = detected_mime.split("/")[-1] if detected_mime else "jpg"
+                    fname = f"{att_obj.get('id')}.{ext}"
+                    await self.storage.save_file(file_bytes, m_id, fname, detected_mime or "application/octet-stream")
+                    media_items.append(
+                        {"id": str(m_id), "file_name": fname, "mime_type": detected_mime or "application/octet-stream",
+                         "url": self.storage.presigned_url(m_id)}
                     )
-                    log.info(f"send_to_crm bx_chat={bx_chat}")
-                    if bx_chat:
-                        bx_chat_id = bx_chat[0]
-                        log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
-                        await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
-                except Exception as e:
-                    log.error(f"CRM send_to_crm failed: {e}")
-                    return 'ok'
-                return 'ok'
+            elif att_type == "doc":
+                file_bytes = await self._download_file(att_obj.get("url"))
+                fname = att_obj.get("title")
+                mtype = att_obj.get("mime_type", "application/octet-stream")
+                await self.storage.save_file(file_bytes, m_id, fname, mtype)
+                media_items.append({"id": str(m_id), "file_name": fname, "mime_type": mtype, "url": self.storage.presigned_url(m_id)})
 
-            except Exception as e:
-                log.error(
-                    f"\n\n !!! --- ERROR --- !!! /mono/chat/app/consumers/vk.py VkListener._process_incoming_message failed line_id={line_id} e={e}\n\n")
+        message = await chat_service.save_incoming_vk(
+            conversation_id=conv_id,
+            external_id=msg_id,
+            text=text,
+            msg_type="message_new",
+            media_items=media_items or None,
+        )
 
+        ws_message = {
+            "id": str(message.id),
+            "text": message.text,
+            "direction": "inbound",
+            "created_at": message.created_at.isoformat(),
+            "phone": phone
+        }
+        if media_items:
+            ws_message["media"] = media_items
 
+        await manager.send_new_message(conv_id, ws_message)
+
+        try:
+            from crm.app.services.crm_service import CrmService
+            from crm.app.core.uow import CrmUnitOfWork
+            crm_uow = CrmUnitOfWork(db)
+            crm_service = CrmService(crm_uow)
+            line = await crm_uow.lines.get_by_id(line_id)
+            bx_chat = await crm_service.send_to_crm(
+                tenant_id=line.tenant_id,
+                conversation_id=conv_id,
+                client_phone=phone,
+                client_name="",
+                text=text or "",
+                message_id=str(message.id),
+                channel_type="vk",
+                media=media_items,
+            )
+            log.info(f"send_to_crm bx_chat={bx_chat}")
+            if bx_chat:
+                bx_chat_id = bx_chat[0]
+                log.info(f"send_to_crm bx_chat_id={bx_chat_id}")
+                await chat_service.conv_repo.update(conv, crm_chat_id=bx_chat_id)
+        except Exception as e:
+            log.error(f"CRM send_to_crm failed: {e}")
+            return 'ok'
+        return 'ok'
 
     async def _download_file(self, url: str) -> bytes:
         async with httpx.AsyncClient() as client:
