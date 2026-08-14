@@ -327,7 +327,7 @@ class VkListener:
 
         dedup_key = f"vk_msg:{msg_id}"
         if await rdb.get(dedup_key):
-            return
+            return "ok"
         await rdb.set(dedup_key, "1", ex=300)
 
         phone = str(from_id)
@@ -335,7 +335,7 @@ class VkListener:
         conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "vk")
         if not conv:
             log.warning(f"Conversation not found for line {line_id}, from_id {from_id}")
-            return
+            return "ok"
         conv_id = conv.id
 
         media_items = []
