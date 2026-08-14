@@ -95,6 +95,7 @@ class VkConnection:
             resp = await client.post(upload_url, files={"file": (filename, file_bytes)})
             resp.raise_for_status()
             uploaded = resp.json()
+            log.info(f"VK doc upload response: {uploaded}")
 
         saved = await self.call("docs.save", {
             "file": uploaded["file"],
