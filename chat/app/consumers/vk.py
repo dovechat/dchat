@@ -324,8 +324,9 @@ class VkListener:
         from_id = msg.get("from_id")
         text = msg.get("text", "")
         attachments = msg.get("attachments", [])
+        event_id = payload.get("event_id")
 
-        dedup_key = f"vk_msg:{line_id}:{msg_id}"
+        dedup_key = f"vk_event:{line_id}:{event_id}"
         if not await rdb.set(dedup_key, "1", ex=300, nx=True):
             return "ok"
 
