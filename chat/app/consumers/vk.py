@@ -25,6 +25,8 @@ get_session = asynccontextmanager(get_db)
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.199"
 
+_bg_tasks: set = set()
+
 class VkConnection:
     """Соединение с VK API для одной линии"""
 
@@ -134,7 +136,6 @@ class VkListener:
     def __init__(self):
         self.connections: Dict[str, VkConnection] = {}
         self.storage = StorageService()
-        self._bg_tasks: set = set()
         log.info("VkListener initialized")
 
     async def _handle_edited_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession):
@@ -332,8 +333,8 @@ class VkListener:
             return "ok"
 
         task = asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
-        self._bg_tasks.add(task)
-        task.add_done_callback(self._bg_tasks.discard)
+        _bg_tasks.add(task)
+        task.add_done_callback(_bg_tasks.discard)
         return "ok"
 
 
