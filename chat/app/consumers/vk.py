@@ -318,7 +318,7 @@ class VkListener:
         msg = payload.get("object", {}).get("message", {})
         if not msg:
             log.warning(f"No message in VK payload: {payload}")
-            return
+            return "ok"
 
         msg_id =  str(msg.get("conversation_message_id"))
         from_id = msg.get("from_id")
