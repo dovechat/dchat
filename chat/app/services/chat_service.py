@@ -480,8 +480,10 @@ class ChatService:
             for m in data.media:
                 try:
                     await self.media_repo.create(message_id=message.id, **m)
-                except Exception:
-                    await self.db.rollback()
+                except Exception as e:
+                    log.error(
+                        f"\n\n !!! --- ERROR --- !!! /mono/chat/app/services/chat_service.py ChatService.conv_msg can't create media for message_id={message.id} e={e}\n\n")
+                    raise
 
         log.info(f"conv_msg message.media after refresh: {message.media}")
         return conv, message
