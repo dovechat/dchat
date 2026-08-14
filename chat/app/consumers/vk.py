@@ -314,7 +314,6 @@ class VkListener:
         return None
 
     async def _handle_incoming_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession ):
-        log.info(f"\n\n _handle_incoming_message payload {payload} \n\n")
         msg = payload.get("object", {}).get("message", {})
         if not msg:
             log.warning(f"No message in VK payload: {payload}")
@@ -329,6 +328,8 @@ class VkListener:
         dedup_key = f"vk_event:{line_id}:{event_id}"
         if not await rdb.set(dedup_key, "1", ex=300, nx=True):
             return "ok"
+
+        log.info(f"\n\n _handle_incoming_message payload {payload} \n\n")
 
         phone = str(from_id)
 
