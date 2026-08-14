@@ -12,7 +12,6 @@ from crm.app.core.uow import CrmUnitOfWork
 from app.core.uow import ChatUoW
 from app.services.chat_service import ChatService
 from app.schemas.chat_schemas import MessageCreate, MessageDirection, MessageStatus
-from app.consumers.telegram_listener import TelegramListener
 from schemas.auth_schemas import UserContext
 
 

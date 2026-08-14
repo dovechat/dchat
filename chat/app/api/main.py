@@ -12,7 +12,6 @@ from .v1.websocket import router as websocket_router
 from app.consumers.green_whatsapp import GreenWhatsAppListener
 from app.consumers.outgoing_consumer import start_consumer
 from app.consumers.waba import WabaListener
-# from app.consumers.telegram_listener import TelegramListener
 from app.consumers.vk import VkListener
 from app.core.kafka_producer import kafka_producer
 from contextlib import asynccontextmanager
