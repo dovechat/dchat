@@ -61,6 +61,13 @@ class VKSender(BaseSender):
                         m.get("file_name", "file")
                     )
                 attachments.append(attachment)
+
+            return await conn.call("messages.send", {
+                "peer_id": int(clean_phone),
+                "message": data.text or "",
+                "attachment": ",".join(attachments),
+                "random_id": data.message_id
+            })
         else:
             return await conn.send_message(int(clean_phone), data.text, random_id=data.message_id)
 
