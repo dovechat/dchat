@@ -204,22 +204,18 @@ class ChatService:
     async def delete_message(self, message_id: int, current_user: UserContext, phone: str, line_id: uuid.UUID,
                              channel_type: str, crm_service=None) -> None:
         message = await self.msg_repo.get_by_id(message_id)
-        if not message:
-            raise HTTPException(status_code=404, detail="message not found")
-        if not message.channel_msg_id:
-            raise HTTPException(status_code=400, detail="no channel_msg_id")
+        if message.channel_msg_id:
+            sender = await self._init_sender(channel_type, message.conversation_id)
+            try:
+                result = await sender.delete(message.channel_msg_id, phone)
+                log.info(f"delete_message sent channel_type={channel_type} result={result}")
+            except Exception as e:
+                log.error(f"delete_message send failed channel_type={channel_type}: {e}")
+                if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
+                    await notify_connection_error(line_id, channel_type, self.db)
 
-        sender = await self._init_sender(channel_type, message.conversation_id)
-        try:
-            result = await sender.delete(message.channel_msg_id, phone)
-            log.info(f"delete_message sent channel_type={channel_type} result={result}")
-            await self.msg_repo.delete(message)
-        except Exception as e:
-            log.error(f"delete_message send failed channel_type={channel_type}: {e}")
-            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)):
-                await notify_connection_error(line_id, channel_type, self.db)
-
-        if crm_service:
+        crm_message_id = (message.raw_content or {}).get("crm_message_id")
+        if crm_service and crm_message_id:
             conv = await self.conv_repo.get_by_id(message.conversation_id)
             line = await self.line_repo.get_by_id(line_id)
             try:
@@ -227,11 +223,13 @@ class ChatService:
                     tenant_id=line.tenant_id,
                     conversation_id=message.conversation_id,
                     client_phone=phone,
-                    message_id=message.channel_msg_id,
+                    message_id=crm_message_id,
                     channel_type=channel_type,
                 )
             except Exception as e:
                 log.error(f"delete_from_crm call failed: {e}")
+
+        await self.msg_repo.delete(message)
 
         await manager.send_message_update(str(message.conversation_id), {
             "type": "delete",
