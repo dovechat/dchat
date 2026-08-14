@@ -103,15 +103,18 @@ async def _enqueue_delete(
         raise HTTPException(status_code=400, detail="cannot delete")
     conv = await chat_service.conv_repo.get_by_id(message.conversation_id)
     log.info(f"\n\n *--**-**-**-- router.delete _enqueue_delete conv {conv}")
-    await kafka_producer.send_delete_message(
-        channel_type=conv.channel_type,
-        conversation_id=message.conversation_id,
-        message_id=message.id,
-        user_id=current_user.id,
-        user_email=current_user.email,
-        phone=conv.client_phone,
-        line_id=str(conv.line_id),
-    )
+    try:
+        await kafka_producer.send_delete_message(
+            channel_type=conv.channel_type,
+            conversation_id=message.conversation_id,
+            message_id=message.id,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            phone=conv.client_phone,
+            line_id=str(conv.line_id),
+        )
+    except Exception as e:
+        log.error(f"!!! --- ERROR --- !!! Failed kafka_producer.send_delete_message e {e}")
     log.info(f"_enqueue_delete channel_type={conv.channel_type} message_id={message.id}")
     return {"status": "queued"}
 
