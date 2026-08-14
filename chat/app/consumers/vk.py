@@ -134,6 +134,7 @@ class VkListener:
     def __init__(self):
         self.connections: Dict[str, VkConnection] = {}
         self.storage = StorageService()
+        self._bg_tasks: set = set()
         log.info("VkListener initialized")
 
     async def _handle_edited_message(self, line_id: str, payload: dict, chat_service: "ChatService", db: AsyncSession):
@@ -330,7 +331,9 @@ class VkListener:
             return "ok"
         await rdb.set(dedup_key, "1", ex=300)
 
-        asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
+        task = asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
         return "ok"
 
 
