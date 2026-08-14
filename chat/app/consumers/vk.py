@@ -330,9 +330,6 @@ class VkListener:
         if not await rdb.set(dedup_key, "1", ex=300, nx=True):
             return "ok"
 
-        asyncio.create_task(self._process_incoming_message(line_id, msg, from_id, text, attachments))
-        return "ok"
-
         phone = str(from_id)
 
         conv = await chat_service.conv_repo.get_conversations_by_phone(line_id, phone, "vk")
