@@ -71,24 +71,36 @@ class VkConnection:
         })
 
     async def upload_and_send_photo(self, peer_id: int, file_bytes: bytes, filename: str) -> str:
-        # 1. Получить upload_url для документа
-        upload_server = await self.call("docs.getMessagesUploadServer", {"peer_id": peer_id})
+        upload_server = await self.call("photos.getMessagesUploadServer", {"peer_id": peer_id})
         upload_url = upload_server["upload_url"]
 
-        # 2. Загрузить файл
         async with httpx.AsyncClient() as client:
-            resp = await client.post(upload_url, files={"file": (filename, file_bytes, "image/jpeg")})
+            resp = await client.post(upload_url, files={"photo": (filename, file_bytes, "image/jpeg")})
             resp.raise_for_status()
             uploaded = resp.json()
 
-        # 3. Сохранить
+        saved = await self.call("photos.saveMessagesPhoto", {
+            "photo": uploaded["photo"],
+            "server": uploaded["server"],
+            "hash": uploaded["hash"],
+        })
+        photo = saved[0]
+        return f"photo{photo['owner_id']}_{photo['id']}"
+
+    async def upload_and_send_doc(self, peer_id: int, file_bytes: bytes, filename: str) -> str:
+        upload_server = await self.call("docs.getMessagesUploadServer", {"peer_id": peer_id})
+        upload_url = upload_server["upload_url"]
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(upload_url, files={"file": (filename, file_bytes)})
+            resp.raise_for_status()
+            uploaded = resp.json()
+
         saved = await self.call("docs.save", {
             "file": uploaded["file"],
             "title": filename,
         })
         doc = saved.get("doc") or saved[0]
-        log.debug(saved)
-        # 4. Отправить
         return f"doc{doc['owner_id']}_{doc['id']}"
 
     async def edit_message(self, peer_id: int, message_id: int, text: str) -> dict:

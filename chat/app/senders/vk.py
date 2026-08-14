@@ -40,7 +40,7 @@ class VKSender(BaseSender):
         clean_phone = data.phone.lstrip('+')
 
         log.info(f"peer_id={int(clean_phone)}")
-        
+
         if data.media:
             attachments = []
             for m in data.media:
@@ -49,18 +49,18 @@ class VKSender(BaseSender):
                     resp = await client.get(file_url)
                     resp.raise_for_status()
                     file_bytes = resp.content
-                attachment = await conn.upload_and_send_photo(
-                    int(clean_phone), file_bytes,
-                    m.get("file_name", "photo.jpg")
-                )
+                mime_type = m.get("mime_type", "")
+                if mime_type.startswith("image/"):
+                    attachment = await conn.upload_and_send_photo(
+                        int(clean_phone), file_bytes,
+                        m.get("file_name", "photo.jpg")
+                    )
+                else:
+                    attachment = await conn.upload_and_send_doc(
+                        int(clean_phone), file_bytes,
+                        m.get("file_name", "file")
+                    )
                 attachments.append(attachment)
-            
-            return await conn.call("messages.send", {
-                "peer_id": int(clean_phone),
-                "message": data.text or "",
-                "attachment": ",".join(attachments),
-                "random_id": data.message_id
-            })
         else:
             return await conn.send_message(int(clean_phone), data.text, random_id=data.message_id)
 
